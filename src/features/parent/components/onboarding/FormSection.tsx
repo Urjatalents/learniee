@@ -21,11 +21,11 @@ export default function FormSection({
   children,
 }: FormSectionProps) {
   return (
-    <section className="rounded-2xl border border-gray-100 bg-gray-50/70 p-5 sm:p-6">
-      <div className="flex items-start gap-3 mb-5">
+    <section className="rounded-2xl border border-gray-100 bg-gray-50/70 p-6 sm:p-7">
+      <div className="flex items-start gap-3 mb-6">
         {Icon && (
-          <div className="flex items-center justify-center size-8 shrink-0 rounded-lg bg-violet-100 text-violet-600">
-            <Icon className="size-4" />
+          <div className="flex items-center justify-center size-9 shrink-0 rounded-lg bg-violet-100 text-violet-600">
+            <Icon className="size-4.5" />
           </div>
         )}
         <div>
@@ -35,7 +35,7 @@ export default function FormSection({
           )}
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
         {children}
       </div>
     </section>

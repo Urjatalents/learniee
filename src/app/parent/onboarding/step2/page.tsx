@@ -32,7 +32,7 @@ export default function Step2() {
 
   return (
     <>
-      <div className="mb-6">
+      <div className="mb-8">
         <Link
           href="/parent/onboarding/step1"
           className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-violet-600 mb-3"
@@ -40,7 +40,7 @@ export default function Step2() {
           <ArrowLeft className="size-3.5" />
           Back
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">Child Information</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Child Information</h1>
         <p className="text-sm text-gray-500 mt-1">
           A few details about the child who&apos;ll be learning on Learnie.
         </p>

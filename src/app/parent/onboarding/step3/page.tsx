@@ -35,7 +35,7 @@ export default function Step3() {
 
   return (
     <>
-      <div className="mb-6">
+      <div className="mb-8">
         <Link
           href="/parent/onboarding/step2"
           className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-violet-600 mb-3"
@@ -43,7 +43,7 @@ export default function Step3() {
           <ArrowLeft className="size-3.5" />
           Back
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">Additional Information</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Additional Information</h1>
         <p className="text-sm text-gray-500 mt-1">
           Last step — this helps us recommend the right teachers and courses.
         </p>

@@ -35,8 +35,8 @@ export default function Step1() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Parent Information</h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Parent Information</h1>
         <p className="text-sm text-gray-500 mt-1">
           Tell us a bit about yourself so teachers and Learnie can reach you.
         </p>

@@ -6,24 +6,11 @@ import { GraduationCap } from "lucide-react";
 import OnboardingProgress, {
   type OnboardingStep,
 } from "@/features/parent/components/onboarding/OnboardingProgress";
-import OnboardingSideRail from "@/features/parent/components/onboarding/OnboardingSideRail";
 
 const STEPS: OnboardingStep[] = [
-  {
-    path: "/parent/onboarding/step1",
-    label: "Parent Info",
-    description: "How teachers and Learnie reach you",
-  },
-  {
-    path: "/parent/onboarding/step2",
-    label: "Child Info",
-    description: "Who'll be learning",
-  },
-  {
-    path: "/parent/onboarding/step3",
-    label: "Additional Info",
-    description: "Helps us recommend the right fit",
-  },
+  { path: "/parent/onboarding/step1", label: "Parent Info" },
+  { path: "/parent/onboarding/step2", label: "Child Info" },
+  { path: "/parent/onboarding/step3", label: "Additional Info" },
 ];
 
 /**
@@ -34,17 +21,14 @@ const STEPS: OnboardingStep[] = [
  * The dashboard itself now lives in the `(dashboard)` route group next to
  * this folder, which is the only place ParentNavbar/ParentSidebar render.
  *
- * Layout: below `lg` this is a single centered card with a horizontal step
- * bar on top (OnboardingProgress), same as before. At `lg`+, a sticky
- * vertical step rail (OnboardingSideRail) sits to the left of the form.
- *
- * The outer container is deliberately capped at max-w-5xl rather than
- * being wide-open: the rail is a fixed 240px, so `max-w-5xl` is sized to
- * roughly match rail + gap + the form's natural width, and the form card
- * fills its grid column edge-to-edge (no inner max-w) instead of floating
- * left with empty space to its right. The whole rail+card block is then
- * centered as one unit on very wide screens, so any leftover gutter is
- * symmetric left/right rather than piling up on one side.
+ * Deliberately a single centered column at every breakpoint — an earlier
+ * version tried a two-column [sticky rail | card] grid to use up wide-
+ * screen space, but a fixed-width rail next to a max-width-capped card
+ * inside an open-ended `1fr` track kept producing a lopsided empty gutter
+ * on one side no matter how the widths were tuned. A single well-sized
+ * centered card is the boring, robust choice: it can't go lopsided,
+ * and `max-w-3xl` + generous padding is wide enough to not feel cramped
+ * without turning into a huge flat sheet of inputs.
  */
 export default function ParentOnboardingLayout({
   children,
@@ -58,34 +42,24 @@ export default function ParentOnboardingLayout({
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50/60 via-gray-50 to-gray-50">
-      <header className="flex items-center justify-center gap-2 pt-10 pb-2 px-4 lg:hidden">
-        <div className="flex items-center justify-center size-9 rounded-full bg-violet-600 text-white">
+    <div className="min-h-screen bg-gray-50">
+      <header className="flex items-center justify-center gap-2.5 pt-12 pb-8 px-4">
+        <div className="flex items-center justify-center size-10 rounded-full bg-violet-600 text-white shadow-sm shadow-violet-600/30">
           <GraduationCap className="size-5" />
         </div>
-        <span className="text-xl font-extrabold text-gray-900">
+        <span className="text-2xl font-extrabold text-gray-900">
           Learn<span className="text-violet-600">ie</span>
         </span>
       </header>
 
-      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-10 py-8 lg:py-14">
-        <div className="mb-8 lg:hidden">
+      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 pb-20">
+        <div className="mb-10">
           <OnboardingProgress steps={STEPS} currentIndex={currentIndex} />
         </div>
 
-        <div className="lg:grid lg:grid-cols-[240px_1fr] lg:gap-14">
-          <OnboardingSideRail
-            steps={STEPS}
-            currentIndex={currentIndex}
-            className="hidden lg:block"
-          />
-
-          <main>
-            <div className="w-full max-w-2xl mx-auto lg:max-w-none lg:mx-0 bg-white border border-gray-100 rounded-2xl shadow-sm shadow-gray-200/60 p-6 sm:p-10">
-              {children}
-            </div>
-          </main>
-        </div>
+        <main className="bg-white border border-gray-100 rounded-3xl shadow-sm shadow-gray-200/70 p-6 sm:p-10 lg:p-12">
+          {children}
+        </main>
       </div>
     </div>
   );
