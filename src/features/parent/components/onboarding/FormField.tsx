@@ -8,7 +8,11 @@ interface FormFieldProps {
   error?: string;
   /** Span both grid columns on the sm:grid-cols-2 layout used inside FormSection. */
   fullWidth?: boolean;
-  /** Small pill rendered next to the label, e.g. an "Auto-filled" flag. */
+  /**
+   * Small pill rendered under the field, e.g. an "Auto-filled" flag.
+   * Deliberately NOT placed next to the label — that fought the label for
+   * width and wrapped it awkwardly on longer labels like "WhatsApp Number".
+   */
   badge?: React.ReactNode;
   children: React.ReactNode;
 }
@@ -32,15 +36,13 @@ export default function FormField({
     <div className={fullWidth ? "sm:col-span-2" : undefined}>
       <label
         htmlFor={htmlFor}
-        className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5"
+        className="block text-sm font-medium text-gray-700 mb-1.5"
       >
-        <span>
-          {label}
-          {required && <span className="text-red-500 ml-0.5">*</span>}
-        </span>
-        {badge}
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {children}
+      {badge && <div className="mt-1.5">{badge}</div>}
       {helperText && !error && (
         <p className="text-xs text-gray-400 mt-1">{helperText}</p>
       )}

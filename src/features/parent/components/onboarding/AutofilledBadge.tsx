@@ -1,7 +1,8 @@
 /**
- * Small pill shown next to a field's label when its value was pre-filled
- * from the parent's signup account rather than typed by them — makes it
- * obvious the value came from somewhere and is still freely editable.
+ * Small pill shown under a field when its value was pre-filled from the
+ * parent's signup account rather than typed by them — makes it obvious the
+ * value came from somewhere and is still freely editable. Rendered below
+ * the field (see FormField's `badge` prop), not next to the label.
  */
 export default function AutofilledBadge() {
   return (

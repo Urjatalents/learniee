@@ -36,10 +36,15 @@ const STEPS: OnboardingStep[] = [
  *
  * Layout: below `lg` this is a single centered card with a horizontal step
  * bar on top (OnboardingProgress), same as before. At `lg`+, a sticky
- * vertical step rail (OnboardingSideRail) sits to the left of the form so
- * the wide gray gutter either side of a lone centered card isn't wasted —
- * the overall container also grows from max-w-2xl to max-w-6xl to make use
- * of that space instead of leaving it empty.
+ * vertical step rail (OnboardingSideRail) sits to the left of the form.
+ *
+ * The outer container is deliberately capped at max-w-5xl rather than
+ * being wide-open: the rail is a fixed 240px, so `max-w-5xl` is sized to
+ * roughly match rail + gap + the form's natural width, and the form card
+ * fills its grid column edge-to-edge (no inner max-w) instead of floating
+ * left with empty space to its right. The whole rail+card block is then
+ * centered as one unit on very wide screens, so any leftover gutter is
+ * symmetric left/right rather than piling up on one side.
  */
 export default function ParentOnboardingLayout({
   children,
@@ -63,12 +68,12 @@ export default function ParentOnboardingLayout({
         </span>
       </header>
 
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-10 py-8 lg:py-14">
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-10 py-8 lg:py-14">
         <div className="mb-8 lg:hidden">
           <OnboardingProgress steps={STEPS} currentIndex={currentIndex} />
         </div>
 
-        <div className="lg:grid lg:grid-cols-[240px_1fr] lg:gap-14 xl:gap-20">
+        <div className="lg:grid lg:grid-cols-[240px_1fr] lg:gap-14">
           <OnboardingSideRail
             steps={STEPS}
             currentIndex={currentIndex}
@@ -76,7 +81,7 @@ export default function ParentOnboardingLayout({
           />
 
           <main>
-            <div className="w-full max-w-2xl mx-auto lg:mx-0 bg-white border border-gray-100 rounded-2xl shadow-sm shadow-gray-200/60 p-6 sm:p-10">
+            <div className="w-full max-w-2xl mx-auto lg:max-w-none lg:mx-0 bg-white border border-gray-100 rounded-2xl shadow-sm shadow-gray-200/60 p-6 sm:p-10">
               {children}
             </div>
           </main>
