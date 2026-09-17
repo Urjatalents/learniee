@@ -290,6 +290,49 @@ export function notifyEnrollmentLapsed(enrollmentId: string) {
   });
 }
 
+/**
+ * Enrollment due-date payment reminder (added Sep 17, 2026) — the
+ * 5-day-before-`dueDate` reminder called out in
+ * `export.service.ts`'s file header and
+ * 04-BUILD-PLAN-TIMELINE.md's Week 4 scope. Parent-only: Teacher/
+ * Admin don't act on this, and no other trigger in this file
+ * notifies Accounts yet, so this doesn't invent that pattern here.
+ */
+export function notifyEnrollmentDueDateReminder(enrollmentId: string, daysUntilDue: number) {
+  return safe("enrollment due-date reminder", async () => {
+    const e = await prisma.enrollment.findUnique({
+      where: { id: enrollmentId },
+      select: {
+        parentId: true,
+        dueDate: true,
+        totalAmount: true,
+        student: { select: { firstName: true, visibleName: true } },
+        course: { select: { courseTitle: true } },
+      },
+    });
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "your course";
+    const studentName = displayName({ firstName: e.student.firstName, visibleName: e.student.visibleName });
+    const amountLabel = `₹${Number(e.totalAmount).toLocaleString("en-IN")}`;
+    const dayLabel = daysUntilDue === 1 ? "1 day" : `${daysUntilDue} days`;
+    const dueDateLabel = e.dueDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+
+    await createNotification({
+      recipientId: e.parentId,
+      recipientRole: R.PARENT,
+      type: T.PAYMENT_DUE_REMINDER,
+      title: "Payment due soon",
+      message: `${amountLabel} is due in ${dayLabel} (${dueDateLabel}) for ${studentName}'s enrollment in "${courseTitle}".`,
+      link: "/parent/enrollments",
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Class sessions
 // ---------------------------------------------------------------------------

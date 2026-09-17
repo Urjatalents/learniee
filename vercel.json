@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/enrollment-auto-lapse",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/due-date-reminders",
+      "schedule": "30 3 * * *"
     }
   ]
 }

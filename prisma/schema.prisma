@@ -383,6 +383,12 @@ model Enrollment {
   lastSessionMarkedAt        DateTime?
   scheduleDays               Int[]                @default([])
   scheduleTime               String?
+  /// Due-date payment reminder (added Sep 17, 2026) — see
+  /// `dueDateReminder.service.ts`'s doc-comment. Set once the
+  /// 5-day-before-`dueDate` reminder notification has fired for this
+  /// row, so the daily cron never double-sends. Mirrors
+  /// `ClassSession.reminderSentAt`'s pattern.
+  dueDateReminderSentAt      DateTime?
   chatRoom                   ChatRoom?
   classSessions              ClassSession[]
   course                     Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -1243,6 +1249,11 @@ enum NotificationType {
   /// Course/Teacher Reviews (Sep 17, 2026) — see the `Review` model's
   /// doc-comment.
   REVIEW_SUBMITTED
+  /// Enrollment due-date reminder (Sep 17, 2026) — see
+  /// `dueDateReminder.service.ts`'s doc-comment. Resolves the
+  /// "5-day reminder" gap flagged in `export.service.ts` and
+  /// 04-BUILD-PLAN-TIMELINE.md's Week 4 scope.
+  PAYMENT_DUE_REMINDER
   GENERIC
 }
 

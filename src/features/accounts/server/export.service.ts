@@ -26,12 +26,11 @@ import { getSessionCountsForEnrollments } from "@/features/shared/server/classSe
  * used — still flagged as a judgment call pending sign-off, same footing as
  * the pricing formula.
  *
- * The 5-day due-date reminder mentioned in the source spec is a genuine
- * in-app notification (06-OPEN-DECISIONS.md #32, Notification Center +
- * ReminderJob — Phase 2, not built). This export can't "pop up" anything;
- * the best it can do today is visually flag rows due within 5 days, which
- * `isDueSoon` below drives (used for both the on-page table and the Excel
- * cell fill).
+ * The 5-day due-date reminder mentioned in the source spec now also fires
+ * as a real in-app notification — see `dueDateReminder.service.ts` (added
+ * Sep 17, 2026, cron-driven, independent of this export). `isDueSoon`
+ * below is unrelated to that reminder's send/dedupe state; it just drives
+ * the visual flag on this report's on-page table and Excel cell fill.
  */
 
 const TEACHER_SHARE = 0.7; // Resolved #1: teacher keeps 70% of Monthly_rate
