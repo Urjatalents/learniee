@@ -251,6 +251,27 @@ export async function listPendingAdminPayoutReview(): Promise<TuitionLedgerEntry
   return rows.map(toLedgerEntryView);
 }
 
+/**
+ * A single Teacher's own ledger history — every cycle across every
+ * one of their Enrollments, newest first. Powers the Teacher-facing
+ * Earnings screen (previously the one Ledger-adjacent gap with no
+ * Teacher-side view — see 01-PROJECT-STATUS.md §3 / §7). Read-only:
+ * a Teacher never acts on their own entries here, same as the rest
+ * of this file — only Accounts (Verify) and Admin (Release/Reopen/
+ * Confirm Reject) can change payoutStatus.
+ */
+export async function listLedgerEntriesForTeacher(teacherId: string): Promise<TuitionLedgerEntryView[]> {
+  await expireOverdueEntries();
+
+  const rows = await prisma.tuitionLedgerEntry.findMany({
+    where: { teacherId },
+    include: ledgerEntryInclude,
+    orderBy: { transactionDate: "desc" },
+  });
+
+  return rows.map(toLedgerEntryView);
+}
+
 async function findVerifiableEntry(entryId: string) {
   const entry = await prisma.tuitionLedgerEntry.findUnique({ where: { id: entryId } });
 

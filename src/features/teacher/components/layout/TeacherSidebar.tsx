@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Calculator,
   Landmark,
+  Wallet,
   User,
   BookOpen,
   Award,
@@ -68,6 +69,7 @@ const menuSections: MenuSection[] = [
   {
     label: "Growth & Earnings",
     items: [
+      { label: "Earnings", path: "/teacher/earnings", icon: Wallet },
       { label: "Rate Calculator", path: "/teacher/rate-calculator", icon: Calculator },
       { label: "Bank Account", path: "/teacher/bank-account", icon: Landmark },
       { label: "Certificate Management", path: "/teacher/certificates", icon: Award },
