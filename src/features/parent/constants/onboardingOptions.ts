@@ -8,11 +8,7 @@
 // defaults for an India-based tutoring platform with an NRI parent segment.
 // Confirm against `Parent-Module-Spec.md` if a authoritative list exists.
 
-export const TUITION_TYPE_OPTIONS = [
-  "Online Tuition",
-  "Home Tuition",
-  "Both",
-] as const;
+export const TUITION_TYPE_OPTIONS = ["Online Tuition"] as const;
 
 export const NRI_OR_INDIAN_OPTIONS = ["Indian", "NRI"] as const;
 

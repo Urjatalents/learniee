@@ -25,9 +25,7 @@ export default function TeacherProfessionalSection({ teacher }: { teacher: Admin
       </Section>
 
       <Section title="Tuition Information">
-        <InfoField label="Home Tuition Area" value={info?.homeTuitionArea} />
         <InfoField label="Students Taught" value={info?.studentsTaught} />
-        <InfoField label="Can Take Home Tuition" value={info?.canTakeHomeTuition} />
         <InfoField label="Hours Per Day" value={info?.hoursPerDay} />
         <InfoField label="Own Notes" value={info?.haveOwnNotes} />
         <InfoField label="Can Make Presentations" value={info?.canMakePresentations} />

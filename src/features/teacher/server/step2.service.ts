@@ -22,9 +22,7 @@ function buildProfessionalInfoData(input: Step2FormInput) {
     workingInAcademy: Boolean(input.workingInAcademy),
     academyName: input.workingInAcademy ? input.academyName || null : null,
 
-    homeTuitionArea: input.homeTuitionArea || null,
     studentsTaught: input.studentsTaught || null,
-    canTakeHomeTuition: input.canTakeHomeTuition || null,
     hoursPerDay: input.hoursPerDay || null,
 
     haveOwnNotes: input.haveOwnNotes || null,

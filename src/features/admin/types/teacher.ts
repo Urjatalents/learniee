@@ -40,9 +40,7 @@ export interface AdminTeacher {
     workingInAcademy: boolean;
     academyName: string | null;
 
-    homeTuitionArea: string | null;
     studentsTaught: string | null;
-    canTakeHomeTuition: string | null;
     hoursPerDay: string | null;
 
     haveOwnNotes: string | null;

@@ -11,9 +11,7 @@ export interface Step2FormData {
   workingInAcademy: boolean;
   academyName: string;
 
-  homeTuitionArea: string;
   studentsTaught: string;
-  canTakeHomeTuition: string;
   hoursPerDay: string;
 
   haveOwnNotes: string;
@@ -48,9 +46,7 @@ export const initialStep2FormData: Step2FormData = {
   workingInAcademy: false,
   academyName: "",
 
-  homeTuitionArea: "",
   studentsTaught: "",
-  canTakeHomeTuition: "",
   hoursPerDay: "",
 
   haveOwnNotes: "",
@@ -102,9 +98,7 @@ export function mapProfessionalInfoToFormData(professionalInfo: {
   schoolName?: string | null;
   workingInAcademy?: boolean | null;
   academyName?: string | null;
-  homeTuitionArea?: string | null;
   studentsTaught?: string | null;
-  canTakeHomeTuition?: string | null;
   hoursPerDay?: string | null;
   haveOwnNotes?: string | null;
   canMakePresentations?: string | null;
@@ -133,9 +127,7 @@ export function mapProfessionalInfoToFormData(professionalInfo: {
     workingInAcademy: professionalInfo.workingInAcademy ?? false,
     academyName: professionalInfo.academyName ?? "",
 
-    homeTuitionArea: professionalInfo.homeTuitionArea ?? "",
     studentsTaught: professionalInfo.studentsTaught ?? "",
-    canTakeHomeTuition: professionalInfo.canTakeHomeTuition ?? "",
     hoursPerDay: professionalInfo.hoursPerDay ?? "",
 
     haveOwnNotes: professionalInfo.haveOwnNotes ?? "",

@@ -149,9 +149,7 @@ model TeacherProfessional {
   schoolName           String?
   workingInAcademy     Boolean @default(false)
   academyName          String?
-  homeTuitionArea      String?
   studentsTaught       String?
-  canTakeHomeTuition   String?
   hoursPerDay          String?
   haveOwnNotes         String?
   canMakePresentations String?

@@ -28,25 +28,11 @@ export default function TeachingPreferencesSection({ formData, onChange }: Props
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Input
-        name="homeTuitionArea"
-        placeholder="Area you live for Home Tuition"
-        value={formData.homeTuitionArea}
-        onChange={onChange}
-      />
-
-      <Input
         name="studentsTaught"
         placeholder="Number of Students taught"
         value={formData.studentsTaught}
         onChange={onChange}
       />
-
-      {yesNoSelect(
-        "canTakeHomeTuition",
-        formData.canTakeHomeTuition,
-        "Can you take Home Tuition",
-        onChange,
-      )}
 
       <select
         name="hoursPerDay"

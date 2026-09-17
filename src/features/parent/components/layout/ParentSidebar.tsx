@@ -12,7 +12,6 @@ import {
   Heart,
   RefreshCw,
   CreditCard,
-  Home,
   FolderOpen,
   ClipboardCheck,
   ListChecks,
@@ -72,7 +71,6 @@ const menuSections: MenuSection[] = [
     label: "Discover",
     items: [
       { label: "Teacher", path: "/parent/teachers", icon: GraduationCap },
-      { label: "Home Tuitions", path: "/parent/home-tuitions", icon: Home },
       { label: "Resources", path: "/parent/resources", icon: FolderOpen },
       { label: "Reviews", path: "/parent/reviews", icon: Star },
     ],
