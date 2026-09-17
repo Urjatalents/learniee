@@ -8,6 +8,8 @@ import SelectField from "@/features/shared/components/SelectField";
 
 import FormSection from "@/features/parent/components/onboarding/FormSection";
 import FormField from "@/features/parent/components/onboarding/FormField";
+import FormErrorBanner from "@/features/parent/components/onboarding/FormErrorBanner";
+import OnboardingSubmitButton from "@/features/parent/components/onboarding/OnboardingSubmitButton";
 import { useParentStep3Form } from "@/features/parent/hooks/useParentStep3Form";
 import {
   ONLINE_TUITION_OPTIONS,
@@ -16,9 +18,13 @@ import {
   HOW_DID_YOU_HEAR_OPTIONS,
 } from "@/features/parent/constants/onboardingOptions";
 
+const TEXTAREA_CLASSNAME =
+  "w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-2 text-base text-foreground placeholder:text-muted-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm resize-none";
+
 export default function Step3() {
   const {
     formData,
+    errors,
     suggestions,
     setSuggestions,
     submitting,
@@ -43,46 +49,73 @@ export default function Step3() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
         <FormSection title="Learning preferences" icon={SlidersHorizontal}>
-          <FormField label="Current Tuition Status" htmlFor="childStatus" required>
+          <FormField
+            label="Current Tuition Status"
+            htmlFor="childStatus"
+            required
+            error={errors.childStatus}
+          >
             <Input
               id="childStatus"
               name="childStatus"
               placeholder="e.g. New to tuitions"
               value={formData.childStatus}
               onChange={handleChange}
+              aria-invalid={!!errors.childStatus}
               required
             />
           </FormField>
 
-          <FormField label="Prefer Online Tuition?" required>
+          <FormField
+            label="Prefer Online Tuition?"
+            htmlFor="onlineTuition"
+            required
+            error={errors.onlineTuition}
+          >
             <SelectField
+              id="onlineTuition"
               name="onlineTuition"
               value={formData.onlineTuition}
               placeholder="Select preference"
               options={ONLINE_TUITION_OPTIONS}
               onChange={handleChange}
+              aria-invalid={!!errors.onlineTuition}
             />
           </FormField>
 
-          <FormField label="Preferred Way to be Contacted" required>
+          <FormField
+            label="Preferred Way to be Contacted"
+            htmlFor="modeOfCommunication"
+            required
+            error={errors.modeOfCommunication}
+          >
             <SelectField
+              id="modeOfCommunication"
               name="modeOfCommunication"
               value={formData.modeOfCommunication}
               placeholder="Select mode"
               options={COMMUNICATION_MODE_OPTIONS}
               onChange={handleChange}
+              aria-invalid={!!errors.modeOfCommunication}
             />
           </FormField>
 
-          <FormField label="Preferred Language" required>
+          <FormField
+            label="Preferred Language"
+            htmlFor="preferredLanguage"
+            required
+            error={errors.preferredLanguage}
+          >
             <SelectField
+              id="preferredLanguage"
               name="preferredLanguage"
               value={formData.preferredLanguage}
               placeholder="Select language"
               options={PREFERRED_LANGUAGE_OPTIONS}
               onChange={handleChange}
+              aria-invalid={!!errors.preferredLanguage}
             />
           </FormField>
         </FormSection>
@@ -124,8 +157,9 @@ export default function Step3() {
         </FormSection>
 
         <FormSection title="Anything else" icon={HelpCircle}>
-          <FormField label="How Did You Hear About Learnie?">
+          <FormField label="How Did You Hear About Learnie?" htmlFor="howDidYouHear">
             <SelectField
+              id="howDidYouHear"
               name="howDidYouHear"
               value={formData.howDidYouHear}
               placeholder="Select an option"
@@ -141,20 +175,14 @@ export default function Step3() {
               placeholder="Anything you'd like us to know?"
               value={suggestions}
               onChange={(e) => setSuggestions(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 text-sm text-gray-600 placeholder:text-gray-400 resize-none"
+              className={TEXTAREA_CLASSNAME}
             />
           </FormField>
         </FormSection>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <FormErrorBanner message={error} />}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm py-2.5 w-full rounded-lg transition-colors disabled:opacity-60"
-        >
-          {submitting ? "Finishing up..." : "Finish"}
-        </button>
+        <OnboardingSubmitButton submitting={submitting} label="Finish" submittingLabel="Finishing up..." />
       </form>
     </>
   );

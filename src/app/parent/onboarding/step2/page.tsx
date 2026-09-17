@@ -8,13 +8,19 @@ import SelectField from "@/features/shared/components/SelectField";
 
 import FormSection from "@/features/parent/components/onboarding/FormSection";
 import FormField from "@/features/parent/components/onboarding/FormField";
+import FormErrorBanner from "@/features/parent/components/onboarding/FormErrorBanner";
+import OnboardingSubmitButton from "@/features/parent/components/onboarding/OnboardingSubmitButton";
 import ChildPhotoUpload from "@/features/parent/components/onboarding/step2/ChildPhotoUpload";
 import { useParentStep2Form } from "@/features/parent/hooks/useParentStep2Form";
 import { GENDER_OPTIONS, STANDARD_OPTIONS, BOARD_OPTIONS } from "@/features/parent/constants/onboardingOptions";
 
+const TEXTAREA_CLASSNAME =
+  "w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-2 text-base text-foreground placeholder:text-muted-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm resize-none";
+
 export default function Step2() {
   const {
     formData,
+    errors,
     photo,
     photoError,
     submitting,
@@ -40,26 +46,38 @@ export default function Step2() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
         <FormSection title="Basic details" icon={User}>
-          <FormField label="First Name" htmlFor="firstName" required>
+          <FormField
+            label="First Name"
+            htmlFor="firstName"
+            required
+            error={errors.firstName}
+          >
             <Input
               id="firstName"
               name="firstName"
               placeholder="e.g. Aarav"
               value={formData.firstName}
               onChange={handleChange}
+              aria-invalid={!!errors.firstName}
               required
             />
           </FormField>
 
-          <FormField label="Last Name" htmlFor="lastName" required>
+          <FormField
+            label="Last Name"
+            htmlFor="lastName"
+            required
+            error={errors.lastName}
+          >
             <Input
               id="lastName"
               name="lastName"
               placeholder="e.g. Sharma"
               value={formData.lastName}
               onChange={handleChange}
+              aria-invalid={!!errors.lastName}
               required
             />
           </FormField>
@@ -69,6 +87,7 @@ export default function Step2() {
             htmlFor="visibleName"
             required
             helperText="Shown to teachers instead of the full legal name"
+            error={errors.visibleName}
           >
             <Input
               id="visibleName"
@@ -76,21 +95,24 @@ export default function Step2() {
               placeholder="e.g. Aarav S."
               value={formData.visibleName}
               onChange={handleChange}
+              aria-invalid={!!errors.visibleName}
               required
             />
           </FormField>
 
-          <FormField label="Gender" required>
+          <FormField label="Gender" htmlFor="gender" required error={errors.gender}>
             <SelectField
+              id="gender"
               name="gender"
               value={formData.gender}
               placeholder="Select gender"
               options={GENDER_OPTIONS}
               onChange={handleChange}
+              aria-invalid={!!errors.gender}
             />
           </FormField>
 
-          <FormField label="Age" htmlFor="age" required>
+          <FormField label="Age" htmlFor="age" required error={errors.age}>
             <Input
               id="age"
               name="age"
@@ -101,39 +123,56 @@ export default function Step2() {
               placeholder="e.g. 10"
               value={formData.age}
               onChange={handleChange}
+              aria-invalid={!!errors.age}
               required
             />
           </FormField>
         </FormSection>
 
         <FormSection title="School" icon={BookOpen}>
-          <FormField label="Standard / Grade" required>
+          <FormField
+            label="Standard / Grade"
+            htmlFor="standard"
+            required
+            error={errors.standard}
+          >
             <SelectField
+              id="standard"
               name="standard"
               value={formData.standard}
               placeholder="Select standard"
               options={STANDARD_OPTIONS}
               onChange={handleChange}
+              aria-invalid={!!errors.standard}
             />
           </FormField>
 
-          <FormField label="Board" required>
+          <FormField label="Board" htmlFor="board" required error={errors.board}>
             <SelectField
+              id="board"
               name="board"
               value={formData.board}
               placeholder="Select board"
               options={BOARD_OPTIONS}
               onChange={handleChange}
+              aria-invalid={!!errors.board}
             />
           </FormField>
 
-          <FormField label="Current School Name" htmlFor="currentSchoolName" required fullWidth>
+          <FormField
+            label="Current School Name"
+            htmlFor="currentSchoolName"
+            required
+            fullWidth
+            error={errors.currentSchoolName}
+          >
             <Input
               id="currentSchoolName"
               name="currentSchoolName"
               placeholder="e.g. Delhi Public School"
               value={formData.currentSchoolName}
               onChange={handleChange}
+              aria-invalid={!!errors.currentSchoolName}
               required
             />
           </FormField>
@@ -151,22 +190,16 @@ export default function Step2() {
               placeholder="e.g. Dyslexia, ADHD, none"
               value={formData.learningDifficulties}
               onChange={handleChange}
-              className="w-full border rounded-md px-3 py-2 text-sm text-gray-600 placeholder:text-gray-400 resize-none"
+              className={TEXTAREA_CLASSNAME}
             />
           </FormField>
 
           <ChildPhotoUpload photo={photo} error={photoError} onSelect={handlePhotoSelect} />
         </FormSection>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <FormErrorBanner message={error} />}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="bg-violet-600 hover:bg-violet-700 text-white font-medium text-sm py-2.5 w-full rounded-lg transition-colors disabled:opacity-60"
-        >
-          {submitting ? "Uploading..." : "Continue"}
-        </button>
+        <OnboardingSubmitButton submitting={submitting} label="Continue" submittingLabel="Uploading..." />
       </form>
     </>
   );

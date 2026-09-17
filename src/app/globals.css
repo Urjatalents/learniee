@@ -227,3 +227,23 @@
 .phone-input .PhoneInputInput::placeholder {
   color: #9ca3af;
 }
+
+/* Parent onboarding: the rest of the form uses boxed, rounded-lg inputs —
+   override just the pill shape here rather than touching .phone-input
+   itself, which the signup page still relies on. */
+.onboarding-phone-input .phone-input {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-lg);
+  border-color: var(--input);
+}
+
+.onboarding-phone-input .phone-input:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
+}
+
+.onboarding-phone-input[data-invalid="true"] .phone-input {
+  border-color: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--destructive) 20%, transparent);
+}
