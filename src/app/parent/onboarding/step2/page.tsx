@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, User, BookOpen } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import SelectField from "@/features/shared/components/SelectField";
@@ -40,8 +40,8 @@ export default function Step2() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <FormSection title="Basic details">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <FormSection title="Basic details" icon={User}>
           <FormField label="First Name" htmlFor="firstName" required>
             <Input
               id="firstName"
@@ -106,7 +106,7 @@ export default function Step2() {
           </FormField>
         </FormSection>
 
-        <FormSection title="School">
+        <FormSection title="School" icon={BookOpen}>
           <FormField label="Standard / Grade" required>
             <SelectField
               name="standard"

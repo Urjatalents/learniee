@@ -1,5 +1,7 @@
 "use client";
 
+import { User, MapPin, Phone } from "lucide-react";
+
 import { Input } from "@/components/ui/input";
 import CountrySelect from "@/features/shared/components/CountrySelect";
 import SelectField from "@/features/shared/components/SelectField";
@@ -29,10 +31,11 @@ export default function Step1() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <FormSection
           title="About you"
           description="How you'll appear to teachers on Learnie"
+          icon={User}
         >
           <FormField label="Display Name" htmlFor="visibleName" required fullWidth>
             <Input
@@ -87,7 +90,11 @@ export default function Step1() {
           </FormField>
         </FormSection>
 
-        <FormSection title="Location" description="Used to match you with nearby or timezone-friendly teachers">
+        <FormSection
+          title="Location"
+          description="Used to match you with nearby or timezone-friendly teachers"
+          icon={MapPin}
+        >
           <FormField label="Address" htmlFor="address" required fullWidth>
             <Input
               id="address"
@@ -142,7 +149,7 @@ export default function Step1() {
           </FormField>
         </FormSection>
 
-        <FormSection title="Contact & billing">
+        <FormSection title="Contact & billing" icon={Phone}>
           <FormField label="WhatsApp Number" required>
             <PhoneInput value={formData.whatsappNumber} onChange={handleWhatsappChange} />
           </FormField>

@@ -33,7 +33,7 @@ export default function ParentOnboardingLayout({
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-violet-50/60 via-gray-50 to-gray-50 flex flex-col">
       <header className="flex items-center justify-center gap-2 pt-10 pb-6 px-4">
         <div className="flex items-center justify-center size-9 rounded-full bg-violet-600 text-white">
           <GraduationCap className="size-5" />
@@ -43,12 +43,12 @@ export default function ParentOnboardingLayout({
         </span>
       </header>
 
-      <div className="mx-auto w-full max-w-xl px-6 mb-8">
+      <div className="mx-auto w-full max-w-2xl px-6 mb-8">
         <OnboardingProgress steps={STEPS} currentIndex={currentIndex} />
       </div>
 
       <main className="flex-1 px-4 pb-16">
-        <div className="mx-auto w-full max-w-xl bg-white border border-gray-100 rounded-2xl shadow-sm shadow-gray-200/60 p-6 sm:p-8">
+        <div className="mx-auto w-full max-w-2xl bg-white border border-gray-100 rounded-2xl shadow-sm shadow-gray-200/60 p-6 sm:p-10">
           {children}
         </div>
       </main>

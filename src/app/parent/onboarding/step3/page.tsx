@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, SlidersHorizontal, Heart, HelpCircle } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import SelectField from "@/features/shared/components/SelectField";
@@ -43,8 +43,8 @@ export default function Step3() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <FormSection title="Learning preferences">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <FormSection title="Learning preferences" icon={SlidersHorizontal}>
           <FormField label="Current Tuition Status" htmlFor="childStatus" required>
             <Input
               id="childStatus"
@@ -87,7 +87,11 @@ export default function Step3() {
           </FormField>
         </FormSection>
 
-        <FormSection title="About the child" description="Optional, but helps teachers personalize lessons">
+        <FormSection
+          title="About the child"
+          description="Optional, but helps teachers personalize lessons"
+          icon={Heart}
+        >
           <FormField label="Child's Interests" htmlFor="childInterest">
             <Input
               id="childInterest"
@@ -119,7 +123,7 @@ export default function Step3() {
           </FormField>
         </FormSection>
 
-        <FormSection title="Anything else">
+        <FormSection title="Anything else" icon={HelpCircle}>
           <FormField label="How Did You Hear About Learnie?">
             <SelectField
               name="howDidYouHear"
