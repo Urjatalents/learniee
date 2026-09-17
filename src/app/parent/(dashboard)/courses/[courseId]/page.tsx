@@ -25,9 +25,11 @@ import OtherCoursesByTeacher from "@/features/parent/components/course-detail/Ot
  * teacher" shouldn't be buried below the fold.
  *
  * Demo booking is wired to the real DemoCoupon backend (see
- * BookingPanel). Enrollment booking is still UI-only — Enrollment
- * isn't modeled yet. Reviews are also UI-only placeholder content
- * (see ReviewsSection) — Reviews are Month 2 scope, not MVP.
+ * BookingPanel). Reviews (see ReviewsSection, added Sep 17, 2026)
+ * are real too — a Parent with an ACTIVE enrollment in this course
+ * can leave one review each. Reviews are Month 2 scope per
+ * 02-ARCHITECTURE.md's Deliberately Deferred list, built ahead of
+ * MVP by explicit request.
  */
 export default function CourseDetailPage() {
   const params = useParams<{ courseId: string }>();
@@ -91,7 +93,7 @@ export default function CourseDetailPage() {
 
           <CourseInfoSection course={course} />
 
-          <ReviewsSection />
+          <ReviewsSection courseId={course.id} />
         </div>
 
         {/* BOOKING SIDEBAR */}

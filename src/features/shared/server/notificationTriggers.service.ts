@@ -921,3 +921,34 @@ export function notifyComplaintResolved(input: {
     });
   });
 }
+
+/**
+ * A Parent submitted a Review (see `review.service.ts`) — notifies
+ * the Teacher whose course/teaching it's about.
+ */
+export function notifyReviewSubmitted(reviewId: string) {
+  return safe("review submitted", async () => {
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: {
+        rating: true,
+        teacherId: true,
+        parent: { select: { firstName: true, lastName: true, visibleName: true } },
+        course: { select: { courseTitle: true } },
+      },
+    });
+    if (!review) return;
+
+    const parentName = displayName(review.parent);
+    const courseTitle = review.course.courseTitle || "your course";
+
+    await createNotification({
+      recipientId: review.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.REVIEW_SUBMITTED,
+      title: "New review",
+      message: `${parentName} left a ${review.rating}-star review for ${courseTitle}.`,
+      link: "/teacher/course-management",
+    });
+  });
+}

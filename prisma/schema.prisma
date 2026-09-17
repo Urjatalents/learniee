@@ -56,6 +56,7 @@ model ParentProfile {
   referralCode        String?              @unique
   referralsMade       Referral[]           @relation("ReferralsMade")
   referralReceived    Referral?            @relation("ReferralReceived")
+  reviews             Review[]
 }
 
 model Admin {
@@ -133,6 +134,7 @@ model Teacher {
   rescheduleRequests RescheduleRequest[]
   leaveRequests      LeaveRequest[]
   bankAccount        BankAccount?
+  reviews            Review[]
 }
 
 model TeacherProfessional {
@@ -228,6 +230,7 @@ model Course {
   teacher         Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   demoBookings    DemoBooking[]
   enrollments     Enrollment[]
+  reviews         Review[]
 
   @@index([teacherId])
   @@index([status])
@@ -389,6 +392,7 @@ model Enrollment {
   homeworks                  Homework[]
   ledgerEntries              TuitionLedgerEntry[]
   rescheduleRequests         RescheduleRequest[]
+  review                     Review?
 
   @@index([parentId])
   @@index([teacherId])
@@ -846,6 +850,43 @@ model Complaint {
   @@index([status])
 }
 
+/// Course/Teacher Reviews (added Sep 17, 2026) — distinct from
+/// `Course.rating` (a teacher-entered number, never an aggregate of
+/// parent feedback). A Parent may leave exactly one review per
+/// Course (`@@unique([parentId, courseId])`), and only if they have
+/// (or have had) an `ACTIVE` Enrollment in that course — enforced in
+/// `review.service.ts`, not at the schema level, the same pattern
+/// `processReferralRewardForNewEnrollment()` uses for its own
+/// eligibility check. `enrollmentId` is kept as a real relation
+/// (unlike `Referral.enrollmentId`'s denormalized string) since it
+/// also doubles as which Enrollment justified the review being
+/// allowed at all — cascades with the Enrollment so a review never
+/// outlives the record that made it eligible.
+///
+/// This is Phase 2 scope per `02-ARCHITECTURE.md`'s Deliberately
+/// Deferred list / `03-DATA-MODEL.md`'s "Full Phase 1 Entities
+/// (Month 2, not MVP)" — built ahead of MVP by explicit request.
+model Review {
+  id           String        @id @default(uuid())
+  parentId     String
+  teacherId    String
+  courseId     String
+  enrollmentId String        @unique
+  rating       Int
+  comment      String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  parent     ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  teacher    Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course     Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrollment Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, courseId])
+  @@index([courseId])
+  @@index([teacherId])
+}
+
 /// Refer & Earn (added Sep 8, 2026) — a Parent's own shareable code
 /// (`ParentProfile.referralCode`, lazily generated the first time
 /// they open /parent/referral, same lazy-creation pattern as
@@ -1199,6 +1240,9 @@ enum NotificationType {
   /// Enrollment auto-lapse (Sep 10, 2026) — see the cron doc-comment
   /// on `enrollmentAutoLapse.service.ts`.
   ENROLLMENT_LAPSED
+  /// Course/Teacher Reviews (Sep 17, 2026) — see the `Review` model's
+  /// doc-comment.
+  REVIEW_SUBMITTED
   GENERIC
 }
 
