@@ -6,11 +6,24 @@ import { GraduationCap } from "lucide-react";
 import OnboardingProgress, {
   type OnboardingStep,
 } from "@/features/parent/components/onboarding/OnboardingProgress";
+import OnboardingSideRail from "@/features/parent/components/onboarding/OnboardingSideRail";
 
 const STEPS: OnboardingStep[] = [
-  { path: "/parent/onboarding/step1", label: "Parent Info" },
-  { path: "/parent/onboarding/step2", label: "Child Info" },
-  { path: "/parent/onboarding/step3", label: "Additional Info" },
+  {
+    path: "/parent/onboarding/step1",
+    label: "Parent Info",
+    description: "How teachers and Learnie reach you",
+  },
+  {
+    path: "/parent/onboarding/step2",
+    label: "Child Info",
+    description: "Who'll be learning",
+  },
+  {
+    path: "/parent/onboarding/step3",
+    label: "Additional Info",
+    description: "Helps us recommend the right fit",
+  },
 ];
 
 /**
@@ -20,6 +33,13 @@ const STEPS: OnboardingStep[] = [
  * was only ever pulled in because this route sits under `src/app/parent/`.
  * The dashboard itself now lives in the `(dashboard)` route group next to
  * this folder, which is the only place ParentNavbar/ParentSidebar render.
+ *
+ * Layout: below `lg` this is a single centered card with a horizontal step
+ * bar on top (OnboardingProgress), same as before. At `lg`+, a sticky
+ * vertical step rail (OnboardingSideRail) sits to the left of the form so
+ * the wide gray gutter either side of a lone centered card isn't wasted —
+ * the overall container also grows from max-w-2xl to max-w-6xl to make use
+ * of that space instead of leaving it empty.
  */
 export default function ParentOnboardingLayout({
   children,
@@ -33,8 +53,8 @@ export default function ParentOnboardingLayout({
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-violet-50/60 via-gray-50 to-gray-50 flex flex-col">
-      <header className="flex items-center justify-center gap-2 pt-10 pb-6 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-violet-50/60 via-gray-50 to-gray-50">
+      <header className="flex items-center justify-center gap-2 pt-10 pb-2 px-4 lg:hidden">
         <div className="flex items-center justify-center size-9 rounded-full bg-violet-600 text-white">
           <GraduationCap className="size-5" />
         </div>
@@ -43,15 +63,25 @@ export default function ParentOnboardingLayout({
         </span>
       </header>
 
-      <div className="mx-auto w-full max-w-2xl px-6 mb-8">
-        <OnboardingProgress steps={STEPS} currentIndex={currentIndex} />
-      </div>
-
-      <main className="flex-1 px-4 pb-16">
-        <div className="mx-auto w-full max-w-2xl bg-white border border-gray-100 rounded-2xl shadow-sm shadow-gray-200/60 p-6 sm:p-10">
-          {children}
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-10 py-8 lg:py-14">
+        <div className="mb-8 lg:hidden">
+          <OnboardingProgress steps={STEPS} currentIndex={currentIndex} />
         </div>
-      </main>
+
+        <div className="lg:grid lg:grid-cols-[240px_1fr] lg:gap-14 xl:gap-20">
+          <OnboardingSideRail
+            steps={STEPS}
+            currentIndex={currentIndex}
+            className="hidden lg:block"
+          />
+
+          <main>
+            <div className="w-full max-w-2xl mx-auto lg:mx-0 bg-white border border-gray-100 rounded-2xl shadow-sm shadow-gray-200/60 p-6 sm:p-10">
+              {children}
+            </div>
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

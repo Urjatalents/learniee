@@ -5,6 +5,8 @@ import { Check } from "lucide-react";
 export interface OnboardingStep {
   label: string;
   path: string;
+  /** Short blurb shown by OnboardingSideRail on wide screens; unused by this horizontal bar. */
+  description?: string;
 }
 
 interface OnboardingProgressProps {

@@ -11,6 +11,7 @@ import FormSection from "@/features/parent/components/onboarding/FormSection";
 import FormField from "@/features/parent/components/onboarding/FormField";
 import FormErrorBanner from "@/features/parent/components/onboarding/FormErrorBanner";
 import OnboardingSubmitButton from "@/features/parent/components/onboarding/OnboardingSubmitButton";
+import AutofilledBadge from "@/features/parent/components/onboarding/AutofilledBadge";
 import { useParentStep1Form } from "@/features/parent/hooks/useParentStep1Form";
 import {
   TUITION_TYPE_OPTIONS,
@@ -21,8 +22,16 @@ import {
 } from "@/features/parent/constants/onboardingOptions";
 
 export default function Step1() {
-  const { formData, errors, submitting, error, handleChange, handleWhatsappChange, handleSubmit } =
-    useParentStep1Form();
+  const {
+    formData,
+    errors,
+    submitting,
+    error,
+    autofilled,
+    handleChange,
+    handleWhatsappChange,
+    handleSubmit,
+  } = useParentStep1Form();
 
   return (
     <>
@@ -45,6 +54,7 @@ export default function Step1() {
             required
             fullWidth
             error={errors.visibleName}
+            badge={autofilled.visibleName ? <AutofilledBadge /> : undefined}
           >
             <Input
               id="visibleName"
@@ -214,7 +224,11 @@ export default function Step1() {
         </FormSection>
 
         <FormSection title="Contact & billing" icon={Phone}>
-          <FormField label="WhatsApp Number" required>
+          <FormField
+            label="WhatsApp Number"
+            required
+            badge={autofilled.whatsappNumber ? <AutofilledBadge /> : undefined}
+          >
             <div
               className="onboarding-phone-input"
               data-invalid={!!errors.whatsappNumber}
