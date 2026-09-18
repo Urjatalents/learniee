@@ -23,8 +23,8 @@ export default function ParentHomeworkTestsPage() {
     ACTIVE_ENROLLMENT_STATUSES.has(e.status),
   );
 
-  function displayName(p: { firstName: string; lastName: string; visibleName: string | null }) {
-    return p.visibleName?.trim() || `${p.firstName} ${p.lastName}`.trim();
+  function displayName(p: { firstName: string; lastName?: string; visibleName: string | null }) {
+    return p.visibleName?.trim() || `${p.firstName} ${p.lastName ?? ""}`.trim();
   }
 
   return (
