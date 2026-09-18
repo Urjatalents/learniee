@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
+import { getRazorpayKeyId } from "@/lib/razorpay";
 import { createWalletTopupOrder, WalletError } from "@/features/shared/server/wallet.service";
 
 /**
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: getRazorpayKeyId(),
     });
   } catch (error) {
     if (error instanceof WalletError) {

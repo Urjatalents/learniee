@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
+import { getRazorpayKeyId } from "@/lib/razorpay";
 import {
   createEnrollmentOrder,
   EnrollmentError,
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      keyId: getRazorpayKeyId(),
       pricing,
     });
   } catch (error) {

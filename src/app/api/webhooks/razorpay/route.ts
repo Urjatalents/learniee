@@ -11,11 +11,17 @@ import { reconcileWalletTopupFromWebhook } from "@/features/shared/server/wallet
 /**
  * POST — Razorpay webhook endpoint.
  *
- * Configure in the Razorpay Dashboard (Settings -> Webhooks):
+ * Configure in the Razorpay Dashboard (Settings -> Webhooks), once
+ * per mode (Test Mode and Live Mode each have their own webhook
+ * config in the dashboard, and both can point at this same URL):
  *   URL:    https://<your-domain>/api/webhooks/razorpay
  *   Events: payment.captured
- *   Secret: set as RAZORPAY_WEBHOOK_SECRET (different from
- *           RAZORPAY_KEY_SECRET — generated when you add the webhook)
+ *   Secret: Live Mode -> RAZORPAY_LIVE_WEBHOOK_SECRET
+ *           Test Mode -> RAZORPAY_TEST_WEBHOOK_SECRET
+ *           (either/both — different from RAZORPAY_LIVE_KEY_SECRET /
+ *           RAZORPAY_TEST_KEY_SECRET — generated when you add the
+ *           webhook. See src/lib/razorpay.ts for how mode selection
+ *           works.)
  *
  * This is a reconciliation safety net, not the primary path. The
  * primary path is the client calling `/api/parent/enrollments/verify`,
