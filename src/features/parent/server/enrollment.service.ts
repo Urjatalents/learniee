@@ -578,7 +578,12 @@ export async function getEnrollmentsForParent(parentId: string) {
     orderBy: { createdAt: "desc" },
     include: {
       student: {
-        select: { id: true, firstName: true, visibleName: true },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          visibleName: true,
+        },
       },
       teacher: {
         select: {

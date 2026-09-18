@@ -5,6 +5,7 @@ import { ClipboardCheck, ChevronRight } from "lucide-react";
 
 import { useTeacherEnrollments } from "@/features/teacher/hooks/useEnrollments";
 import { ACTIVE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
+import { displayName } from "@/features/shared/utils/displayName";
 
 /**
  * "HW & Tests" sidebar entry — previously pointed at /teacher/hw-tests
@@ -22,10 +23,6 @@ export default function TeacherHomeworkTestsPage() {
   const activeEnrollments = enrollments.filter((e) =>
     ACTIVE_ENROLLMENT_STATUSES.has(e.status),
   );
-
-  function displayName(p: { firstName: string; lastName?: string; visibleName?: string | null }) {
-    return p.visibleName?.trim() || `${p.firstName} ${p.lastName ?? ""}`.trim();
-  }
 
   return (
     <div className="p-4 sm:p-8 max-w-3xl mx-auto">

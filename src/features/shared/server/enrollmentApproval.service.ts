@@ -46,7 +46,9 @@ export class EnrollmentApprovalError extends Error {
 }
 
 const enrollmentListInclude = {
-  student: { select: { id: true, firstName: true, visibleName: true } },
+  student: {
+    select: { id: true, firstName: true, lastName: true, visibleName: true },
+  },
   parent: {
     select: { id: true, firstName: true, lastName: true, email: true, phone: true },
   },

@@ -6,6 +6,7 @@ import { ClipboardCheck, ChevronRight } from "lucide-react";
 import { useParentEnrollments } from "@/features/parent/hooks/useEnrollments";
 import { ACTIVE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
+import { displayName } from "@/features/shared/utils/displayName";
 
 /**
  * "Home works/tests" sidebar entry — previously pointed at
@@ -22,10 +23,6 @@ export default function ParentHomeworkTestsPage() {
   const activeEnrollments = enrollments.filter((e) =>
     ACTIVE_ENROLLMENT_STATUSES.has(e.status),
   );
-
-  function displayName(p: { firstName: string; lastName?: string; visibleName: string | null }) {
-    return p.visibleName?.trim() || `${p.firstName} ${p.lastName ?? ""}`.trim();
-  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto">

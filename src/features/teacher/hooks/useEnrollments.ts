@@ -20,7 +20,12 @@ export interface TeacherEnrollment {
   sessionsCompletedInCycle: number;
   cyclesCompleted: number;
   cyclePayoutStatus: string;
-  student: { id: string; firstName: string; visibleName: string | null };
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    visibleName: string | null;
+  };
   parent: { id: string; firstName: string; lastName: string; email: string; phone: string };
   course: { id: string; courseTitle: string | null; subject: string | null };
   chatRoom: { id: string } | null;

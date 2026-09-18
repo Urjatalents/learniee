@@ -19,7 +19,12 @@ export interface ParentEnrollment {
   sessionsCompletedInCycle: number;
   cyclesCompleted: number;
   cyclePayoutStatus: string;
-  student: { id: string; firstName: string; visibleName: string | null };
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    visibleName: string | null;
+  };
   teacher: {
     id: string;
     firstName: string;
