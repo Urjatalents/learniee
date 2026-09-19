@@ -26,7 +26,14 @@ export interface TeacherEnrollment {
     lastName: string;
     visibleName: string | null;
   };
-  parent: { id: string; firstName: string; lastName: string; email: string; phone: string };
+  parent: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    visibleName: string | null;
+    email: string;
+    phone: string;
+  };
   course: { id: string; courseTitle: string | null; subject: string | null };
   chatRoom: { id: string } | null;
 }

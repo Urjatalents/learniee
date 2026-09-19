@@ -50,7 +50,14 @@ const enrollmentListInclude = {
     select: { id: true, firstName: true, lastName: true, visibleName: true },
   },
   parent: {
-    select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      visibleName: true,
+      email: true,
+      phone: true,
+    },
   },
   teacher: {
     select: { id: true, firstName: true, lastName: true, visibleName: true },
