@@ -344,6 +344,9 @@ export async function listSessionsForEnrollment(
   return prisma.classSession.findMany({
     where: { enrollmentId },
     orderBy: { scheduledDate: "asc" },
+    // This list goes to the Teacher. A parent's "Report a problem"
+    // note (Part 2A) is for the parent and Admin only.
+    omit: { reportNote: true },
   });
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { CalendarOccurrence } from "@/features/shared/types/calendar";
@@ -16,6 +17,12 @@ interface Props {
   colorBy?: "student" | "course";
   /** Shown when there's nothing scheduled at all for the month. */
   emptyMessage?: string;
+  /**
+   * Where a class links to (its session page — Start/Join, and since
+   * Part 2A the after-class summary / confirmation). Return null for
+   * a class with no page (legacy sessions). Omitted = not clickable.
+   */
+  sessionHref?: (occurrence: CalendarOccurrence) => string | null;
 }
 
 const WEEKDAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -40,6 +47,7 @@ export default function MonthCalendar({
   loading,
   colorBy = "student",
   emptyMessage = "No classes scheduled this month.",
+  sessionHref,
 }: Props) {
   const [yearStr, monthStr] = month.split("-");
   const year = Number(yearStr);
@@ -127,17 +135,30 @@ export default function MonthCalendar({
                     {dayOccurrences.slice(0, 3).map((occ, i) => {
                       const key = colorBy === "course" ? occ.courseId : occ.studentId;
                       const color = colorForKey(key, colorKeys);
-
-                      return (
-                        <div
-                          key={`${occ.enrollmentId}-${i}`}
-                          className={`text-[10px] leading-tight rounded px-1.5 py-1 truncate ${color.bg} ${color.text}`}
-                          title={`${occ.studentName} · ${occ.courseTitle ?? "Course"} with ${occ.teacherName}${occ.time ? " · " + formatScheduleTime(occ.time) : ""}`}
-                        >
+                      const href = sessionHref?.(occ) ?? null;
+                      const className = `block text-[10px] leading-tight rounded px-1.5 py-1 truncate ${color.bg} ${color.text}${href ? " hover:opacity-80" : ""}`;
+                      const title = `${occ.studentName} · ${occ.courseTitle ?? "Course"} with ${occ.teacherName}${occ.time ? " · " + formatScheduleTime(occ.time) : ""}`;
+                      const label = (
+                        <>
                           <span className="font-bold">
                             {occ.time ? formatScheduleTime(occ.time) : ""}
                           </span>{" "}
                           {colorBy === "course" ? occ.courseTitle ?? "Class" : occ.studentName}
+                        </>
+                      );
+
+                      return href ? (
+                        <Link
+                          key={`${occ.enrollmentId}-${i}`}
+                          href={href}
+                          className={className}
+                          title={title}
+                        >
+                          {label}
+                        </Link>
+                      ) : (
+                        <div key={`${occ.enrollmentId}-${i}`} className={className} title={title}>
+                          {label}
                         </div>
                       );
                     })}

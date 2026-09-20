@@ -81,6 +81,17 @@ export default function SessionsList({ enrollmentId, onSessionMarked }: Props) {
               </Link>
             )}
 
+            {/* Part 2A: a finished cycle class keeps its page — the class
+                summary is added there. */}
+            {s.status !== "SCHEDULED" && s.cycleId && (
+              <Link
+                href={`/teacher/classes/${s.id}/start`}
+                className="text-[10px] font-bold text-brand hover:underline"
+              >
+                Details
+              </Link>
+            )}
+
             {s.status === "SCHEDULED" && !s.cycleId && (
               <button
                 type="button"

@@ -199,6 +199,100 @@ export async function createLedgerEntryForClosedCycle(
 }
 
 /**
+ * Part 2A: an Admin decision changed how many sessions of an
+ * already-CLOSED cycle count, so its ledger row (written at close
+ * from the count at that moment) may be out of date. Called inside
+ * the reconcile transaction (`sessionReview.service.ts`).
+ *
+ *   no row yet, something counts   -> written now             CREATED
+ *   row not acted on yet           -> corrected in place       UPDATED
+ *     (PENDING_VERIFICATION / EXPIRED)
+ *   row not acted on, nothing counts -> sent to Admin's payout
+ *     review as REJECTED (never a zero-rupee payout)            REJECTED
+ *   Accounts / Admin already moved it -> left alone, the caller
+ *     tells Admin to adjust it by hand                          LOCKED
+ *   count unchanged                                             UNCHANGED
+ *
+ * Amounts use the same rule as `createLedgerEntryForClosedCycle`.
+ */
+export async function reconcileLedgerEntryForClosedCycle(
+  tx: Prisma.TransactionClient,
+  input: {
+    enrollment: {
+      id: string;
+      parentId: string;
+      teacherId: string;
+      studentId: string;
+      courseId: string;
+      dueDate: Date;
+    };
+    cycle: { cycleNumber: number; ratePerSession: Prisma.Decimal; price: Prisma.Decimal };
+    countedSessions: number;
+  },
+): Promise<"CREATED" | "UPDATED" | "REJECTED" | "LOCKED" | "UNCHANGED"> {
+  const { enrollment, cycle, countedSessions } = input;
+
+  const entry = await tx.tuitionLedgerEntry.findUnique({
+    where: {
+      enrollmentId_cycleNumber: {
+        enrollmentId: enrollment.id,
+        cycleNumber: cycle.cycleNumber,
+      },
+    },
+  });
+
+  if (!entry) {
+    const created = await createLedgerEntryForClosedCycle(tx, input);
+
+    return created ? "CREATED" : "UNCHANGED";
+  }
+
+  if (entry.sessionsCompleted === countedSessions) {
+    return "UNCHANGED";
+  }
+
+  const editable: LedgerPayoutStatus[] = [
+    LedgerPayoutStatus.PENDING_VERIFICATION,
+    LedgerPayoutStatus.EXPIRED,
+  ];
+
+  if (!editable.includes(entry.payoutStatus)) {
+    return "LOCKED";
+  }
+
+  if (countedSessions <= 0) {
+    await tx.tuitionLedgerEntry.update({
+      where: { id: entry.id },
+      data: {
+        sessionsCompleted: 0,
+        monthlyRate: 0,
+        monthlyTeacherPay: 0,
+        profits: 0,
+        payoutStatus: LedgerPayoutStatus.REJECTED,
+        rejectionReason:
+          "No sessions count after an Admin reviewed this cycle's classes — nothing to pay.",
+      },
+    });
+
+    return "REJECTED";
+  }
+
+  const earned = round2(Number(cycle.ratePerSession) * countedSessions);
+
+  await tx.tuitionLedgerEntry.update({
+    where: { id: entry.id },
+    data: {
+      sessionsCompleted: countedSessions,
+      monthlyRate: earned,
+      monthlyTeacherPay: round2(earned * TEACHER_SHARE),
+      profits: round2(earned * PLATFORM_SHARE),
+    },
+  });
+
+  return "UPDATED";
+}
+
+/**
  * Lazily reconciles overdue PENDING_VERIFICATION rows to EXPIRED.
  * Called at the top of every read path below — same "reconcile on
  * read" pattern the Razorpay webhook uses, since there's no

@@ -10,8 +10,22 @@ const CLOCK_TICK_MS = 1_000;
 export type SessionFlowRole = "teacher" | "parent";
 
 /**
+ * `start`/`end`/`cancel` (teacher), `join`/`cancel` (parent), and the
+ * after-class actions of Part 2A: `summary` (teacher), `confirm` and
+ * `report` (parent).
+ */
+export type SessionFlowAction =
+  | "start"
+  | "join"
+  | "end"
+  | "cancel"
+  | "summary"
+  | "confirm"
+  | "report";
+
+/**
  * Loads one class session's flow state for the Start / Join / End
- * page and runs its actions (`start`, `join`, `end`, `cancel`).
+ * page and runs its actions (see `SessionFlowAction`).
  *
  * - Polls every 10s while a cycle session is still SCHEDULED, so the
  *   teacher sees the parent join and the parent sees the class end
@@ -82,7 +96,7 @@ export function useSessionFlow(role: SessionFlowRole, sessionId: string) {
   }, [shouldPoll, refresh]);
 
   const act = useCallback(
-    async (action: "start" | "join" | "end" | "cancel", body?: Record<string, unknown>) => {
+    async (action: SessionFlowAction, body?: Record<string, unknown>) => {
       try {
         setBusy(true);
         setError("");

@@ -779,11 +779,33 @@ model ClassSession {
   /// applied — the claim that makes each follow-up happen exactly
   /// once, and what a cycle waits for before it can close.
   followUpAppliedAt  DateTime?
+  /// After-class (Part 2A, Sep 21, 2026) — all null on legacy sessions
+  /// and until the thing happens. The teacher's short class summary
+  /// (added after End; Part 2C shows it on the class page).
+  teacherSummary     String?
+  teacherSummaryAt   DateTime?
+  /// How the outcome was confirmed. Null while the parent's 48-hour
+  /// window is open (or the outcome isn't final yet); the window
+  /// itself is derived from `resolvedAt` / `cancelledAt`, never stored.
+  /// PARENT_ACCEPTED / AUTO_ACCEPTED (48 h passed with no action) /
+  /// ADMIN_DECIDED settle the session; REPORTED keeps it unsettled
+  /// until Admin decides.
+  confirmation       OutcomeConfirmation?
+  /// The parent's "Report a problem" — when and what they wrote.
+  /// Never returned to the teacher.
+  reportedAt         DateTime?
+  reportNote         String?
+  /// THE flag Part 2B reads: non-null = settled (accepted, or decided
+  /// by Admin); null = unsettled (window open, open report, needs
+  /// review, or not final). Written once per settlement, and again
+  /// only by an Admin override.
+  settledAt          DateTime?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   makeupFor          ClassSession?       @relation("SessionMakeup", fields: [makeupForSessionId], references: [id], onDelete: SetNull)
   makeup             ClassSession?       @relation("SessionMakeup")
   strike             TeacherStrike?
+  outcomeDecisions   SessionOutcomeDecision[]
   cycle              EnrollmentCycle?    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
   enrollment         Enrollment          @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   parent             ParentProfile       @relation(fields: [parentId], references: [id], onDelete: Cascade)
@@ -801,6 +823,8 @@ model ClassSession {
   @@index([enrollmentId, status])
   @@index([cycleId])
   @@index([status, endsAt])
+  @@index([cycleId, settledAt])
+  @@index([confirmation])
 }
 
 /// One billing cycle of a (non-legacy) Enrollment — Part 1A, Sep 20,
@@ -873,6 +897,43 @@ model TeacherStrike {
 enum TeacherStrikeReason {
   TEACHER_NO_SHOW
   TEACHER_CANCELLED
+}
+
+/// How a cycle session's final outcome was confirmed (Part 2A).
+/// Null on `ClassSession.confirmation` = not confirmed yet.
+enum OutcomeConfirmation {
+  PARENT_ACCEPTED
+  AUTO_ACCEPTED
+  REPORTED
+  ADMIN_DECIDED
+}
+
+/// DECISION = Admin settling a reported / needs-review session;
+/// OVERRIDE = Admin changing an outcome Admin (or the system) had
+/// already settled.
+enum OutcomeDecisionKind {
+  DECISION
+  OVERRIDE
+}
+
+/// One Admin decision or override on a session outcome (Part 2A,
+/// Sep 21, 2026). Append-only audit trail — every row carries the
+/// mandatory reason; the same event is also written to `ActivityLog`.
+model SessionOutcomeDecision {
+  id             String              @id @default(uuid())
+  classSessionId String
+  kind           OutcomeDecisionKind
+  fromStatus     ClassSessionStatus
+  toStatus       ClassSessionStatus
+  reason         String
+  /// Cognito `sub` (and best-effort display name) of the Admin.
+  decidedBySub   String
+  decidedByName  String?
+  createdAt      DateTime            @default(now())
+  classSession   ClassSession        @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+
+  @@index([classSessionId, createdAt])
+  @@index([createdAt])
 }
 
 /// Reschedule requests for one already-scheduled `ClassSession`
@@ -1404,6 +1465,10 @@ enum NotificationType {
   SESSION_STUDENT_NO_SHOW
   SESSION_MOVED_FOR_LEAVE
   TEACHER_STRIKE_RECORDED
+  /// After-class and disputes (Part 2A, Sep 21, 2026)
+  SESSION_OUTCOME_REPORTED
+  SESSION_OUTCOME_DECIDED
+  SESSION_NEEDS_REVIEW
   GENERIC
 }
 
@@ -1504,6 +1569,10 @@ enum ActivityAction {
   TEACHER_STRIKE_RECORDED
   SESSION_MOVED_FOR_LEAVE
   CYCLE_CLOSED
+  /// Part 2A (Sep 21, 2026)
+  SESSION_OUTCOME_REPORTED
+  SESSION_OUTCOME_DECIDED
+  SESSION_OUTCOME_OVERRIDDEN
   GENERIC
 }
 

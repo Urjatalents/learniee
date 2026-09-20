@@ -346,6 +346,7 @@ export function notifyClassSessionCompleted(sessionId: string) {
         parentId: true,
         teacherId: true,
         scheduledDate: true,
+        cycleId: true,
         enrollment: { select: { course: { select: { courseTitle: true } } } },
       },
     });
@@ -356,6 +357,20 @@ export function notifyClassSessionCompleted(sessionId: string) {
       day: "numeric",
       month: "short",
     });
+
+    // Cycle-model classes (Part 2A): the parent has 48 hours to
+    // confirm or report, from the class page.
+    if (session.cycleId) {
+      await createNotification({
+        recipientId: session.parentId,
+        recipientRole: R.PARENT,
+        type: T.CLASS_SESSION_COMPLETED,
+        title: "Class completed",
+        message: `The ${dateLabel} class for "${courseTitle}" is complete. Tap All good, or report a problem, within 48 hours — otherwise it is accepted automatically.`,
+        link: `/parent/classes/${sessionId}/join`,
+      });
+      return;
+    }
 
     await createNotification({
       recipientId: session.parentId,
@@ -1163,3 +1178,106 @@ export function notifySessionsMovedForLeave(notice: LeaveShiftNotice) {
     });
   });
 }
+
+// ---------------------------------------------------------------------------
+// After-class and disputes (Part 2A)
+// ---------------------------------------------------------------------------
+
+async function loadSessionNoticeContext(sessionId: string) {
+  return prisma.classSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      parentId: true,
+      teacherId: true,
+      startsAt: true,
+      scheduledDate: true,
+      enrollment: { select: { course: { select: { courseTitle: true } } } },
+      student: { select: { firstName: true, visibleName: true } },
+      teacher: { select: { firstName: true, lastName: true, visibleName: true } },
+    },
+  });
+}
+
+function sessionWhen(session: { startsAt: Date | null; scheduledDate: Date }) {
+  return session.startsAt
+    ? formatPlatformTime(session.startsAt, true)
+    : session.scheduledDate.toISOString().slice(0, 10);
+}
+
+/** A parent reported a problem — every Admin gets it in their queue. */
+export function notifySessionOutcomeReported(sessionId: string) {
+  return safe("session outcome reported", async () => {
+    const session = await loadSessionNoticeContext(sessionId);
+    if (!session) return;
+
+    const courseTitle = session.enrollment.course.courseTitle || "the course";
+
+    await notifyAllAdmins({
+      type: T.SESSION_OUTCOME_REPORTED,
+      title: "Class outcome reported",
+      message: `A parent reported a problem with the ${sessionWhen(session)} class for "${courseTitle}" (${displayName(session.student)} with ${displayName(session.teacher)}).`,
+      link: "/admin/session-reviews",
+    });
+  });
+}
+
+/** Both joined for under half the class — Admin has to decide. */
+export function notifySessionNeedsReview(sessionId: string) {
+  return safe("session needs review", async () => {
+    const session = await loadSessionNoticeContext(sessionId);
+    if (!session) return;
+
+    const courseTitle = session.enrollment.course.courseTitle || "the course";
+
+    await notifyAllAdmins({
+      type: T.SESSION_NEEDS_REVIEW,
+      title: "Class needs review",
+      message: `The ${sessionWhen(session)} class for "${courseTitle}" (${displayName(session.student)} with ${displayName(session.teacher)}) ran for under half its time and needs an outcome.`,
+      link: "/admin/session-reviews",
+    });
+  });
+}
+
+export interface SessionOutcomeDecidedNotice {
+  sessionId: string;
+  /** Plain-English outcome, e.g. "Completed". */
+  outcomeLabel: string;
+  changed: boolean;
+  kind: "DECISION" | "OVERRIDE";
+}
+
+/** Admin decided (or overrode) an outcome — tell the parent and the teacher. */
+export function notifySessionOutcomeDecided(notice: SessionOutcomeDecidedNotice) {
+  return safe("session outcome decided", async () => {
+    const session = await loadSessionNoticeContext(notice.sessionId);
+    if (!session) return;
+
+    const courseTitle = session.enrollment.course.courseTitle || "the course";
+    const when = sessionWhen(session);
+
+    const result = notice.changed
+      ? `An Admin reviewed it and recorded it as: ${notice.outcomeLabel}.`
+      : `An Admin reviewed it and the recorded outcome (${notice.outcomeLabel}) stands.`;
+
+    const title = notice.kind === "OVERRIDE" ? "Class outcome changed" : "Class reviewed";
+
+    await createNotification({
+      recipientId: session.parentId,
+      recipientRole: R.PARENT,
+      type: T.SESSION_OUTCOME_DECIDED,
+      title,
+      message: `The ${when} class for "${courseTitle}": ${result}`,
+      link: `/parent/classes/${notice.sessionId}/join`,
+    });
+
+    await createNotification({
+      recipientId: session.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.SESSION_OUTCOME_DECIDED,
+      title,
+      message: `The ${when} class for "${courseTitle}" (${displayName(session.student)}): ${result}`,
+      link: `/teacher/classes/${notice.sessionId}/start`,
+    });
+  });
+}
+

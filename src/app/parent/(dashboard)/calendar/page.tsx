@@ -84,6 +84,9 @@ export default function ParentCalendarPage() {
         onPrevMonth={() => setMonth((m) => shiftMonth(m, -1))}
         onNextMonth={() => setMonth((m) => shiftMonth(m, 1))}
         colorBy="student"
+        // Cycle-model classes have their own page (Start/Join, and the
+        // after-class summary / confirmation); legacy ones don't.
+        sessionHref={(occ) => (occ.startsAt ? `/parent/classes/${occ.id}/join` : null)}
         emptyMessage={
           studentId
             ? "No classes scheduled for this child this month."

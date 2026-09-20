@@ -12,6 +12,7 @@ import {
 
 import { useSessionFlow } from "@/features/shared/hooks/useSessionFlow";
 import CancelSessionControl from "@/features/shared/components/session-flow/CancelSessionControl";
+import SessionAfterClass from "@/features/shared/components/session-flow/SessionAfterClass";
 import {
   describeSession,
   formatSessionRange,
@@ -118,6 +119,9 @@ export default function SessionFlowPanel({ role, sessionId, homeHref, renderLega
         </div>
 
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+
+        {/* Part 2A: teacher summary / parent confirmation, after the class. */}
+        <SessionAfterClass role={role} state={state} busy={busy} act={act} />
 
         <div className="mt-6 space-y-3">
           {role === "teacher" && !isFinal && !state.teacherStartedAt && (

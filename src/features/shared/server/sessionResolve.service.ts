@@ -10,7 +10,14 @@ import {
 import { SESSION_POLICY } from "@/lib/platformConfig";
 import { decideSessionOutcome } from "@/features/shared/utils/sessionOutcome";
 import { recomputeEnrollmentCounters } from "@/features/shared/server/classSession.service";
-import { notifyClassSessionCompleted } from "@/features/shared/server/notificationTriggers.service";
+import {
+  notifyClassSessionCompleted,
+  notifySessionNeedsReview,
+} from "@/features/shared/server/notificationTriggers.service";
+import {
+  acceptExpiredConfirmations,
+  acceptExpiredConfirmationsQuietly,
+} from "@/features/shared/server/sessionConfirmation.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
 import {
   repairPendingFollowUps,
@@ -202,6 +209,11 @@ async function afterOutcomeWritten(sessionId: string, status: string) {
       });
     }
 
+    // Part 2A: Admin decides a session that ran for under half its time.
+    if (status === "NEEDS_REVIEW") {
+      await notifySessionNeedsReview(sessionId);
+    }
+
     // Part 1C: counters for the other counted outcomes, the follow-up
     // (make-up, strike, Admin alert, parent notice) and the cycle
     // close check. Each is applied once and never throws.
@@ -289,6 +301,10 @@ export async function resolveEndedSessionsForEnrollments(
     }
   }
 
+  // Part 2A: anything already past the parent's 48 hours with no
+  // action is accepted (the "read" trigger of the confirmation rule).
+  await acceptExpiredConfirmationsQuietly(now, { enrollmentIds });
+
   return changed;
 }
 
@@ -305,6 +321,8 @@ export interface SessionSweepResult {
   leaveSessionsShifted: number;
   /** Part 1C: cycles closed by this run. */
   cyclesClosed: number;
+  /** Part 2A: sessions accepted because the parent's 48 hours passed with no action. */
+  confirmationsAccepted: number;
   /** True if a full batch was found — more work may remain for the next run. */
   moreRemaining: boolean;
 }
@@ -372,7 +390,16 @@ export async function runSessionSweep(now: Date = new Date()): Promise<SessionSw
   let followUpsRepaired = 0;
   let leaveSessionsShifted = 0;
   let cyclesClosed = 0;
+  let confirmationsAccepted = 0;
   let closeBacklog = false;
+
+  // Part 2A: settle every session whose 48 hours ran out. Independent
+  // of the steps below (a cycle can close before it is settled).
+  try {
+    confirmationsAccepted = await acceptExpiredConfirmations(now);
+  } catch (err) {
+    console.error("Sweep confirmation accept failed:", err);
+  }
 
   try {
     followUpsRepaired = await repairPendingFollowUps(now);
@@ -400,6 +427,7 @@ export async function runSessionSweep(now: Date = new Date()): Promise<SessionSw
     followUpsRepaired,
     leaveSessionsShifted,
     cyclesClosed,
+    confirmationsAccepted,
     moreRemaining:
       due.length === SWEEP_BATCH_SIZE || unapplied.length === SWEEP_BATCH_SIZE || closeBacklog,
   };

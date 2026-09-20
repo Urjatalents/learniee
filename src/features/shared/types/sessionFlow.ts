@@ -1,4 +1,24 @@
+import type { ConfirmationPhase } from "@/features/shared/utils/outcomeConfirmation";
 import type { SessionStatusValue } from "@/features/shared/utils/sessionOutcome";
+
+/**
+ * The after-class side of a cycle session (Part 2A): whether its
+ * outcome is settled, and what this viewer may do about it.
+ */
+export interface SessionConfirmationView {
+  phase: ConfirmationPhase;
+  /** Accepted (by the parent or after 48 h) or decided by Admin. */
+  settled: boolean;
+  /** While `phase = OPEN`: when the parent's 48 hours run out (ISO). */
+  windowEndsAt: string | null;
+  /** Parent only: show "All good" / "Report a problem". */
+  canRespond: boolean;
+  /** Parent only: what they wrote if they reported a problem. */
+  reportNote: string | null;
+  reportedAt: string | null;
+  /** Teacher only: may add or edit the class summary. */
+  canEditSummary: boolean;
+}
 
 /**
  * What `GET /api/{teacher,parent}/class-sessions/[sessionId]` (and
@@ -26,7 +46,7 @@ export interface SessionFlowState {
   teacherStartedAt: string | null;
   teacherEndedAt: string | null;
   studentJoinedAt: string | null;
-  /** "PARENT" | "TEACHER" | "SYSTEM" on a cancelled session. */
+  /** "PARENT" | "TEACHER" | "SYSTEM" | "ADMIN" on a cancelled session. */
   cancelledByRole: string | null;
   /** Measured overlap as a % of the session, once both joined and it resolved. */
   overlapPercent: number | null;
@@ -35,5 +55,10 @@ export interface SessionFlowState {
   /** The student's name for a teacher, the teacher's name for a parent. */
   otherPartyName: string;
   courseTitle: string | null;
+  /** Teacher only: the class summary they wrote (null for a parent, and when none). */
+  summary: string | null;
+  summaryUpdatedAt: string | null;
+  /** Null on legacy sessions. */
+  confirmation: SessionConfirmationView | null;
   serverNow: string;
 }

@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import {
   ClassSessionStatus,
+  OutcomeConfirmation,
   RescheduleRequestStatus,
   type Prisma,
 } from "@prisma/client";
@@ -23,9 +24,20 @@ import {
   type SessionActorRole,
   type SessionStatusValue,
 } from "@/features/shared/utils/sessionOutcome";
+import {
+  canAddSummary,
+  canParentRespond,
+  getConfirmationState,
+  REPORT_NOTE_MAX_LENGTH,
+  REPORT_NOTE_MIN_LENGTH,
+  SESSION_SUMMARY_MAX_LENGTH,
+  type ConfirmationInput,
+} from "@/features/shared/utils/outcomeConfirmation";
 import type { SessionFlowState } from "@/features/shared/types/sessionFlow";
 import { resolveSession } from "@/features/shared/server/sessionResolve.service";
 import { runSessionFollowUps } from "@/features/shared/server/sessionFollowUp.service";
+import { acceptExpiredConfirmationsQuietly } from "@/features/shared/server/sessionConfirmation.service";
+import { notifySessionOutcomeReported } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
 
 /**
@@ -37,6 +49,11 @@ import { logActivity } from "@/features/shared/server/activityLog.service";
  *
  * Also the two cancel actions (parent, teacher), which are the only
  * other way a cycle session gets its outcome.
+ *
+ * After the class (Part 2A): the teacher's short summary, and the
+ * parent's "All good" / "Report a problem" within 48 hours of the
+ * outcome becoming final (no action = accepted, see
+ * `sessionConfirmation.service.ts`).
  *
  * Legacy sessions are refused here (409) — they keep their old
  * mark-complete path untouched.
@@ -115,7 +132,7 @@ async function loadAndSettle(
   actor: SessionActor,
   now: Date,
 ): Promise<FlowSession> {
-  const session = await loadSession(sessionId, actor);
+  let session = await loadSession(sessionId, actor);
 
   if (
     isCycleSession(session) &&
@@ -125,11 +142,37 @@ async function loadAndSettle(
     const result = await resolveSession(session.id, now);
 
     if (result.changed) {
-      return loadSession(sessionId, actor);
+      session = await loadSession(sessionId, actor);
+    }
+  }
+
+  // Part 2A: a final outcome whose 48 hours passed with no action is
+  // accepted now (the "read" trigger of `acceptExpiredConfirmations`).
+  if (
+    isCycleSession(session) &&
+    session.status !== ClassSessionStatus.SCHEDULED &&
+    session.settledAt === null &&
+    session.confirmation === null
+  ) {
+    const accepted = await acceptExpiredConfirmationsQuietly(now, { sessionId: session.id });
+
+    if (accepted > 0) {
+      session = await loadSession(sessionId, actor);
     }
   }
 
   return session;
+}
+
+function toConfirmationInput(session: CycleFlowSession): ConfirmationInput {
+  return {
+    status: session.status,
+    confirmation: session.confirmation,
+    settledAt: session.settledAt,
+    resolvedAt: session.resolvedAt,
+    cancelledAt: session.cancelledAt,
+    endsAt: session.endsAt,
+  };
 }
 
 function displayName(p: { firstName: string; lastName?: string; visibleName: string | null }) {
@@ -168,11 +211,15 @@ function toState(session: FlowSession, role: SessionActorRole, now: Date): Sessi
       cycleDeadline: null,
       otherPartyName,
       courseTitle,
+      summary: null,
+      summaryUpdatedAt: null,
+      confirmation: null,
       serverNow: now.toISOString(),
     };
   }
 
   const times = { startsAt: session.startsAt, endsAt: session.endsAt };
+  const confirmation = getConfirmationState(toConfirmationInput(session), now);
 
   return {
     id: session.id,
@@ -194,6 +241,20 @@ function toState(session: FlowSession, role: SessionActorRole, now: Date): Sessi
       : null,
     otherPartyName,
     courseTitle,
+    // The summary is the teacher's to see for now; the parent's class
+    // page shows it in Part 2C.
+    summary: role === "TEACHER" ? session.teacherSummary : null,
+    summaryUpdatedAt: role === "TEACHER" ? iso(session.teacherSummaryAt) : null,
+    confirmation: {
+      phase: confirmation.phase,
+      settled: confirmation.settled,
+      windowEndsAt: iso(confirmation.windowEndsAt),
+      canRespond: role === "PARENT" && canParentRespond(toConfirmationInput(session), now),
+      // The parent's own words go back to the parent (and Admin) only.
+      reportNote: role === "PARENT" ? session.reportNote : null,
+      reportedAt: role === "PARENT" ? iso(session.reportedAt) : null,
+      canEditSummary: role === "TEACHER" && canAddSummary(session),
+    },
     serverNow: now.toISOString(),
   };
 }
@@ -455,3 +516,165 @@ export async function cancelSession(
 
   return reload(sessionId, actor, now);
 }
+
+/**
+ * Teacher adds (or edits) the short class summary once they have
+ * ended the class. Stored on the session so the class page can show
+ * it later (Part 2C).
+ */
+export async function saveSessionSummary(
+  sessionId: string,
+  teacherId: string,
+  summary: string | null | undefined,
+  now: Date = new Date(),
+): Promise<SessionFlowState> {
+  const actor: SessionActor = { role: "TEACHER", id: teacherId };
+  const session = requireCycleSession(await loadAndSettle(sessionId, actor, now));
+
+  const clean = (summary ?? "").replace(/\r\n/g, "\n").trim();
+
+  if (clean.length === 0) {
+    throw new SessionFlowError("Write a short summary of the class first.", 400);
+  }
+
+  if (clean.length > SESSION_SUMMARY_MAX_LENGTH) {
+    throw new SessionFlowError(
+      `Keep the summary under ${SESSION_SUMMARY_MAX_LENGTH} characters.`,
+      400,
+    );
+  }
+
+  if (!canAddSummary(session)) {
+    throw new SessionFlowError(
+      "You can add a summary once you have ended the class.",
+      409,
+    );
+  }
+
+  await prisma.classSession.updateMany({
+    where: { id: session.id, teacherId },
+    data: { teacherSummary: clean, teacherSummaryAt: now },
+  });
+
+  return reload(sessionId, actor, now);
+}
+
+/**
+ * Parent taps "All good": the outcome is accepted and the session is
+ * settled. Only while the 48-hour window is open; tapping again (or
+ * after it was accepted some other way) just returns the state.
+ */
+export async function confirmSessionOutcome(
+  sessionId: string,
+  parentId: string,
+  now: Date = new Date(),
+): Promise<SessionFlowState> {
+  const actor: SessionActor = { role: "PARENT", id: parentId };
+  const session = requireCycleSession(await loadAndSettle(sessionId, actor, now));
+  const { phase } = getConfirmationState(toConfirmationInput(session), now);
+
+  switch (phase) {
+    case "NOT_FINAL":
+      throw new SessionFlowError("This class isn't over yet.", 409);
+    case "NEEDS_REVIEW":
+      throw new SessionFlowError("An Admin is reviewing this class.", 409);
+    case "REPORTED":
+      throw new SessionFlowError(
+        "You have already reported a problem with this class. An Admin will decide.",
+        409,
+      );
+    case "ACCEPTED":
+    case "DECIDED":
+      return toState(session, "PARENT", now);
+    case "OPEN":
+      break;
+  }
+
+  await prisma.classSession.updateMany({
+    // Re-checked inside the write so a report, an auto-accept or an
+    // Admin decision that lands at the same moment can't be overwritten.
+    where: { id: session.id, status: session.status, settledAt: null, confirmation: null },
+    data: { confirmation: OutcomeConfirmation.PARENT_ACCEPTED, settledAt: now },
+  });
+
+  return reload(sessionId, actor, now);
+}
+
+/**
+ * Parent taps "Report a problem": the session stays unsettled and
+ * lands in the Admin queue until Admin decides. Only while the
+ * 48-hour window is open, and only once.
+ */
+export async function reportSessionOutcome(
+  sessionId: string,
+  parentId: string,
+  note: string | null | undefined,
+  now: Date = new Date(),
+): Promise<SessionFlowState> {
+  const actor: SessionActor = { role: "PARENT", id: parentId };
+  const session = requireCycleSession(await loadAndSettle(sessionId, actor, now));
+
+  const cleanNote = (note ?? "").replace(/\r\n/g, "\n").trim();
+
+  if (cleanNote.length < REPORT_NOTE_MIN_LENGTH) {
+    throw new SessionFlowError("Please tell us briefly what went wrong.", 400);
+  }
+
+  if (cleanNote.length > REPORT_NOTE_MAX_LENGTH) {
+    throw new SessionFlowError(
+      `Keep the description under ${REPORT_NOTE_MAX_LENGTH} characters.`,
+      400,
+    );
+  }
+
+  const { phase } = getConfirmationState(toConfirmationInput(session), now);
+
+  switch (phase) {
+    case "NOT_FINAL":
+      throw new SessionFlowError("This class isn't over yet.", 409);
+    case "NEEDS_REVIEW":
+      throw new SessionFlowError("An Admin is already reviewing this class.", 409);
+    case "REPORTED":
+      return toState(session, "PARENT", now);
+    case "ACCEPTED":
+      throw new SessionFlowError(
+        "The 48-hour window for this class has passed, so it was accepted.",
+        409,
+      );
+    case "DECIDED":
+      throw new SessionFlowError("An Admin has already reviewed this class.", 409);
+    case "OPEN":
+      break;
+  }
+
+  const result = await prisma.classSession.updateMany({
+    where: { id: session.id, status: session.status, settledAt: null, confirmation: null },
+    data: {
+      confirmation: OutcomeConfirmation.REPORTED,
+      reportedAt: now,
+      reportNote: cleanNote,
+    },
+  });
+
+  if (result.count === 0) {
+    throw new SessionFlowError(
+      "This class just changed, so it can't be reported. Please refresh.",
+      409,
+    );
+  }
+
+  await logActivity({
+    action: "SESSION_OUTCOME_REPORTED",
+    actorRole: "PARENT",
+    actorId: parentId,
+    description: `Parent reported a problem with a class recorded as ${statusLabel(
+      session.status as SessionStatusValue,
+    )}.`,
+    metadata: { sessionId: session.id, enrollmentId: session.enrollmentId, status: session.status },
+  });
+
+  await notifySessionOutcomeReported(session.id);
+
+  return reload(sessionId, actor, now);
+}
+
