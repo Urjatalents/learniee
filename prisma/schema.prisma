@@ -748,6 +748,27 @@ model ClassSession {
   startsAt           DateTime?
   endsAt             DateTime?
   lengthMinutes      Int?
+  /// Session-flow events (Part 1B, Sep 20, 2026) — null on legacy
+  /// sessions and on cycle sessions until the event happens. Each
+  /// is written once and never overwritten: the teacher tapped
+  /// Start, the parent tapped Join, the teacher tapped End.
+  teacherStartedAt   DateTime?
+  teacherEndedAt     DateTime?
+  studentJoinedAt    DateTime?
+  /// When `resolveSession()` (sessionResolve.service.ts) decided the
+  /// event-based outcome. Null while unresolved. Cancel actions do
+  /// not set it — they write their own status directly.
+  resolvedAt         DateTime?
+  /// Seconds both sides were present, measured at resolve time (null
+  /// unless both joined). Kept so the 50% rule can be audited later.
+  overlapSeconds     Int?
+  /// Who cancelled: "PARENT" | "TEACHER" | "SYSTEM" (nobody joined).
+  cancelledByRole    String?
+  /// Set once the existing cycle counters / payout write have been
+  /// applied for a session that resolved to COMPLETED — the guard
+  /// that lets the sweep safely re-run that step if a request died
+  /// between resolving and applying it.
+  countersAppliedAt  DateTime?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   cycle              EnrollmentCycle?    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
@@ -766,6 +787,7 @@ model ClassSession {
   @@index([scheduledDate])
   @@index([enrollmentId, status])
   @@index([cycleId])
+  @@index([status, endsAt])
 }
 
 /// One billing cycle of a (non-legacy) Enrollment — Part 1A, Sep 20,
@@ -1189,11 +1211,25 @@ enum StaffRole {
   ACCOUNTS
 }
 
+/// The first four values predate the cycle model and are used as-is
+/// by legacy sessions. Part 1B (Sep 20, 2026) appended the rest for
+/// event-based outcomes (cycle sessions only):
+///   COMPLETED        both joined, overlap >= 50%      -> counts, paid
+///   STUDENT_NO_SHOW  teacher there, student absent    -> counts, paid
+///   TEACHER_NO_SHOW  student there, teacher absent    -> does not count
+///   CANCELLED        parent 4h+ ahead / teacher / system (nobody
+///                    joined; see `cancelledByRole`)   -> does not count
+///   CANCELLED_LATE   parent cancelled under 4h ahead  -> counts, paid
+///   NEEDS_REVIEW     both joined, overlap under 50%   -> pending Admin
 enum ClassSessionStatus {
   SCHEDULED
   COMPLETED
   CANCELLED
   MISSED
+  STUDENT_NO_SHOW
+  TEACHER_NO_SHOW
+  CANCELLED_LATE
+  NEEDS_REVIEW
 }
 
 enum ReferralStatus {
@@ -1405,6 +1441,8 @@ enum ActivityAction {
   COMPLAINT_STATUS_UPDATED
   /// Enrollment auto-lapse (Sep 10, 2026)
   ENROLLMENT_AUTO_LAPSED
+  /// Session-flow outcomes other than COMPLETED (Sep 20, 2026)
+  CLASS_SESSION_OUTCOME
   GENERIC
 }
 

@@ -1,26 +1,26 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEnrollmentSessions } from "@/features/teacher/hooks/useEnrollmentSessions";
 import { formatScheduleTime } from "@/features/shared/utils/weekdays";
+import {
+  SESSION_STATUS_LABEL,
+  SESSION_STATUS_STYLE,
+} from "@/features/shared/utils/sessionOutcome";
 
 interface Props {
   enrollmentId: string;
   onSessionMarked?: (enrollment: Record<string, unknown>) => void;
 }
 
-const STATUS_STYLE: Record<string, string> = {
-  SCHEDULED: "bg-gray-100 text-gray-600",
-  COMPLETED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-red-100 text-red-600",
-  MISSED: "bg-amber-100 text-amber-700",
-};
-
 /**
  * Real, dated class occurrences for one enrollment — generated from
  * its `scheduleDays`/`scheduleTime` (`classSession.service.ts`).
  * Lets a Teacher mark any specific SCHEDULED date complete, not just
  * whichever one is "next due" (the quick one-click button next to
- * this list still covers that fast path).
+ * this list still covers that fast path) — legacy sessions only.
+ * Cycle-model sessions link to their Start / End page instead.
  */
 export default function SessionsList({ enrollmentId, onSessionMarked }: Props) {
   const { sessions, loading, error, markingId, markComplete } = useEnrollmentSessions(
@@ -64,13 +64,24 @@ export default function SessionsList({ enrollmentId, onSessionMarked }: Props) {
           <div className="flex items-center gap-2 flex-shrink-0">
             <span
               className={`px-2 py-0.5 rounded-full font-semibold ${
-                STATUS_STYLE[s.status] ?? "bg-gray-100 text-gray-600"
+                SESSION_STATUS_STYLE[s.status] ?? "bg-gray-100 text-gray-600"
               }`}
             >
-              {s.status}
+              {SESSION_STATUS_LABEL[s.status] ?? s.status}
             </span>
 
-            {s.status === "SCHEDULED" && (
+            {/* Cycle-model sessions are run from their own page
+                (Start / End) — never marked done by hand. */}
+            {s.status === "SCHEDULED" && s.cycleId && (
+              <Link
+                href={`/teacher/classes/${s.id}/start`}
+                className="text-[10px] font-bold text-white bg-brand hover:bg-brand-dark px-2 py-1 rounded-full"
+              >
+                Open
+              </Link>
+            )}
+
+            {s.status === "SCHEDULED" && !s.cycleId && (
               <button
                 type="button"
                 onClick={() => handleMark(s.id)}

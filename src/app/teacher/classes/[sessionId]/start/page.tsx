@@ -4,23 +4,16 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 
+import SessionFlowPanel from "@/features/shared/components/session-flow/SessionFlowPanel";
+
 /**
- * Clicking "Start Session" (UpcomingLecturesCard) lands here rather
- * than jumping straight into a call — deliberately simple for now,
- * per direct instruction: no real video room exists yet (Jitsi is
- * still undecided, 06-OPEN-DECISIONS.md #18). This page's job is
- * just to show a loader, mark the underlying `ClassSession` complete
- * via the existing `PATCH /api/teacher/class-sessions/[id]/complete`
- * endpoint (classSession.service.ts — the same one the per-enrollment
- * Sessions list already used), then send the Teacher back home.
- * Completion is a single shared `ClassSession` row, so it's reflected
- * on both the Teacher's and Parent's side immediately — nothing
- * separate to update on the Parent's account.
+ * The Teacher's page for one class session. Cycle-model sessions
+ * (Part 1B) get the real Start / End controls — `SessionFlowPanel`
+ * records the events and the outcome is decided from them
+ * (`resolveSession`); nothing is marked complete by hand there.
  *
- * This replaces the old blind "Mark next session complete" one-click
- * button (removed from EnrollmentApprovalCard) as the primary
- * completion path — per direct instruction, kept intentionally
- * simple for now.
+ * Legacy sessions (created before the cycle model) keep the previous
+ * behaviour exactly: opening this page marks the session complete.
  */
 export default function StartClassSessionPage({
   params,
@@ -28,6 +21,25 @@ export default function StartClassSessionPage({
   params: Promise<{ sessionId: string }>;
 }) {
   const { sessionId } = use(params);
+
+  return (
+    <SessionFlowPanel
+      role="teacher"
+      sessionId={sessionId}
+      homeHref="/teacher"
+      renderLegacy={() => <LegacyStartSession sessionId={sessionId} />}
+    />
+  );
+}
+
+/**
+ * Legacy behaviour, unchanged: no real video room exists, so landing
+ * here marks the underlying `ClassSession` complete via the existing
+ * `PATCH /api/teacher/class-sessions/[id]/complete`, then sends the
+ * Teacher back home. Completion is a single shared `ClassSession`
+ * row, so it's reflected on the Parent's side immediately.
+ */
+function LegacyStartSession({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const [state, setState] = useState<"starting" | "done" | "error">("starting");
   const [error, setError] = useState("");

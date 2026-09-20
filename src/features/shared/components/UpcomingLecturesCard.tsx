@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock, PlayCircle, Video } from "lucide-react";
 
 import type { CalendarOccurrence } from "@/features/shared/types/calendar";
 import { formatScheduleTime } from "@/features/shared/utils/weekdays";
 import { isSessionLive, todayKey } from "@/features/shared/utils/classSessionWindow";
+import { isJoinWindowOpen } from "@/features/shared/utils/sessionOutcome";
 
 interface Props {
   occurrences: CalendarOccurrence[];
@@ -45,6 +47,14 @@ export default function UpcomingLecturesCard({
 }: Props) {
   const router = useRouter();
   const today = todayKey();
+
+  // Re-render every 30s so a button enables itself when its window
+  // opens, without the page having to be reloaded.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const upcoming = [...occurrences]
     .filter((o) => o.status === "SCHEDULED" && o.date >= today)
@@ -92,7 +102,17 @@ export default function UpcomingLecturesCard({
           }`}
         >
           {todaysSessions.map((occ) => {
-            const live = isSessionLive(occ.date, occ.time);
+            // Cycle-model sessions (Part 1B) carry real start/end
+            // instants: Start/Join is open from 10 minutes before the
+            // start until the end. Legacy sessions keep the old
+            // fixed-window check.
+            const live =
+              occ.startsAt && occ.endsAt
+                ? isJoinWindowOpen(
+                    { startsAt: new Date(occ.startsAt), endsAt: new Date(occ.endsAt) },
+                    new Date(),
+                  )
+                : isSessionLive(occ.date, occ.time);
             const otherParty = role === "teacher" ? occ.studentName : occ.teacherName;
             const actionLabel = role === "teacher" ? "Start Session" : "Join Session";
 
@@ -125,7 +145,9 @@ export default function UpcomingLecturesCard({
                   title={
                     live
                       ? undefined
-                      : "This becomes available at the scheduled time."
+                      : occ.startsAt
+                        ? "This opens 10 minutes before the class starts."
+                        : "This becomes available at the scheduled time."
                   }
                   className={`w-full flex items-center justify-center gap-2 text-sm font-bold px-4 py-3 rounded-full transition-colors ${
                     live

@@ -84,6 +84,25 @@ export function getCyclePlanProblem(plan: CyclePlan): string | null {
   return null;
 }
 
+/**
+ * The last calendar day a cycle's sessions can be held or moved to:
+ * `SESSION_POLICY.completionWindowDays` (45) days after the cycle
+ * start, counting the start date itself as day 1 — so a cycle
+ * starting 5 Mar has day 45 on 18 Apr. Anything on or before that
+ * date is inside the deadline.
+ */
+export function cycleDeadlineDate(cycleStart: CalendarDate): CalendarDate {
+  return addDays(cycleStart, SESSION_POLICY.completionWindowDays - 1);
+}
+
+/** True if a calendar date is on or before the cycle's deadline day. */
+export function isWithinCycleDeadline(
+  date: CalendarDate,
+  cycleStart: CalendarDate,
+): boolean {
+  return compareDates(date, cycleDeadlineDate(cycleStart)) <= 0;
+}
+
 /** True if the cycle's start date is before `today` (both platform-timezone calendar dates). */
 export function isStartDateInPast(startDate: CalendarDate, today: CalendarDate) {
   return compareDates(startDate, today) < 0;

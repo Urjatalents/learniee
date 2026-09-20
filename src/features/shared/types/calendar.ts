@@ -4,8 +4,11 @@ export interface CalendarOccurrence {
   id: string;
   date: string;
   time: string | null;
-  /** ClassSessionStatus — SCHEDULED/COMPLETED/CANCELLED/MISSED. */
+  /** ClassSessionStatus — SCHEDULED/COMPLETED/CANCELLED/MISSED, plus the Part 1B outcomes (STUDENT_NO_SHOW, TEACHER_NO_SHOW, CANCELLED_LATE, NEEDS_REVIEW). */
   status: string;
+  /** Real start/end instants (ISO) — cycle-model sessions only, null on legacy ones. */
+  startsAt: string | null;
+  endsAt: string | null;
   enrollmentId: string;
   studentId: string;
   studentName: string;

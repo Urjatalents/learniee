@@ -4,24 +4,36 @@ import { use } from "react";
 import { useRouter } from "next/navigation";
 import { Video } from "lucide-react";
 
+import SessionFlowPanel from "@/features/shared/components/session-flow/SessionFlowPanel";
+
 /**
- * Clicking "Join Session" (UpcomingLecturesCard) lands here. There's
- * no real video room to drop into yet — Jitsi is still undecided
- * (06-OPEN-DECISIONS.md #18, no code exists) — so this is
- * intentionally a simple placeholder rather than a real call screen,
- * per direct instruction to keep this simple for now. The Teacher's
- * "Start Session" is what actually marks the class complete; this
- * page doesn't call any API.
+ * The Parent's page for one class session. Cycle-model sessions
+ * (Part 1B) get the real Join control — `SessionFlowPanel` records
+ * the join time (only from 10 minutes before the start, enforced on
+ * the server) and shows the outcome once the class is over. There's
+ * no video room yet (Jitsi is out of scope).
+ *
+ * Legacy sessions keep the previous placeholder screen unchanged.
  */
 export default function JoinClassSessionPage({
   params,
 }: {
   params: Promise<{ sessionId: string }>;
 }) {
-  // sessionId isn't used yet (no real room to join), but the route
-  // takes it so this can be wired to a real video destination later
-  // without changing the Join button's link.
-  use(params);
+  const { sessionId } = use(params);
+
+  return (
+    <SessionFlowPanel
+      role="parent"
+      sessionId={sessionId}
+      homeHref="/parent"
+      renderLegacy={() => <LegacyJoinPlaceholder />}
+    />
+  );
+}
+
+/** Legacy behaviour, unchanged: a placeholder — the Teacher's "Start Session" marks the class complete. */
+function LegacyJoinPlaceholder() {
   const router = useRouter();
 
   return (

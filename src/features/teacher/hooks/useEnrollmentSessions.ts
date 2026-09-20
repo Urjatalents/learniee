@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from "react";
 
+import type { SessionStatusValue } from "@/features/shared/utils/sessionOutcome";
+
 export interface ClassSessionRow {
   id: string;
   scheduledDate: string;
   scheduledTime: string | null;
-  status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "MISSED";
+  status: SessionStatusValue;
+  /** Set on cycle-model sessions (Part 1B) — those are never marked complete by hand. */
+  cycleId?: string | null;
 }
 
 /**

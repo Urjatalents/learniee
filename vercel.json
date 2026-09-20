@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/due-date-reminders",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/resolve-sessions",
+      "schedule": "45 3 * * *"
     }
   ]
 }

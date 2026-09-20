@@ -37,6 +37,13 @@ export const SESSION_POLICY = {
   completionWindowDays: 45,
   /** Minimum sessions a cycle must contain to be bookable. */
   minSessionsPerCycle: 4,
+  /**
+   * How long (minutes) after a session's scheduled end the sweep
+   * (`/api/cron/resolve-sessions`) picks up any session nothing else
+   * has resolved yet. Ending a session and reading one after its end
+   * time both resolve it immediately; the sweep is only the backstop.
+   */
+  sweepDelayMinutes: 15,
 } as const;
 
 /**

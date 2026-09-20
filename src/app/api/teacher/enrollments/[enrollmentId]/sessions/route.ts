@@ -5,12 +5,13 @@ import {
   listSessionsForEnrollment,
   ClassSessionError,
 } from "@/features/shared/server/classSession.service";
+import { resolveEndedSessionsForEnrollments } from "@/features/shared/server/sessionResolve.service";
 
 /**
  * GET
  *
  * Every real, dated `ClassSession` row for this enrollment
- * (SCHEDULED/COMPLETED/CANCELLED/MISSED), earliest first. Generates
+ * (SCHEDULED/COMPLETED/CANCELLED/MISSED and the session-flow outcomes), earliest first. Generates
  * any missing upcoming sessions first (lazy/idempotent — see
  * classSession.service.ts). Backs the Teacher's per-enrollment
  * "Sessions" list, which lets a specific date be marked complete
@@ -36,6 +37,10 @@ export async function GET(
     if ("error" in teacher) {
       return teacher.error;
     }
+
+    // Read after end time: settle any cycle session that is over
+    // before listing (see sessionResolve.service.ts).
+    await resolveEndedSessionsForEnrollments([enrollmentId]);
 
     const sessions = await listSessionsForEnrollment(
       enrollmentId,

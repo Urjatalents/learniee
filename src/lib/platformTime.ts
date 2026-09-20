@@ -1,4 +1,4 @@
-import { PLATFORM_UTC_OFFSET_MINUTES } from "@/lib/platformConfig";
+import { PLATFORM_TIMEZONE, PLATFORM_UTC_OFFSET_MINUTES } from "@/lib/platformConfig";
 
 /**
  * Calendar/timezone helpers pinned to the platform timezone
@@ -137,4 +137,19 @@ export function platformWallClockToUtc(d: CalendarDate, time: string): Date {
   );
 
   return new Date(utcMillis - PLATFORM_UTC_OFFSET_MINUTES * 60_000);
+}
+
+/**
+ * A real instant, formatted for people in the platform timezone
+ * (e.g. "4:30 pm", or "5 Mar, 4:30 pm" with `withDate`) — so a
+ * message built on the server reads the same for everyone,
+ * independent of the server's own timezone.
+ */
+export function formatPlatformTime(date: Date, withDate = false): string {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: PLATFORM_TIMEZONE,
+    hour: "numeric",
+    minute: "2-digit",
+    ...(withDate ? { day: "numeric", month: "short" } : {}),
+  }).format(date);
 }

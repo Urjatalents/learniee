@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { EnrollmentStatus } from "@prisma/client";
 
 import { ensureSessionsGenerated } from "@/features/shared/server/classSession.service";
+import { resolveEndedSessionsForEnrollments } from "@/features/shared/server/sessionResolve.service";
 
 /**
  * Reads calendar occurrences straight from the `ClassSession` table
@@ -34,7 +35,10 @@ export interface CalendarOccurrence {
   id: string; // ClassSession id
   date: string; // YYYY-MM-DD, local calendar date
   time: string | null; // "HH:mm", null if scheduleTime was never set
-  status: string; // ClassSessionStatus — SCHEDULED/COMPLETED/CANCELLED/MISSED
+  status: string; // ClassSessionStatus — SCHEDULED/COMPLETED/CANCELLED/MISSED + the Part 1B outcomes
+  /** Real start/end instants (ISO) — cycle-model sessions only, null on legacy ones. */
+  startsAt: string | null;
+  endsAt: string | null;
   enrollmentId: string;
   studentId: string;
   studentName: string;
@@ -96,6 +100,8 @@ function toOccurrence(session: SessionWithRelations): CalendarOccurrence {
     date: toDateKey(new Date(session.scheduledDate)),
     time: session.scheduledTime,
     status: session.status,
+    startsAt: session.startsAt ? session.startsAt.toISOString() : null,
+    endsAt: session.endsAt ? session.endsAt.toISOString() : null,
     enrollmentId: session.enrollmentId,
     studentId: session.student.id,
     studentName: displayName(session.student),
@@ -125,6 +131,11 @@ async function occurrencesFor(
 
   // Lazy/idempotent generation — see classSession.service.ts header.
   await Promise.all(enrollmentIds.map((id) => ensureSessionsGenerated(id)));
+
+  // Cycle-model sessions whose time is up get their outcome before
+  // they're listed — the "read after its end time" trigger of
+  // `resolveSession` (see sessionResolve.service.ts).
+  await resolveEndedSessionsForEnrollments(enrollmentIds);
 
   const sessions = await prisma.classSession.findMany({
     where: {

@@ -10,7 +10,21 @@ import {
   notifyReschedulePropose,
   notifyRescheduleResponded,
 } from "@/features/shared/server/notificationTriggers.service";
-import { isValidTimeOfDay, platformWallClockToUtc } from "@/lib/platformTime";
+import { SESSION_POLICY } from "@/lib/platformConfig";
+import {
+  calendarDateToDate,
+  dateToCalendarDate,
+  isValidTimeOfDay,
+  parseDateKey,
+  platformWallClockToUtc,
+  type CalendarDate,
+} from "@/lib/platformTime";
+import {
+  cycleDeadlineDate,
+  formatDayMonth,
+  isWithinCycleDeadline,
+} from "@/features/shared/utils/cyclePlan";
+import { hasCancelNotice } from "@/features/shared/utils/sessionOutcome";
 
 /**
  * Reschedule requests for one already-scheduled `ClassSession` — see
@@ -25,6 +39,13 @@ import { isValidTimeOfDay, platformWallClockToUtc } from "@/lib/platformTime";
  * scheduledDate/scheduledTime — there's no separate "old"/"new"
  * session row, the same row just moves. The requester can also
  * withdraw a still-pending request before the other side responds.
+ *
+ * Cycle-model sessions (Part 1B) add two rules on top, checked when
+ * a request is proposed AND again when it is approved
+ * (`assertCycleSlotAllowed`): the class must still be at least 4
+ * hours from starting, and the new slot must fall on or before the
+ * cycle deadline (45 days after the cycle start, day 1 = start
+ * date). Legacy sessions are unchanged.
  */
 
 export class RescheduleRequestError extends Error {
@@ -69,6 +90,70 @@ function assertValidTime(time?: string | null) {
   }
 
   return time;
+}
+
+type CycleSession = {
+  id: string;
+  cycleId: string | null;
+  startsAt: Date | null;
+  scheduledTime: string | null;
+};
+
+function isCycleModelSession(
+  session: CycleSession,
+): session is CycleSession & { cycleId: string; startsAt: Date } {
+  return session.cycleId !== null && session.startsAt !== null;
+}
+
+/**
+ * The two Part 1B reschedule rules for a cycle-model session, given
+ * the slot being asked for (`proposedDate` is a platform-timezone
+ * calendar date; a missing time keeps the session's own).
+ *
+ *   1. Only up to 4 hours before the class starts.
+ *   2. Only to a slot on or before the cycle deadline (45 days after
+ *      the cycle start, day 1 = start date).
+ */
+async function assertCycleSlotAllowed(
+  session: CycleSession & { cycleId: string; startsAt: Date },
+  proposedDate: CalendarDate,
+  proposedTime: string | null,
+  now: Date,
+) {
+  if (!hasCancelNotice(session.startsAt, now)) {
+    throw new RescheduleRequestError(
+      `A class can only be rescheduled up to ${SESSION_POLICY.cancelNoticeHours} hours before it starts.`,
+      409,
+    );
+  }
+
+  const time = proposedTime ?? session.scheduledTime;
+
+  if (!isValidTimeOfDay(time)) {
+    throw new RescheduleRequestError("A class time is required to reschedule this class.");
+  }
+
+  if (platformWallClockToUtc(proposedDate, time) <= now) {
+    throw new RescheduleRequestError("Proposed date and time can't be in the past.");
+  }
+
+  const cycle = await prisma.enrollmentCycle.findUnique({
+    where: { id: session.cycleId },
+    select: { startDate: true },
+  });
+
+  if (cycle) {
+    const cycleStart = dateToCalendarDate(cycle.startDate);
+
+    if (!isWithinCycleDeadline(proposedDate, cycleStart)) {
+      throw new RescheduleRequestError(
+        `Classes can only be moved to a slot on or before ${formatDayMonth(
+          cycleDeadlineDate(cycleStart),
+        )} — the end of this cycle's ${SESSION_POLICY.completionWindowDays}-day window.`,
+        409,
+      );
+    }
+  }
 }
 
 const requestInclude = {
@@ -155,12 +240,29 @@ export async function proposeReschedule(input: ProposeRescheduleInput) {
     );
   }
 
-  const proposedDate = parseDateOnly(input.proposedDate);
+  let proposedDate: Date;
   const proposedTime = assertValidTime(input.proposedTime);
 
-  const today = startOfDay(new Date());
-  if (proposedDate < today) {
-    throw new RescheduleRequestError("Proposed date can't be in the past.");
+  if (isCycleModelSession(session)) {
+    // Cycle model: calendar dates are platform-timezone dates stored
+    // as UTC midnight (same as the session's own `scheduledDate`), and
+    // the 4-hour and cycle-deadline rules apply.
+    const dateKey = parseDateKey(input.proposedDate.trim().slice(0, 10));
+
+    if (!dateKey) {
+      throw new RescheduleRequestError("Invalid proposed date.");
+    }
+
+    await assertCycleSlotAllowed(session, dateKey, proposedTime, new Date());
+
+    proposedDate = calendarDateToDate(dateKey);
+  } else {
+    proposedDate = parseDateOnly(input.proposedDate);
+
+    const today = startOfDay(new Date());
+    if (proposedDate < today) {
+      throw new RescheduleRequestError("Proposed date can't be in the past.");
+    }
   }
 
   const requestedBy: RescheduleRequestedBy =
@@ -279,6 +381,17 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
     );
   }
 
+  // Cycle-model sessions: the 4-hour and cycle-deadline rules hold at
+  // approval time too, not just when the request was made.
+  if (isCycleModelSession(session)) {
+    await assertCycleSlotAllowed(
+      session,
+      dateToCalendarDate(request.proposedDate),
+      request.proposedTime,
+      new Date(),
+    );
+  }
+
   const conflict = await prisma.classSession.findFirst({
     where: {
       enrollmentId: request.enrollmentId,
@@ -312,14 +425,12 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
     const time = request.proposedTime ?? session.scheduledTime;
 
     if (isValidTimeOfDay(time)) {
-      // `proposedDate` is written by this file's own startOfDay()
-      // (local getters), so it's read back the same way.
+      // Cycle-model proposals store `proposedDate` as UTC midnight of
+      // the platform calendar date (`calendarDateToDate`), so it is
+      // read back the same way — no dependence on the server's own
+      // timezone.
       const startsAt = platformWallClockToUtc(
-        {
-          year: request.proposedDate.getFullYear(),
-          month: request.proposedDate.getMonth() + 1,
-          day: request.proposedDate.getDate(),
-        },
+        dateToCalendarDate(request.proposedDate),
         time,
       );
 

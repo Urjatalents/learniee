@@ -381,7 +381,7 @@ const enrollmentWithRelationsInclude = {
  * per resulting cycle number even so, via its own
  * unique-constraint/P2002 idempotency guard.
  */
-async function recomputeEnrollmentCounters(enrollmentId: string) {
+export async function recomputeEnrollmentCounters(enrollmentId: string) {
   const before = await prisma.enrollment.findUniqueOrThrow({
     where: { id: enrollmentId },
   });
@@ -459,6 +459,16 @@ export async function markClassSessionComplete(
     );
   }
 
+  // Cycle-model sessions (Part 1B) are never marked by hand — their
+  // outcome comes from the recorded Start / Join / End events
+  // (`sessionResolve.service.ts`). Legacy sessions keep this path.
+  if (session.cycleId) {
+    throw new ClassSessionError(
+      "This session can't be marked complete by hand — it is completed from the Start, Join and End events.",
+      409,
+    );
+  }
+
   if (session.status !== ClassSessionStatus.SCHEDULED) {
     throw new ClassSessionError(
       `This session is already marked ${session.status.toLowerCase()}.`,
@@ -508,6 +518,13 @@ export async function markNextDueSessionComplete(
   if (enrollment.status !== EnrollmentStatus.ACTIVE) {
     throw new ClassSessionError(
       "Sessions can only be marked complete for an active enrollment.",
+    );
+  }
+
+  if (!enrollment.isLegacy) {
+    throw new ClassSessionError(
+      "Sessions of this enrollment are completed from the Start, Join and End events — they can't be marked complete by hand.",
+      409,
     );
   }
 
