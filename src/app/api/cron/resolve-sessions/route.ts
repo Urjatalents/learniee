@@ -16,6 +16,13 @@ import { runSessionSweep } from "@/features/shared/server/sessionResolve.service
  * as often as it allows: every 5 minutes is ideal, once a day still
  * bounds how long a forgotten session can sit unresolved.
  *
+ * Part 1C: the same sweep also applies any make-up / strike / notice
+ * that a request left behind, re-applies approved teacher leave, and
+ * closes every cycle that is due (all sessions settled, or day 45
+ * passed). All of it is idempotent, and each step is also triggered
+ * from the request that causes it, so nothing here needs a
+ * host-specific scheduler.
+ *
  * Auth: expects `Authorization: Bearer ${CRON_SECRET}`, same
  * convention as the other cron routes.
  */

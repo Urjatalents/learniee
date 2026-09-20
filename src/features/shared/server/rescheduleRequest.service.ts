@@ -139,8 +139,16 @@ async function assertCycleSlotAllowed(
 
   const cycle = await prisma.enrollmentCycle.findUnique({
     where: { id: session.cycleId },
-    select: { startDate: true },
+    select: { startDate: true, status: true },
   });
+
+  // Part 1C: nothing can be scheduled or extended once a cycle has closed.
+  if (cycle && cycle.status === "CLOSED") {
+    throw new RescheduleRequestError(
+      "This cycle has closed, so its classes can no longer be rescheduled.",
+      409,
+    );
+  }
 
   if (cycle) {
     const cycleStart = dateToCalendarDate(cycle.startDate);

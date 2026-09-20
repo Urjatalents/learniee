@@ -12,6 +12,12 @@ import { decideSessionOutcome } from "@/features/shared/utils/sessionOutcome";
 import { recomputeEnrollmentCounters } from "@/features/shared/server/classSession.service";
 import { notifyClassSessionCompleted } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
+import {
+  repairPendingFollowUps,
+  runSessionFollowUps,
+} from "@/features/shared/server/sessionFollowUp.service";
+import { closeDueCycles } from "@/features/shared/server/cycleClose.service";
+import { reapplyApprovedLeaves } from "@/features/shared/server/leaveShift.service";
 
 /**
  * `resolveSession()` — the ONLY thing that decides an event-based
@@ -187,29 +193,29 @@ async function afterOutcomeWritten(sessionId: string, status: string) {
   try {
     if (status === "COMPLETED") {
       await applyCompletedSessionEffects(sessionId);
-      return;
+    } else {
+      await logActivity({
+        action: "CLASS_SESSION_OUTCOME",
+        actorRole: "SYSTEM",
+        description: `Class session resolved as ${status.toLowerCase().replace(/_/g, " ")}.`,
+        metadata: { sessionId, status },
+      });
     }
 
-    // Part 1C owns the follow-ups (make-up, strike, Admin alert,
-    // parent notice). Until it lands they are deliberately not done:
-    // the session simply stays uncounted. Log the outcome so Admin
-    // can see it happened.
-    await logActivity({
-      action: "CLASS_SESSION_OUTCOME",
-      actorRole: "SYSTEM",
-      description: `Class session resolved as ${status.toLowerCase().replace(/_/g, " ")}.`,
-      metadata: { sessionId, status },
-    });
+    // Part 1C: counters for the other counted outcomes, the follow-up
+    // (make-up, strike, Admin alert, parent notice) and the cycle
+    // close check. Each is applied once and never throws.
+    await runSessionFollowUps(sessionId);
   } catch (err) {
     console.error(`Session ${sessionId} follow-up after resolve failed:`, err);
   }
 }
 
 /**
- * Feeds a COMPLETED cycle session into the existing counters and
- * payout write (`recomputeEnrollmentCounters` — unchanged, and
- * replaced by Part 1C). That function derives everything from the
- * enrollment's total completed count, so running it again is
+ * Feeds a COMPLETED cycle session into the progress counters
+ * (`recomputeEnrollmentCounters`, which since Part 1C counts per
+ * cycle and no longer writes the ledger — cycle close does). It
+ * derives everything from live session rows, so running it again is
  * harmless; `countersAppliedAt` just records that it ran so the
  * sweep only repairs sessions where it didn't.
  */
@@ -293,6 +299,12 @@ const REPAIR_MIN_AGE_MS = 2 * 60_000;
 export interface SessionSweepResult {
   resolved: number;
   repaired: number;
+  /** Part 1C: follow-ups (make-up / strike / notices) applied late. */
+  followUpsRepaired: number;
+  /** Part 1C: sessions moved or cancelled because of approved teacher leave. */
+  leaveSessionsShifted: number;
+  /** Part 1C: cycles closed by this run. */
+  cyclesClosed: number;
   /** True if a full batch was found — more work may remain for the next run. */
   moreRemaining: boolean;
 }
@@ -353,9 +365,42 @@ export async function runSessionSweep(now: Date = new Date()): Promise<SessionSw
     }
   }
 
+  // Part 1C, in dependency order: finish any follow-up that didn't
+  // apply, finish any leave shift, and only then close what is due —
+  // a cycle waits for its follow-ups, so closing goes last. Each step
+  // is idempotent and isolated: one failing must not stop the rest.
+  let followUpsRepaired = 0;
+  let leaveSessionsShifted = 0;
+  let cyclesClosed = 0;
+  let closeBacklog = false;
+
+  try {
+    followUpsRepaired = await repairPendingFollowUps(now);
+  } catch (err) {
+    console.error("Sweep follow-up repair failed:", err);
+  }
+
+  try {
+    leaveSessionsShifted = await reapplyApprovedLeaves(now);
+  } catch (err) {
+    console.error("Sweep leave re-apply failed:", err);
+  }
+
+  try {
+    const closing = await closeDueCycles(now);
+    cyclesClosed = closing.closed;
+    closeBacklog = closing.moreRemaining;
+  } catch (err) {
+    console.error("Sweep cycle close failed:", err);
+  }
+
   return {
     resolved,
     repaired,
-    moreRemaining: due.length === SWEEP_BATCH_SIZE || unapplied.length === SWEEP_BATCH_SIZE,
+    followUpsRepaired,
+    leaveSessionsShifted,
+    cyclesClosed,
+    moreRemaining:
+      due.length === SWEEP_BATCH_SIZE || unapplied.length === SWEEP_BATCH_SIZE || closeBacklog,
   };
 }

@@ -127,6 +127,78 @@ export async function createLedgerEntryForCompletedCycle(
 }
 
 /**
+ * Cycle model (Part 1C): the ledger row for a cycle that just CLOSED,
+ * based on the sessions that COUNTED — not on the number paid for.
+ * Called inside the same transaction that marks the cycle CLOSED
+ * (`cycleClose.service.ts`), which only ever happens once per cycle.
+ *
+ * Amounts (same 70/30 split as `createLedgerEntryForCompletedCycle`):
+ *   monthlyRate       = rate per session x counted sessions (what was earned)
+ *   totalAmount       = the cycle price the parent paid
+ *   monthlyTeacherPay = 70% of monthlyRate
+ *   profits           = 30% of monthlyRate
+ * Forfeited sessions therefore produce no teacher pay. (The unearned
+ * part of the price is not in `profits` — flagged in 06 #60.)
+ *
+ * `createMany({ skipDuplicates })` rather than `create` + catching
+ * P2002: a caught unique violation would leave the surrounding
+ * Postgres transaction aborted. Returns whether a row was written.
+ */
+export async function createLedgerEntryForClosedCycle(
+  tx: Prisma.TransactionClient,
+  input: {
+    enrollment: {
+      id: string;
+      parentId: string;
+      teacherId: string;
+      studentId: string;
+      courseId: string;
+      dueDate: Date;
+    };
+    cycle: { cycleNumber: number; ratePerSession: Prisma.Decimal; price: Prisma.Decimal };
+    countedSessions: number;
+  },
+): Promise<boolean> {
+  const { enrollment, cycle, countedSessions } = input;
+
+  if (countedSessions <= 0) {
+    return false;
+  }
+
+  const rate = Number(cycle.ratePerSession);
+  const earned = round2(rate * countedSessions);
+  const now = new Date();
+
+  const result = await tx.tuitionLedgerEntry.createMany({
+    data: [
+      {
+        enrollmentId: enrollment.id,
+        cycleNumber: cycle.cycleNumber,
+        parentId: enrollment.parentId,
+        teacherId: enrollment.teacherId,
+        studentId: enrollment.studentId,
+        courseId: enrollment.courseId,
+        transactionDate: now,
+        noOfMonths: 1,
+        rate,
+        monthlyRate: earned,
+        totalAmount: Number(cycle.price),
+        sessionsCompleted: countedSessions,
+        dueDate: enrollment.dueDate,
+        teacherRate: round2(rate * TEACHER_SHARE),
+        monthlyTeacherPay: round2(earned * TEACHER_SHARE),
+        profits: round2(earned * PLATFORM_SHARE),
+        payoutStatus: LedgerPayoutStatus.PENDING_VERIFICATION,
+        verificationDeadline: new Date(now.getTime() + VERIFICATION_WINDOW_MS),
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  return result.count > 0;
+}
+
+/**
  * Lazily reconciles overdue PENDING_VERIFICATION rows to EXPIRED.
  * Called at the top of every read path below — same "reconcile on
  * read" pattern the Razorpay webhook uses, since there's no

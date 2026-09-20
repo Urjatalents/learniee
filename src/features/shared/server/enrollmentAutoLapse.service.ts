@@ -15,6 +15,8 @@ import { logActivity } from "@/features/shared/server/activityLog.service";
  * now that `ClassSession` (built Sep 4) gives it something real to
  * check against.
  *
+ * Part 1C: applies to LEGACY enrollments only (`isLegacy = true`).
+ *
  * Rule: an `ACTIVE` enrollment with no class *conducted* (a real
  * `ClassSession` marked `COMPLETED`, not merely scheduled) in the
  * last `LAPSE_THRESHOLD_DAYS` days lapses automatically.
@@ -63,7 +65,10 @@ export interface AutoLapseResult {
  */
 export async function runEnrollmentAutoLapse(now: Date = new Date()): Promise<AutoLapseResult> {
   const candidates = await prisma.enrollment.findMany({
-    where: { status: EnrollmentStatus.ACTIVE },
+    // Legacy enrollments only (Part 1C): cycle-model enrollments have
+    // their own 45-day window and cycle close, and the old rule would
+    // lapse them wrongly. Part 2A replaces this rule for them.
+    where: { status: EnrollmentStatus.ACTIVE, isLegacy: true },
     select: {
       id: true,
       lastClassAt: true,

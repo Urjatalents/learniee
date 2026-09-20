@@ -6,6 +6,7 @@ import {
   notifyLeaveRequestSubmitted,
   notifyLeaveRequestResponded,
 } from "@/features/shared/server/notificationTriggers.service";
+import { applyApprovedLeaveToSessions } from "@/features/shared/server/leaveShift.service";
 
 /**
  * Teacher leave requests — single-step Teacher -> Admin approval.
@@ -176,6 +177,18 @@ export async function respondToLeaveRequest(input: RespondToLeaveRequestInput) {
   });
 
   await notifyLeaveRequestResponded(request.teacherId, input.decision === "APPROVE");
+
+  // Part 1C: an approved leave shifts the teacher's affected cycle
+  // sessions to the next free slots inside each cycle's 45 days and
+  // tells the parents. The approval is already saved, so a failure
+  // here must not undo it — the sweep re-applies approved leaves.
+  if (input.decision === "APPROVE") {
+    try {
+      await applyApprovedLeaveToSessions(updated.id);
+    } catch (err) {
+      console.error(`Applying approved leave ${updated.id} to sessions failed:`, err);
+    }
+  }
 
   return updated;
 }

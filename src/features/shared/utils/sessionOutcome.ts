@@ -180,6 +180,78 @@ export function isSessionFinal(status: SessionStatusValue): boolean {
   return status !== "SCHEDULED" && status !== "NEEDS_REVIEW";
 }
 
+/**
+ * The statuses `sessionOutcomeCounts()` answers `true` for — the
+ * sessions that count toward a cycle and are paid (Part 1C). Kept as
+ * a list so database queries can filter on it; the two are pinned
+ * together by being defined side by side.
+ */
+export const COUNTED_SESSION_STATUSES = [
+  "COMPLETED",
+  "STUDENT_NO_SHOW",
+  "CANCELLED_LATE",
+] as const satisfies readonly SessionStatusValue[];
+
+/**
+ * What must happen once, after a cycle session reaches a final
+ * outcome (Part 1C §1):
+ *
+ *   teacher no-show        make-up + strike + Admin alert
+ *   nobody joined          make-up
+ *   teacher cancelled      make-up + strike
+ *   student no-show        notice to the parent
+ *
+ * Everything else (completed, parent cancels, late cancels) needs no
+ * follow-up. A parent's free cancel gets no make-up on purpose: the
+ * parent chose it and can reschedule instead.
+ */
+export interface SessionFollowUpPlan {
+  makeup: boolean;
+  strike: "TEACHER_NO_SHOW" | "TEACHER_CANCELLED" | null;
+  alertAdmin: boolean;
+  noticeParent: boolean;
+}
+
+export function planSessionFollowUp(
+  status: SessionStatusValue,
+  cancelledByRole: string | null,
+): SessionFollowUpPlan | null {
+  switch (status) {
+    case "TEACHER_NO_SHOW":
+      return { makeup: true, strike: "TEACHER_NO_SHOW", alertAdmin: true, noticeParent: false };
+    case "STUDENT_NO_SHOW":
+      return { makeup: false, strike: null, alertAdmin: false, noticeParent: true };
+    case "CANCELLED":
+      if (cancelledByRole === "SYSTEM") {
+        return { makeup: true, strike: null, alertAdmin: false, noticeParent: false };
+      }
+      if (cancelledByRole === "TEACHER") {
+        return { makeup: true, strike: "TEACHER_CANCELLED", alertAdmin: false, noticeParent: false };
+      }
+      return null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * True once a session can no longer change AND its follow-up (if it
+ * has one) has been applied. A cycle only closes early when every
+ * session is settled — otherwise it could close in the gap between
+ * "teacher cancelled" and "make-up created".
+ */
+export function isSessionSettled(session: {
+  status: SessionStatusValue;
+  cancelledByRole: string | null;
+  followUpAppliedAt: Date | null;
+}): boolean {
+  if (!isSessionFinal(session.status)) return false;
+
+  const plan = planSessionFollowUp(session.status, session.cancelledByRole);
+
+  return plan === null || session.followUpAppliedAt !== null;
+}
+
 /** Cancel/reschedule need at least this much notice before the start. */
 export function hasCancelNotice(startsAt: Date, now: Date): boolean {
   return startsAt.getTime() - now.getTime() >= SESSION_POLICY.cancelNoticeHours * HOUR_MS;

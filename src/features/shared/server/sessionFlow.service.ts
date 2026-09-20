@@ -25,6 +25,7 @@ import {
 } from "@/features/shared/utils/sessionOutcome";
 import type { SessionFlowState } from "@/features/shared/types/sessionFlow";
 import { resolveSession } from "@/features/shared/server/sessionResolve.service";
+import { runSessionFollowUps } from "@/features/shared/server/sessionFollowUp.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
 
 /**
@@ -365,8 +366,8 @@ export async function endSession(
  *   parent, under 4h    -> CANCELLED_LATE  (still counts, paid)
  *   teacher, any time   -> CANCELLED       (does not count)
  *
- * The follow-ups (reschedule / make-up / strike / Admin alert) belong
- * to Part 1C and are not done here. A session that has started (or
+ * The follow-ups (make-up / strike) are applied right after, by
+ * `runSessionFollowUps` (Part 1C). A session that has started (or
  * that the student has joined) can't be cancelled any more — its
  * outcome comes from the events instead.
  */
@@ -447,6 +448,10 @@ export async function cancelSession(
     )}).`,
     metadata: { sessionId: session.id, status, reason: cleanReason },
   });
+
+  // Part 1C: a teacher cancel gets its make-up and strike, a late
+  // parent cancel feeds the counters, and the cycle close check runs.
+  await runSessionFollowUps(session.id, now);
 
   return reload(sessionId, actor, now);
 }

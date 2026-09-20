@@ -13,6 +13,7 @@ export interface TeacherDirectoryRow {
   onboardingStatus: string;
   coursesCount: number;
   activeEnrollmentsCount: number;
+  strikesCount: number;
   createdAt: string;
 }
 

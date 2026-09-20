@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import {
   ClassSessionStatus,
+  CycleStatus,
   CyclePayoutStatus,
   Enrollment,
   EnrollmentStatus,
@@ -18,6 +19,7 @@ import {
   toDateKey,
 } from "@/lib/platformTime";
 import { buildCyclePlan } from "@/features/shared/utils/cyclePlan";
+import { COUNTED_SESSION_STATUSES } from "@/features/shared/utils/sessionOutcome";
 import { createLedgerEntryForCompletedCycle } from "@/features/shared/server/tuitionLedger.service";
 import {
   notifyClassSessionCompleted,
@@ -386,6 +388,13 @@ export async function recomputeEnrollmentCounters(enrollmentId: string) {
     where: { id: enrollmentId },
   });
 
+  // Cycle model (Part 1C): progress is the number of COUNTED sessions
+  // in the cycle, and the payout ledger row is written when the cycle
+  // closes (`cycleClose.service.ts`), not when a session completes.
+  if (!before.isLegacy) {
+    return recomputeCycleModelCounters(before);
+  }
+
   const totalCompleted = await prisma.classSession.count({
     where: { enrollmentId, status: ClassSessionStatus.COMPLETED },
   });
@@ -437,6 +446,87 @@ export async function recomputeEnrollmentCounters(enrollmentId: string) {
   await notifyCyclePayoutReady(enrollmentId);
 
   return updated;
+}
+
+/**
+ * Cycle-model counters (Part 1C). Replaces "all completed sessions
+ * divided by sessions per month" with per-cycle counts of COUNTED
+ * sessions (completed, student no-show, late parent cancel — see
+ * `sessionOutcomeCounts`):
+ *
+ *   sessionsCompletedInCycle  counted sessions in the cycle that is
+ *                             open now (or in the latest cycle when
+ *                             every cycle is closed), never above
+ *                             that cycle's paid session count
+ *   cyclesCompleted           cycles that have CLOSED
+ *   cyclePayoutStatus         READY_FOR_PAYOUT once the latest cycle
+ *                             closed with something to pay, else
+ *                             IN_PROGRESS
+ *
+ * Derived from live `ClassSession` rows every time, so it is safe to
+ * repeat and self-heals. It never writes the ledger — closing the
+ * cycle does. The return shape matches the legacy branch, so
+ * callers and progress screens are unaffected.
+ */
+async function recomputeCycleModelCounters(before: Enrollment) {
+  const cycles = await prisma.enrollmentCycle.findMany({
+    where: { enrollmentId: before.id },
+    orderBy: { cycleNumber: "asc" },
+    select: {
+      id: true,
+      status: true,
+      sessionCount: true,
+      countedSessionCount: true,
+    },
+  });
+
+  const openCycle = [...cycles].reverse().find((c) => c.status === CycleStatus.OPEN);
+  const shownCycle = openCycle ?? cycles[cycles.length - 1] ?? null;
+  const cyclesCompleted = cycles.filter((c) => c.status === CycleStatus.CLOSED).length;
+
+  let sessionsCompletedInCycle = 0;
+
+  if (shownCycle) {
+    if (shownCycle.status === CycleStatus.CLOSED && shownCycle.countedSessionCount !== null) {
+      sessionsCompletedInCycle = shownCycle.countedSessionCount;
+    } else {
+      const counted = await prisma.classSession.count({
+        where: {
+          cycleId: shownCycle.id,
+          status: { in: [...COUNTED_SESSION_STATUSES] as ClassSessionStatus[] },
+        },
+      });
+
+      sessionsCompletedInCycle = Math.min(counted, shownCycle.sessionCount);
+    }
+  }
+
+  const latest = cycles[cycles.length - 1] ?? null;
+  const readyForPayout =
+    !openCycle &&
+    latest !== null &&
+    latest.status === CycleStatus.CLOSED &&
+    (latest.countedSessionCount ?? 0) > 0;
+
+  const lastCompleted = await prisma.classSession.findFirst({
+    where: { enrollmentId: before.id, status: ClassSessionStatus.COMPLETED },
+    orderBy: { completedAt: "desc" },
+    select: { completedAt: true },
+  });
+
+  return prisma.enrollment.update({
+    where: { id: before.id },
+    data: {
+      sessionsCompletedInCycle,
+      cyclesCompleted,
+      cyclePayoutStatus: readyForPayout
+        ? CyclePayoutStatus.READY_FOR_PAYOUT
+        : CyclePayoutStatus.IN_PROGRESS,
+      lastSessionMarkedAt: lastCompleted?.completedAt ?? before.lastSessionMarkedAt,
+      lastClassAt: lastCompleted?.completedAt ?? before.lastClassAt,
+    },
+    include: enrollmentWithRelationsInclude,
+  });
 }
 
 /**
@@ -600,7 +690,9 @@ export async function getSessionCountsForEnrollments(
       by: ["enrollmentId"],
       where: {
         enrollmentId: { in: enrollmentIds },
-        status: ClassSessionStatus.COMPLETED,
+        // Counted sessions (Part 1C). Legacy rows only ever have
+        // COMPLETED, so their numbers are unchanged.
+        status: { in: [...COUNTED_SESSION_STATUSES] as ClassSessionStatus[] },
         scheduledDate: { gte: monthStart, lt: monthEnd },
       },
       _count: { _all: true },
@@ -609,7 +701,7 @@ export async function getSessionCountsForEnrollments(
       by: ["enrollmentId"],
       where: {
         enrollmentId: { in: enrollmentIds },
-        status: ClassSessionStatus.COMPLETED,
+        status: { in: [...COUNTED_SESSION_STATUSES] as ClassSessionStatus[] },
       },
       _count: { _all: true },
     }),

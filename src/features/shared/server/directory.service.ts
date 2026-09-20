@@ -32,6 +32,8 @@ export interface TeacherDirectoryRow {
   onboardingStatus: string;
   coursesCount: number;
   activeEnrollmentsCount: number;
+  /** Strikes recorded for teacher no-shows and teacher cancellations (Part 1C). */
+  strikesCount: number;
   createdAt: Date;
 }
 
@@ -65,6 +67,7 @@ export async function getTeacherDirectory(): Promise<{
             // Filtered relation count — only ACTIVE enrollments, not every
             // enrollment ever created against this teacher.
             enrollments: { where: { status: "ACTIVE" } },
+            strikes: true,
           },
         },
       },
@@ -94,6 +97,7 @@ export async function getTeacherDirectory(): Promise<{
       onboardingStatus: t.onboardingStatus,
       coursesCount: t._count.courses,
       activeEnrollmentsCount: t._count.enrollments,
+      strikesCount: t._count.strikes,
       createdAt: t.createdAt,
     })),
     summary: {

@@ -135,6 +135,7 @@ model Teacher {
   leaveRequests      LeaveRequest[]
   bankAccount        BankAccount?
   reviews            Review[]
+  strikes            TeacherStrike[]
 }
 
 model TeacherProfessional {
@@ -769,8 +770,20 @@ model ClassSession {
   /// that lets the sweep safely re-run that step if a request died
   /// between resolving and applying it.
   countersAppliedAt  DateTime?
+  /// Make-ups and follow-ups (Part 1C, Sep 21, 2026). On a make-up
+  /// session: the session it replaces (unique — a session gets at
+  /// most one make-up, so the follow-up can never create two).
+  makeupForSessionId String?             @unique
+  /// Set (in the same transaction as any make-up / strike it
+  /// caused) once the follow-up for this session's outcome has been
+  /// applied — the claim that makes each follow-up happen exactly
+  /// once, and what a cycle waits for before it can close.
+  followUpAppliedAt  DateTime?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+  makeupFor          ClassSession?       @relation("SessionMakeup", fields: [makeupForSessionId], references: [id], onDelete: SetNull)
+  makeup             ClassSession?       @relation("SessionMakeup")
+  strike             TeacherStrike?
   cycle              EnrollmentCycle?    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
   enrollment         Enrollment          @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   parent             ParentProfile       @relation(fields: [parentId], references: [id], onDelete: Cascade)
@@ -811,6 +824,14 @@ model EnrollmentCycle {
   /// Razorpay payment ID that paid for this cycle.
   paymentReference String?
   status           CycleStatus    @default(OPEN)
+  /// Cycle close (Part 1C, Sep 21, 2026) — all null while OPEN.
+  /// `countedSessionCount` = sessions that counted (and are paid);
+  /// `forfeitedSessionCount` = paid-for sessions that never counted.
+  /// Part 2A reads these.
+  closedAt              DateTime?
+  closeReason           CycleCloseReason?
+  countedSessionCount   Int?
+  forfeitedSessionCount Int?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   enrollment       Enrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
@@ -823,6 +844,35 @@ model EnrollmentCycle {
 enum CycleStatus {
   OPEN
   CLOSED
+}
+
+/// Why a cycle closed (Part 1C): every session reached a final
+/// outcome, or day 45 of the cycle passed with some still unfinished.
+enum CycleCloseReason {
+  ALL_SESSIONS_FINAL
+  WINDOW_ENDED
+}
+
+/// A simple per-teacher record of a class the teacher caused to be
+/// lost (Part 1C, Sep 21, 2026): a no-show or a teacher cancellation.
+/// One strike per session (unique `classSessionId`), so it can never
+/// be recorded twice. Visible to Admin; nothing acts on the count yet.
+model TeacherStrike {
+  id             String              @id @default(uuid())
+  teacherId      String
+  classSessionId String              @unique
+  enrollmentId   String
+  reason         TeacherStrikeReason
+  createdAt      DateTime            @default(now())
+  teacher        Teacher             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classSession   ClassSession        @relation(fields: [classSessionId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, createdAt])
+}
+
+enum TeacherStrikeReason {
+  TEACHER_NO_SHOW
+  TEACHER_CANCELLED
 }
 
 /// Reschedule requests for one already-scheduled `ClassSession`
@@ -1348,6 +1398,12 @@ enum NotificationType {
   /// "5-day reminder" gap flagged in `export.service.ts` and
   /// 04-BUILD-PLAN-TIMELINE.md's Week 4 scope.
   PAYMENT_DUE_REMINDER
+  /// Make-ups, follow-ups and teacher leave (Part 1C, Sep 21, 2026)
+  SESSION_MAKEUP_SCHEDULED
+  SESSION_TEACHER_NO_SHOW
+  SESSION_STUDENT_NO_SHOW
+  SESSION_MOVED_FOR_LEAVE
+  TEACHER_STRIKE_RECORDED
   GENERIC
 }
 
@@ -1443,6 +1499,11 @@ enum ActivityAction {
   ENROLLMENT_AUTO_LAPSED
   /// Session-flow outcomes other than COMPLETED (Sep 20, 2026)
   CLASS_SESSION_OUTCOME
+  /// Part 1C (Sep 21, 2026)
+  SESSION_MAKEUP_CREATED
+  TEACHER_STRIKE_RECORDED
+  SESSION_MOVED_FOR_LEAVE
+  CYCLE_CLOSED
   GENERIC
 }
 
