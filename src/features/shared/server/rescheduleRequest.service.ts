@@ -10,6 +10,7 @@ import {
   notifyReschedulePropose,
   notifyRescheduleResponded,
 } from "@/features/shared/server/notificationTriggers.service";
+import { isValidTimeOfDay, platformWallClockToUtc } from "@/lib/platformTime";
 
 /**
  * Reschedule requests for one already-scheduled `ClassSession` — see
@@ -293,13 +294,47 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
     );
   }
 
+  const moved: {
+    scheduledDate: Date;
+    scheduledTime: string | null;
+    startsAt?: Date;
+    endsAt?: Date;
+  } = {
+    scheduledDate: request.proposedDate,
+    scheduledTime: request.proposedTime,
+  };
+
+  // Cycle-model sessions (Part 1A) also carry real start/end
+  // instants — keep them in step with the moved date/time. A
+  // proposal without a time keeps the session's current one, since
+  // a cycle-model session always has a start time.
+  if (session.startsAt && session.lengthMinutes) {
+    const time = request.proposedTime ?? session.scheduledTime;
+
+    if (isValidTimeOfDay(time)) {
+      // `proposedDate` is written by this file's own startOfDay()
+      // (local getters), so it's read back the same way.
+      const startsAt = platformWallClockToUtc(
+        {
+          year: request.proposedDate.getFullYear(),
+          month: request.proposedDate.getMonth() + 1,
+          day: request.proposedDate.getDate(),
+        },
+        time,
+      );
+
+      moved.scheduledTime = time;
+      moved.startsAt = startsAt;
+      moved.endsAt = new Date(
+        startsAt.getTime() + session.lengthMinutes * 60_000,
+      );
+    }
+  }
+
   const [, updatedRequest] = await prisma.$transaction([
     prisma.classSession.update({
       where: { id: session.id },
-      data: {
-        scheduledDate: request.proposedDate,
-        scheduledTime: request.proposedTime,
-      },
+      data: moved,
     }),
     prisma.rescheduleRequest.update({
       where: { id: request.id },

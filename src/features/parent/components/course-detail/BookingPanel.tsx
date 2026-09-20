@@ -12,6 +12,13 @@ import {
   type RazorpayCheckoutOptions,
 } from "@/lib/loadRazorpayCheckout";
 import { WEEKDAY_LABELS } from "@/features/shared/utils/weekdays";
+import {
+  buildCyclePlan,
+  formatCycleSummary,
+  getCyclePlanProblem,
+  priceForSessions,
+} from "@/features/shared/utils/cyclePlan";
+import { toDateKey, todayInPlatformTz } from "@/lib/platformTime";
 
 interface Props {
   price: string | null;
@@ -19,13 +26,6 @@ interface Props {
   courseId: string;
   subject: string | null;
 }
-
-// Cycle rule (updated Aug 31, 2026, per direct clarification —
-// supersedes 06-OPEN-DECISIONS.md #25's old fixed 4/8/12/24/30
-// set): minimum 4 sessions/month, any integer above that, capped
-// at 1 session/day for the longest possible month (31).
-const MIN_SESSIONS_PER_MONTH = 4;
-const MAX_SESSIONS_PER_MONTH = 31;
 
 function formatSelection(date: Date | null, hour: number | null) {
   if (!date || hour == null) {
@@ -98,9 +98,12 @@ function openRazorpayCheckout(options: {
  *   demos (06-OPEN-DECISIONS.md #26) — no payment involved. Once
  *   those are used, this opens Razorpay Checkout for the flat ₹100
  *   fee before the booking is created.
- * - "Enroll Now": always payment-gated. Picking a cycle
- *   (sessions/month + months) auto-calculates rate/monthly-rate/
- *   total, then opens Razorpay Checkout for the full amount. The
+ * - "Enroll Now": always payment-gated. One enrollment = one
+ *   monthly cycle (start date to the same date next month minus one
+ *   day); the parent picks weekdays, a time and a start date, the
+ *   session count is however many of those weekdays fall in the
+ *   cycle (min 4), and the price is session rate x count — see
+ *   `cyclePlan.ts`. Then opens Razorpay Checkout for the amount. The
  *   Enrollment row is only created after payment is verified
  *   server-side — see enrollment.service.ts. A paid enrollment then
  *   enters the sequential dual-approval flow (Teacher, then Admin —
@@ -129,8 +132,10 @@ export default function BookingPanel({
   // Enroll — separate from the demo-booking state above since a
   // parent may enroll without booking another demo first (they
   // might already be past their demos for this teacher/subject).
-  const [sessionsPerMonth, setSessionsPerMonth] = useState<number | "">("");
-  const [noOfMonths, setNoOfMonths] = useState(1);
+  // Cycle start date ("YYYY-MM-DD", platform timezone) — defaults to today.
+  const [startDate, setStartDate] = useState(() =>
+    toDateKey(todayInPlatformTz()),
+  );
   // Recurring weekly schedule — required before enrolling so the
   // teacher/parent calendar can actually show something real.
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
@@ -153,18 +158,29 @@ export default function BookingPanel({
   const paidDemoPrice = balance?.paidDemoPrice ?? 100;
 
   // Client-side preview only — the authoritative calculation always
-  // happens server-side in enrollment.service.ts. Rate is treated as
-  // a PER-SESSION rate here (see that file's doc-comment for why —
-  // this is a flagged assumption, not a settled rule).
+  // happens server-side in enrollment.service.ts, using this same
+  // `buildCyclePlan()`. Rate is a PER-SESSION rate.
   const ratePerSession = price ? Number(price) : null;
+  const minStartDate = toDateKey(todayInPlatformTz());
+  const startInPast = !!startDate && startDate < minStartDate;
+
+  const cyclePlan = useMemo(
+    () =>
+      startDate && scheduleDays.length > 0
+        ? buildCyclePlan(startDate, scheduleDays)
+        : null,
+    [startDate, scheduleDays],
+  );
+  const planProblem = cyclePlan ? getCyclePlanProblem(cyclePlan) : null;
+
   const pricePreview = useMemo(() => {
-    if (!ratePerSession || !sessionsPerMonth) return null;
+    if (!ratePerSession || !cyclePlan || planProblem) return null;
 
-    const monthlyRate = ratePerSession * sessionsPerMonth;
-    const totalAmount = monthlyRate * noOfMonths;
-
-    return { monthlyRate, totalAmount };
-  }, [ratePerSession, sessionsPerMonth, noOfMonths]);
+    return {
+      sessionCount: cyclePlan.sessionCount,
+      totalAmount: priceForSessions(ratePerSession, cyclePlan.sessionCount),
+    };
+  }, [ratePerSession, cyclePlan, planProblem]);
 
   async function handleBookDemo() {
     if (!selectedStudentId) {
@@ -289,13 +305,18 @@ export default function BookingPanel({
       return;
     }
 
-    if (!sessionsPerMonth) {
-      setEnrollError("Pick how many sessions per month.");
+    if (scheduleDays.length === 0 || !scheduleTime) {
+      setEnrollError("Pick which days and what time classes should happen.");
       return;
     }
 
-    if (scheduleDays.length === 0 || !scheduleTime) {
-      setEnrollError("Pick which days and what time classes should happen.");
+    if (!startDate || startInPast) {
+      setEnrollError("Pick a start date that isn't in the past.");
+      return;
+    }
+
+    if (!cyclePlan || planProblem) {
+      setEnrollError(planProblem ?? "Pick a valid start date.");
       return;
     }
 
@@ -309,8 +330,7 @@ export default function BookingPanel({
         teacherId,
         courseId,
         subject,
-        sessionsPerMonth,
-        noOfMonths,
+        cycleStartDate: startDate,
         scheduleDays,
         scheduleTime,
       };
@@ -486,12 +506,11 @@ export default function BookingPanel({
         </span>
       </div>
 
-      {/* ENROLL — a cycle is sessions/month (min 4, max 1/day i.e.
-          up to 31 — updated Aug 31, 2026, supersedes the old
-          06-OPEN-DECISIONS.md #25 fixed set) + a number of months.
-          Rate/monthly-rate/total are always calculated server-side
-          in enrollment.service.ts; this preview is client-side only
-          so the parent sees the total before paying. Payment via
+      {/* ENROLL — one enrollment is one monthly cycle: weekdays +
+          time + start date (Part 1A). The session count and total
+          are always calculated server-side in enrollment.service.ts;
+          this preview is client-side only so the parent sees the
+          total before paying. Payment via
           Razorpay is required before the Enrollment row is created
           (resolves 06-OPEN-DECISIONS.md #36); dual approval (Teacher
           + Admin, #2 still open) hasn't been built either, so a paid
@@ -501,50 +520,17 @@ export default function BookingPanel({
           Enroll in this course
         </h3>
 
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-              Sessions / month
-            </label>
-            <input
-              type="number"
-              min={MIN_SESSIONS_PER_MONTH}
-              max={MAX_SESSIONS_PER_MONTH}
-              value={sessionsPerMonth}
-              onChange={(e) => {
-                const raw = e.target.value;
-                if (!raw) {
-                  setSessionsPerMonth("");
-                  return;
-                }
-                const n = Math.min(
-                  MAX_SESSIONS_PER_MONTH,
-                  Math.max(MIN_SESSIONS_PER_MONTH, Number(raw) || 0),
-                );
-                setSessionsPerMonth(n);
-              }}
-              placeholder={`${MIN_SESSIONS_PER_MONTH}–${MAX_SESSIONS_PER_MONTH}`}
-              className="w-full text-sm border border-violet-100 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-              No. of months
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={12}
-              value={noOfMonths}
-              onChange={(e) =>
-                setNoOfMonths(
-                  Math.min(12, Math.max(1, Number(e.target.value) || 1)),
-                )
-              }
-              className="w-full text-sm border border-violet-100 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
-            />
-          </div>
+        <div className="mb-3">
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+            Start date
+          </label>
+          <input
+            type="date"
+            min={minStartDate}
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full text-sm border border-violet-100 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
+          />
         </div>
 
         <div className="mb-3">
@@ -574,7 +560,7 @@ export default function BookingPanel({
 
         <div className="mb-3">
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-            Class time
+            Class time (IST)
           </label>
           <input
             type="time"
@@ -584,20 +570,31 @@ export default function BookingPanel({
           />
         </div>
 
-        {pricePreview && (
+        {startInPast && (
+          <p className="text-xs text-red-600 mb-3">
+            The start date can&apos;t be in the past.
+          </p>
+        )}
+
+        {cyclePlan && !startInPast && (
           <div className="text-xs text-gray-600 bg-violet-50 rounded-xl px-3 py-2.5 mb-3 space-y-0.5">
-            <p>
-              Monthly rate:{" "}
-              <span className="font-bold text-gray-800">
-                ₹{pricePreview.monthlyRate.toLocaleString("en-IN")}
-              </span>
+            <p className="font-bold text-gray-800">
+              {formatCycleSummary(cyclePlan)}
             </p>
-            <p>
-              Total for {noOfMonths} month{noOfMonths === 1 ? "" : "s"}:{" "}
-              <span className="font-bold text-gray-800">
-                ₹{pricePreview.totalAmount.toLocaleString("en-IN")}
-              </span>
-            </p>
+            {planProblem ? (
+              <p className="text-red-600">{planProblem}</p>
+            ) : (
+              pricePreview &&
+              ratePerSession && (
+                <p>
+                  {pricePreview.sessionCount} × ₹
+                  {ratePerSession.toLocaleString("en-IN")} ={" "}
+                  <span className="font-bold text-gray-800">
+                    ₹{pricePreview.totalAmount.toLocaleString("en-IN")}
+                  </span>
+                </p>
+              )
+            )}
           </div>
         )}
 
@@ -632,16 +629,21 @@ export default function BookingPanel({
             enrolling ||
             studentsLoading ||
             students.length === 0 ||
-            !sessionsPerMonth ||
             scheduleDays.length === 0 ||
-            !scheduleTime
+            !scheduleTime ||
+            !startDate ||
+            startInPast ||
+            !cyclePlan ||
+            !!planProblem
           }
           title={
-            !sessionsPerMonth
-              ? "Pick a cycle first"
-              : scheduleDays.length === 0 || !scheduleTime
-                ? "Pick class days and time first"
-                : undefined
+            scheduleDays.length === 0 || !scheduleTime
+              ? "Pick class days and time first"
+              : startInPast || !startDate
+                ? "Pick a start date that isn't in the past"
+                : planProblem
+                  ? planProblem
+                  : undefined
           }
           className="w-full text-sm font-bold text-white bg-brand-dark px-4 py-2.5 rounded-full disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
         >

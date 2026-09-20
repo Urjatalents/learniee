@@ -17,6 +17,8 @@ export interface TeacherEnrollment {
   revisedByTeacher: boolean;
   revisionNote: string | null;
   pricingChangedAfterPayment: boolean;
+  /** True for enrollments created before the cycle model (old months x sessions pricing, editable schedule). */
+  isLegacy: boolean;
   sessionsCompletedInCycle: number;
   cyclesCompleted: number;
   cyclePayoutStatus: string;

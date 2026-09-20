@@ -9,6 +9,12 @@ import { getEnrollmentStatusLabel, getEnrollmentStatusStyle } from "@/features/s
 import { WEEKDAY_LABELS, formatSchedule } from "@/features/shared/utils/weekdays";
 import CycleProgressRing from "@/features/shared/components/CycleProgressRing";
 import SessionsList from "@/features/teacher/components/enrollments/SessionsList";
+import {
+  buildCyclePlan,
+  formatCycleRange,
+  isStartDateInPast,
+} from "@/features/shared/utils/cyclePlan";
+import { toDateKey, todayInPlatformTz } from "@/lib/platformTime";
 
 interface Props {
   enrollment: TeacherEnrollment;
@@ -67,6 +73,23 @@ export default function EnrollmentApprovalCard({
   const isActive = enrollment.status === "ACTIVE" || enrollment.status === "LAPSED";
   const hasSchedule = (enrollment.scheduleDays?.length ?? 0) > 0;
 
+  // Cycle model (non-legacy): one monthly cycle, session count and
+  // price follow from the schedule + start date, and a start date
+  // that has passed blocks approval until it's revised.
+  const cyclePlan = !enrollment.isLegacy
+    ? buildCyclePlan(
+        enrollment.cycleStartDate.slice(0, 10),
+        enrollment.scheduleDays ?? [],
+      )
+    : null;
+  const startPassed = cyclePlan
+    ? isStartDateInPast(cyclePlan.startDate, todayInPlatformTz())
+    : false;
+  const needsNewStart =
+    startPassed && enrollment.status === "PENDING_ADMIN_APPROVAL";
+  const canRevise = actionable || needsNewStart;
+  const minStartDate = toDateKey(todayInPlatformTz());
+
   function toggleScheduleDraftDay(day: number) {
     setScheduleDaysDraft((current) =>
       current.includes(day)
@@ -99,7 +122,8 @@ export default function EnrollmentApprovalCard({
     onRevise(enrollment.id, {
       note,
       cycleStartDate: newDate || undefined,
-      sessionsPerMonth: newSessions ? Number(newSessions) : undefined,
+      sessionsPerMonth:
+        enrollment.isLegacy && newSessions ? Number(newSessions) : undefined,
       scheduleDays: newScheduleDays.length ? newScheduleDays : undefined,
       scheduleTime: newScheduleTime || undefined,
     });
@@ -147,21 +171,34 @@ export default function EnrollmentApprovalCard({
       )}
 
       <div className="grid grid-cols-2 gap-3 mt-3 text-xs text-gray-600">
-        <p>Sessions/month: <span className="font-semibold">{enrollment.sessionsPerMonth}</span></p>
-        <p>Months: <span className="font-semibold">{enrollment.noOfMonths}</span></p>
-        <p>
-          Start:{" "}
-          <span className="font-semibold">
-            {new Date(enrollment.cycleStartDate).toLocaleDateString()}
-          </span>
-        </p>
+        {cyclePlan ? (
+          <p className="col-span-2">
+            Cycle:{" "}
+            <span className="font-semibold">
+              {enrollment.sessionsPerMonth} session
+              {enrollment.sessionsPerMonth === 1 ? "" : "s"},{" "}
+              {formatCycleRange(cyclePlan)}
+            </span>
+          </p>
+        ) : (
+          <>
+            <p>Sessions/month: <span className="font-semibold">{enrollment.sessionsPerMonth}</span></p>
+            <p>Months: <span className="font-semibold">{enrollment.noOfMonths}</span></p>
+            <p>
+              Start:{" "}
+              <span className="font-semibold">
+                {new Date(enrollment.cycleStartDate).toLocaleDateString()}
+              </span>
+            </p>
+          </>
+        )}
         <p>Total paid: <span className="font-semibold">₹{enrollment.amountPaid}</span></p>
         <p className="col-span-2 flex items-center gap-2 flex-wrap">
           Schedule:{" "}
           <span className="font-semibold">
             {formatSchedule(enrollment.scheduleDays, enrollment.scheduleTime)}
           </span>
-          {isActive && !editingSchedule && (
+          {isActive && enrollment.isLegacy && !editingSchedule && (
             <button
               type="button"
               onClick={() => {
@@ -177,7 +214,7 @@ export default function EnrollmentApprovalCard({
         </p>
       </div>
 
-      {isActive && editingSchedule && (
+      {isActive && enrollment.isLegacy && editingSchedule && (
         <div className="mt-3 bg-purple-50 border border-purple-100 rounded-xl p-3 space-y-2">
           {!hasSchedule && (
             <p className="text-[11px] text-purple-700">
@@ -230,6 +267,14 @@ export default function EnrollmentApprovalCard({
         </div>
       )}
 
+      {startPassed &&
+        (actionable || enrollment.status === "PENDING_ADMIN_APPROVAL") && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-3">
+            ⚠ The start date has already passed, so this can&apos;t be approved
+            as is. Use &quot;Propose a change&quot; to set a new start date.
+          </p>
+        )}
+
       {enrollment.pricingChangedAfterPayment && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-3">
           ⚠ The revised total (₹{enrollment.totalAmount}) no longer matches what
@@ -279,15 +324,19 @@ export default function EnrollmentApprovalCard({
         />
       )}
 
-      {actionable && !revising && (
+      {canRevise && !revising && (
         <div className="flex gap-2 mt-4">
-          <button
-            type="button"
-            onClick={() => onApprove(enrollment.id)}
-            className="text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-2 rounded-full"
-          >
-            Approve
-          </button>
+          {actionable && (
+            <button
+              type="button"
+              onClick={() => onApprove(enrollment.id)}
+              disabled={startPassed}
+              title={startPassed ? "Start date has passed — propose a new one" : undefined}
+              className="text-xs font-bold text-white bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-2 rounded-full"
+            >
+              Approve
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setRevising(true)}
@@ -295,17 +344,19 @@ export default function EnrollmentApprovalCard({
           >
             Propose a change
           </button>
-          <button
-            type="button"
-            onClick={() => onReject(enrollment.id, window.prompt("Reason (optional):") || undefined)}
-            className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-full"
-          >
-            Reject
-          </button>
+          {actionable && (
+            <button
+              type="button"
+              onClick={() => onReject(enrollment.id, window.prompt("Reason (optional):") || undefined)}
+              className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-full"
+            >
+              Reject
+            </button>
+          )}
         </div>
       )}
 
-      {actionable && revising && (
+      {canRevise && revising && (
         <div className="mt-4 bg-purple-50 border border-purple-100 rounded-xl p-3 space-y-2">
           <textarea
             value={note}
@@ -317,20 +368,30 @@ export default function EnrollmentApprovalCard({
           <div className="grid grid-cols-2 gap-2">
             <input
               type="date"
+              min={enrollment.isLegacy ? undefined : minStartDate}
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
               className="text-xs border border-purple-200 rounded-lg px-2 py-1.5 bg-white"
             />
-            <input
-              type="number"
-              min={4}
-              max={31}
-              value={newSessions}
-              onChange={(e) => setNewSessions(e.target.value)}
-              placeholder="New sessions/month"
-              className="text-xs border border-purple-200 rounded-lg px-2 py-1.5 bg-white"
-            />
+            {enrollment.isLegacy && (
+              <input
+                type="number"
+                min={4}
+                max={31}
+                value={newSessions}
+                onChange={(e) => setNewSessions(e.target.value)}
+                placeholder="New sessions/month"
+                className="text-xs border border-purple-200 rounded-lg px-2 py-1.5 bg-white"
+              />
+            )}
           </div>
+          {!enrollment.isLegacy && (
+            <p className="text-[11px] text-purple-700">
+              Propose a different start date and/or weekly schedule — the
+              session count and price are recalculated from it (minimum 4
+              sessions in the cycle). Times are in IST.
+            </p>
+          )}
 
           <div className="flex gap-1 flex-wrap">
             {WEEKDAY_LABELS.map((label, day) => {

@@ -387,6 +387,18 @@ model Enrollment {
   /// row, so the daily cron never double-sends. Mirrors
   /// `ClassSession.reminderSentAt`'s pattern.
   dueDateReminderSentAt      DateTime?
+  /// Cycle model (Part 1A, Sep 20, 2026). TRUE = created before the
+  /// cycle model existed: the old months x sessions-per-month
+  /// pricing, lazily generated ClassSessions, and editable schedule
+  /// all keep working exactly as they did. FALSE (the default for
+  /// every new row) = one-month cycles with a `EnrollmentCycle`
+  /// record and all sessions created up front at activation. The
+  /// migration flags every pre-existing row TRUE.
+  isLegacy                   Boolean              @default(false)
+  /// Length of every session in minutes, taken from Course.duration
+  /// and locked at booking. Null on legacy rows.
+  sessionLengthMinutes       Int?
+  cycles                     EnrollmentCycle[]
   chatRoom                   ChatRoom?
   classSessions              ClassSession[]
   course                     Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -726,8 +738,19 @@ model ClassSession {
   /// dedupe guard so the reminder cron never double-notifies the
   /// same session on a later run.
   reminderSentAt     DateTime?
+  /// Cycle-model fields (Part 1A, Sep 20, 2026) — all null on legacy
+  /// sessions. `startsAt`/`endsAt` are real UTC instants computed from
+  /// the calendar date + wall-clock time in the platform timezone
+  /// (`src/lib/platformConfig.ts`); `scheduledDate`/`scheduledTime`
+  /// stay populated too so every existing reader keeps working.
+  cycleId            String?
+  sessionNumber      Int?
+  startsAt           DateTime?
+  endsAt             DateTime?
+  lengthMinutes      Int?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+  cycle              EnrollmentCycle?    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
   enrollment         Enrollment          @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   parent             ParentProfile       @relation(fields: [parentId], references: [id], onDelete: Cascade)
   student            Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -735,12 +758,49 @@ model ClassSession {
   rescheduleRequests RescheduleRequest[]
 
   @@unique([enrollmentId, scheduledDate])
+  @@unique([cycleId, sessionNumber])
   @@index([enrollmentId])
   @@index([teacherId])
   @@index([studentId])
   @@index([parentId])
   @@index([scheduledDate])
   @@index([enrollmentId, status])
+  @@index([cycleId])
+}
+
+/// One billing cycle of a (non-legacy) Enrollment — Part 1A, Sep 20,
+/// 2026. A cycle is one month: `startDate` to the same date next month
+/// minus one day (5 Mar -> 4 Apr, both inclusive). Cycle 1 is created
+/// together with the Enrollment when its first payment clears;
+/// `sessionCount` is the number of chosen weekdays inside the window
+/// and `price` is `ratePerSession x sessionCount`, locked at payment
+/// (the international surcharge, if any, stays on the Enrollment).
+/// Every non-legacy ClassSession belongs to exactly one cycle.
+/// Legacy Enrollments have no cycle rows.
+model EnrollmentCycle {
+  id               String         @id @default(uuid())
+  enrollmentId     String
+  cycleNumber      Int
+  startDate        DateTime       @db.Date
+  endDate          DateTime       @db.Date
+  sessionCount     Int
+  ratePerSession   Decimal        @db.Decimal(10, 2)
+  price            Decimal        @db.Decimal(10, 2)
+  /// Razorpay payment ID that paid for this cycle.
+  paymentReference String?
+  status           CycleStatus    @default(OPEN)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  enrollment       Enrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  sessions         ClassSession[]
+
+  @@unique([enrollmentId, cycleNumber])
+  @@index([enrollmentId])
+}
+
+enum CycleStatus {
+  OPEN
+  CLOSED
 }
 
 /// Reschedule requests for one already-scheduled `ClassSession`

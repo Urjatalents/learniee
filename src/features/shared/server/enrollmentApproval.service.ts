@@ -1,10 +1,26 @@
 import { prisma } from "@/lib/prisma";
-import { EnrollmentStatus } from "@prisma/client";
+import { CycleStatus, EnrollmentStatus, type Enrollment } from "@prisma/client";
 
 import {
+  ClassSessionError,
+  createCycleSessions,
   generateSessionsForEnrollment,
   regenerateFutureSessions,
 } from "@/features/shared/server/classSession.service";
+import {
+  buildCyclePlan,
+  getCyclePlanProblem,
+  isStartDateInPast,
+  priceForSessions,
+} from "@/features/shared/utils/cyclePlan";
+import {
+  calendarDateToDate,
+  dateToCalendarDate,
+  isValidTimeOfDay,
+  parseDateKey,
+  toDateKey,
+  todayInPlatformTz,
+} from "@/lib/platformTime";
 import {
   notifyEnrollmentTeacherApproved,
   notifyEnrollmentRevisionProposed,
@@ -34,7 +50,27 @@ import {
  * The enrollment's ChatRoom is the sole Parent<->Teacher channel
  * throughout — any date/session discussion happens there, this
  * service only records the outcome (see `revisionNote`).
+ *
+ * CYCLE MODEL (Part 1A, Sep 2026): for non-legacy enrollments
+ * (`isLegacy = false`) a revision means proposing a different
+ * schedule and/or start date — the session count and price are
+ * recalculated from that (`reviseCycleEnrollment`), the Teacher can
+ * no longer type a session count, all sessions are created at Admin
+ * approval, and the schedule can't be edited afterwards. A start
+ * date that has already passed blocks both approvals until it is
+ * revised. Legacy enrollments keep the original behavior below.
  */
+
+/** True once the cycle's start date (a platform-timezone calendar date) is before today. */
+function cycleStartHasPassed(enrollment: Pick<Enrollment, "cycleStartDate">) {
+  return isStartDateInPast(
+    dateToCalendarDate(enrollment.cycleStartDate),
+    todayInPlatformTz(),
+  );
+}
+
+const START_PASSED_MESSAGE =
+  "This enrollment's start date has already passed. It has to be revised with a new start date before it can be approved.";
 
 export class EnrollmentApprovalError extends Error {
   status: number;
@@ -128,6 +164,13 @@ export async function teacherApproveEnrollment(
     );
   }
 
+  if (!enrollment.isLegacy && cycleStartHasPassed(enrollment)) {
+    throw new EnrollmentApprovalError(
+      `${START_PASSED_MESSAGE} Use "Propose a change" to set a new start date.`,
+      409,
+    );
+  }
+
   const updated = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data: {
@@ -171,6 +214,10 @@ export async function teacherReviseEnrollment(
   input: TeacherReviseInput,
 ) {
   const enrollment = await loadOwnedByTeacher(enrollmentId, teacherId);
+
+  if (!enrollment.isLegacy) {
+    return reviseCycleEnrollment(enrollment, input);
+  }
 
   if (enrollment.status !== EnrollmentStatus.PENDING_TEACHER_APPROVAL) {
     throw new EnrollmentApprovalError(
@@ -259,6 +306,151 @@ export async function teacherReviseEnrollment(
   });
 
   await notifyEnrollmentRevisionProposed(enrollmentId, input.note.trim());
+
+  return updated;
+}
+
+/**
+ * Cycle-model revision: the Teacher proposes a different weekly
+ * schedule and/or start date. Session count and price are
+ * recalculated from the new plan (session rate x count, min 4), the
+ * open cycle record is updated to match, and `amountPaid` is never
+ * touched — if the recalculated total no longer equals the base
+ * amount that was actually paid, `pricingChangedAfterPayment` flips
+ * true exactly as it always has.
+ *
+ * Allowed while PENDING_TEACHER_APPROVAL, and also while
+ * PENDING_ADMIN_APPROVAL but only when the start date has passed
+ * (otherwise a stale start date would have no way to get revised —
+ * Admin can only approve or reject).
+ */
+async function reviseCycleEnrollment(
+  enrollment: Enrollment,
+  input: TeacherReviseInput,
+) {
+  const startPassed = cycleStartHasPassed(enrollment);
+  const canRevise =
+    enrollment.status === EnrollmentStatus.PENDING_TEACHER_APPROVAL ||
+    (enrollment.status === EnrollmentStatus.PENDING_ADMIN_APPROVAL &&
+      startPassed);
+
+  if (!canRevise) {
+    throw new EnrollmentApprovalError(
+      "This enrollment isn't waiting on your review anymore.",
+      409,
+    );
+  }
+
+  if (!input.note?.trim()) {
+    throw new EnrollmentApprovalError(
+      "Add a short note explaining the change — the parent will see this.",
+    );
+  }
+
+  if (input.sessionsPerMonth != null) {
+    throw new EnrollmentApprovalError(
+      "The number of sessions now follows from the schedule and start date — change those instead.",
+    );
+  }
+
+  let startKey = toDateKey(dateToCalendarDate(enrollment.cycleStartDate));
+
+  if (input.cycleStartDate) {
+    const parsed = parseDateKey(input.cycleStartDate);
+
+    if (!parsed) {
+      throw new EnrollmentApprovalError("That doesn't look like a valid date.");
+    }
+
+    startKey = toDateKey(parsed);
+  }
+
+  const scheduleDays = input.scheduleDays
+    ? Array.from(new Set(input.scheduleDays)).sort((a, b) => a - b)
+    : enrollment.scheduleDays;
+
+  if (
+    scheduleDays.length === 0 ||
+    scheduleDays.some((d) => !Number.isInteger(d) || d < 0 || d > 6)
+  ) {
+    throw new EnrollmentApprovalError(
+      "Pick at least one valid day of the week.",
+    );
+  }
+
+  const scheduleTime = input.scheduleTime ?? enrollment.scheduleTime;
+
+  if (!isValidTimeOfDay(scheduleTime)) {
+    throw new EnrollmentApprovalError(
+      "That doesn't look like a valid time (HH:mm).",
+    );
+  }
+
+  const plan = buildCyclePlan(startKey, scheduleDays);
+
+  if (!plan) {
+    throw new EnrollmentApprovalError("That doesn't look like a valid date.");
+  }
+
+  if (isStartDateInPast(plan.startDate, todayInPlatformTz())) {
+    throw new EnrollmentApprovalError(
+      "The start date can't be in the past — pick a new one.",
+    );
+  }
+
+  const planProblem = getCyclePlanProblem(plan);
+
+  if (planProblem) {
+    throw new EnrollmentApprovalError(planProblem);
+  }
+
+  const totalAmount = priceForSessions(
+    Number(enrollment.ratePerSession),
+    plan.sessionCount,
+  );
+  const basePaid =
+    Math.round(
+      (Number(enrollment.amountPaid) -
+        Number(enrollment.internationalSurchargeAmount)) *
+        100,
+    ) / 100;
+
+  const [updated] = await prisma.$transaction([
+    prisma.enrollment.update({
+      where: { id: enrollment.id },
+      data: {
+        revisedByTeacher: true,
+        revisionNote: input.note.trim().slice(0, 1000),
+        status: EnrollmentStatus.PENDING_PARENT_RECONFIRMATION,
+        cycleStartDate: calendarDateToDate(plan.startDate),
+        dueDate: calendarDateToDate(plan.nextCycleStart),
+        scheduleDays,
+        scheduleTime,
+        // Kept in step with the cycle so every screen, the ledger and
+        // the rate calculator (which read these two) stay correct.
+        sessionsPerMonth: plan.sessionCount,
+        noOfMonths: 1,
+        monthlyRate: totalAmount,
+        totalAmount,
+        pricingChangedAfterPayment: totalAmount !== basePaid,
+      },
+    }),
+    prisma.enrollmentCycle.updateMany({
+      where: {
+        enrollmentId: enrollment.id,
+        cycleNumber: 1,
+        status: CycleStatus.OPEN,
+      },
+      data: {
+        startDate: calendarDateToDate(plan.startDate),
+        endDate: calendarDateToDate(plan.endDate),
+        sessionCount: plan.sessionCount,
+        price: totalAmount,
+      },
+    }),
+  ]);
+
+  await notifyEnrollmentRevisionProposed(enrollment.id, input.note.trim());
 
   return updated;
 }
@@ -383,6 +575,46 @@ export async function adminApproveEnrollment(enrollmentId: string) {
     );
   }
 
+  if (!enrollment.isLegacy) {
+    if (cycleStartHasPassed(enrollment)) {
+      throw new EnrollmentApprovalError(
+        `${START_PASSED_MESSAGE} Ask the teacher to propose a new start date.`,
+        409,
+      );
+    }
+
+    // Cycle model: the enrollment only becomes ACTIVE if all of its
+    // cycle-1 sessions were created too — one transaction, so a
+    // failure leaves it pending instead of active-with-no-classes.
+    let activated;
+
+    try {
+      activated = await prisma.$transaction(async (tx) => {
+        const row = await tx.enrollment.update({
+          where: { id: enrollmentId },
+          data: {
+            adminApprovedAt: new Date(),
+            status: EnrollmentStatus.ACTIVE,
+          },
+        });
+
+        await createCycleSessions(tx, enrollmentId, 1);
+
+        return row;
+      });
+    } catch (err) {
+      if (err instanceof ClassSessionError) {
+        throw new EnrollmentApprovalError(err.message, err.status);
+      }
+
+      throw err;
+    }
+
+    await notifyEnrollmentActivated(enrollmentId);
+
+    return activated;
+  }
+
   const updated = await prisma.enrollment.update({
     where: { id: enrollmentId },
     data: {
@@ -428,6 +660,13 @@ export async function setEnrollmentSchedule(
   input: { scheduleDays: number[]; scheduleTime: string },
 ) {
   const enrollment = await loadOwnedByTeacher(enrollmentId, teacherId);
+
+  if (!enrollment.isLegacy) {
+    throw new EnrollmentApprovalError(
+      "The schedule can't be edited mid-cycle. Use a reschedule request to move an individual class.",
+      409,
+    );
+  }
 
   if (!SET_SCHEDULE_STATUSES.includes(enrollment.status)) {
     throw new EnrollmentApprovalError(

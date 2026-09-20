@@ -45,13 +45,6 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!input.sessionsPerMonth) {
-      return NextResponse.json(
-        { error: "Pick a sessions-per-month cycle before enrolling." },
-        { status: 400 },
-      );
-    }
-
     if (!input.scheduleDays?.length || !input.scheduleTime) {
       return NextResponse.json(
         { error: "Pick which days and what time classes should happen." },

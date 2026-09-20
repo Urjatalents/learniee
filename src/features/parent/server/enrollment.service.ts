@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { EnrollmentStatus, InvoiceType } from "@prisma/client";
+import {
+  CycleStatus,
+  EnrollmentStatus,
+  InvoiceType,
+  type Prisma,
+} from "@prisma/client";
 import {
   getRazorpayClient,
   rupeesToPaise,
@@ -12,13 +17,39 @@ import {
 import { processReferralRewardForNewEnrollment } from "@/features/shared/server/referral.service";
 import { notifyEnrollmentCreated } from "@/features/shared/server/notificationTriggers.service";
 import { generateInvoiceForPayment } from "@/features/shared/server/invoice.service";
+import {
+  buildCyclePlan,
+  getCyclePlanProblem,
+  isStartDateInPast,
+  priceForSessions,
+} from "@/features/shared/utils/cyclePlan";
+import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
+import {
+  calendarDateToDate,
+  isValidTimeOfDay,
+  toDateKey,
+  todayInPlatformTz,
+} from "@/lib/platformTime";
 
 /**
- * Cycle rule (updated Aug 31, 2026, per direct clarification —
+ * CYCLE MODEL (Part 1A, Sep 2026) — every new enrollment is one
+ * monthly cycle: start date to the same date next month minus one
+ * day. The parent picks weekdays, a time and a start date; the
+ * session count is however many of those weekdays fall in the cycle
+ * (minimum `SESSION_POLICY.minSessionsPerCycle`), and the price is
+ * session rate x session count. See `cyclePlan.ts`.
+ *
+ * LEGACY MODEL — the constants below and `priceLegacyEnrollment()`
+ * are the pre-cycle rule (parent typed sessions/month + months).
+ * They're kept only so an order created just before this change
+ * deployed can still be verified/reconciled (see `CYCLE_MODEL_TAG`);
+ * every enrollment created that way is stored `isLegacy = true` and
+ * behaves exactly as before.
+ *
+ * Old cycle rule (updated Aug 31, 2026, per direct clarification —
  * supersedes 06-OPEN-DECISIONS.md #25's old fixed 4/8/12/24/30
  * set): minimum 4 sessions/month, any integer above that, capped at
- * 1 session/day for the longest possible month (31). Flagging that
- * 06-OPEN-DECISIONS.md #25 should be updated to match.
+ * 1 session/day for the longest possible month (31).
  */
 const MIN_SESSIONS_PER_MONTH = 4;
 const MAX_SESSIONS_PER_MONTH = 31;
@@ -36,16 +67,30 @@ export class EnrollmentError extends Error {
   }
 }
 
+/**
+ * Stored in the Razorpay order's `notes.model` for orders created
+ * under the cycle model. An order without it was created before the
+ * cycle model shipped and is priced/created the legacy way, so a
+ * checkout that was already in flight at deploy time never ends up
+ * as captured money with no enrollment.
+ */
+const CYCLE_MODEL_TAG = "CYCLE_V1";
+
+type PricingModel = "CYCLE_V1" | "LEGACY";
+
 export interface CreateEnrollmentInput {
   studentId: string;
   teacherId: string;
   courseId: string;
   subject?: string | null;
-  sessionsPerMonth: number;
+  /** Legacy only — ignored under the cycle model (the count comes from the schedule). */
+  sessionsPerMonth?: number;
+  /** Legacy only — ignored under the cycle model (a cycle is always one month). */
   noOfMonths?: number;
   /**
-   * ISO date string for when the cycle should start. Defaults to
-   * today if omitted — most parents will just enroll "starting now".
+   * Cycle start date as "YYYY-MM-DD" (platform timezone). Defaults
+   * to today if omitted. Cannot be in the past when the order is
+   * created.
    */
   cycleStartDate?: string;
   /** Weekly recurring class days — 0=Sunday..6=Saturday, at least one required. */
@@ -73,10 +118,25 @@ interface PricedEnrollment {
   dueDate: Date;
   scheduleDays: number[];
   scheduleTime: string;
+  model: PricingModel;
+  /** Cycle model only: "YYYY-MM-DD" of the cycle start. */
+  cycleStartKey: string | null;
+  /** Cycle model only: last day of the cycle (inclusive). */
+  cycleEndDate: Date | null;
+  /** Cycle model only: length of every session, locked at booking. */
+  sessionLengthMinutes: number | null;
+}
+
+interface PriceOptions {
+  model: PricingModel;
+  /** True only when the order is first created — verify/webhook must never reject an already-paid start date. */
+  enforceStartNotPast: boolean;
+  /** Session length recorded in the order's notes, so a later course edit can't change what was booked. */
+  lockedSessionLengthMinutes?: number | null;
 }
 
 /**
- * All the validation + pricing that used to live inline in
+ * Legacy pricing — All the validation + pricing that used to live inline in
  * `createEnrollment()`. Pulled out so both the payment-order step
  * and the payment-verify step run the exact same server-side
  * calculation — the client's price preview is never trusted for the
@@ -90,14 +150,16 @@ interface PricedEnrollment {
  *   totalAmount    = monthlyRate * noOfMonths
  *   dueDate        = cycleStartDate + 1 month
  */
-async function priceEnrollment(
+async function priceLegacyEnrollment(
   parentId: string,
   input: CreateEnrollmentInput,
 ): Promise<PricedEnrollment> {
+  const sessionsPerMonth = input.sessionsPerMonth as number;
+
   if (
-    !Number.isInteger(input.sessionsPerMonth) ||
-    input.sessionsPerMonth < MIN_SESSIONS_PER_MONTH ||
-    input.sessionsPerMonth > MAX_SESSIONS_PER_MONTH
+    !Number.isInteger(sessionsPerMonth) ||
+    sessionsPerMonth < MIN_SESSIONS_PER_MONTH ||
+    sessionsPerMonth > MAX_SESSIONS_PER_MONTH
   ) {
     throw new EnrollmentError(
       `sessionsPerMonth must be a whole number between ${MIN_SESSIONS_PER_MONTH} and ${MAX_SESSIONS_PER_MONTH}.`,
@@ -184,7 +246,7 @@ async function priceEnrollment(
   dueDate.setMonth(dueDate.getMonth() + 1);
 
   const ratePerSession = Number(course.price);
-  const monthlyRate = ratePerSession * input.sessionsPerMonth;
+  const monthlyRate = ratePerSession * sessionsPerMonth;
   const totalAmount = monthlyRate * noOfMonths;
 
   const subject = (input.subject ?? course.subject ?? "").trim() || null;
@@ -208,7 +270,7 @@ async function priceEnrollment(
   return {
     studentId: input.studentId,
     subject,
-    sessionsPerMonth: input.sessionsPerMonth,
+    sessionsPerMonth,
     noOfMonths,
     ratePerSession,
     monthlyRate,
@@ -220,6 +282,265 @@ async function priceEnrollment(
     dueDate,
     scheduleDays,
     scheduleTime: input.scheduleTime,
+    model: "LEGACY",
+    cycleStartKey: null,
+    cycleEndDate: null,
+    sessionLengthMinutes: null,
+  };
+}
+
+/**
+ * Cycle-model pricing (Part 1A). Same server-side-only trust rules
+ * as the legacy function: the client's preview is never used for the
+ * charge.
+ *
+ *   plan           = buildCyclePlan(startDate, weekdays)   // cyclePlan.ts
+ *   sessionCount   = weekdays matching dates in the cycle  (min 4)
+ *   ratePerSession = Course.price
+ *   totalAmount    = ratePerSession x sessionCount
+ *   dueDate        = day after the cycle ends (next cycle start)
+ *
+ * `sessionsPerMonth` is set to the cycle's session count and
+ * `noOfMonths` to 1, so the ledger, rate calculator and every
+ * screen that reads those two fields keep working unchanged.
+ */
+async function priceCycleEnrollment(
+  parentId: string,
+  input: CreateEnrollmentInput,
+  options: PriceOptions,
+): Promise<PricedEnrollment> {
+  const scheduleDays = Array.from(new Set(input.scheduleDays ?? [])).sort(
+    (a, b) => a - b,
+  );
+
+  if (
+    scheduleDays.length === 0 ||
+    scheduleDays.some((d) => !Number.isInteger(d) || d < 0 || d > 6)
+  ) {
+    throw new EnrollmentError("Pick at least one day of the week for classes.");
+  }
+
+  if (!isValidTimeOfDay(input.scheduleTime)) {
+    throw new EnrollmentError("Pick a valid class time (HH:mm).");
+  }
+
+  const today = todayInPlatformTz();
+  const startKey = input.cycleStartDate?.trim() || toDateKey(today);
+  const plan = buildCyclePlan(startKey, scheduleDays);
+
+  if (!plan) {
+    throw new EnrollmentError(
+      "That doesn't look like a valid start date — pick again.",
+    );
+  }
+
+  if (options.enforceStartNotPast && isStartDateInPast(plan.startDate, today)) {
+    throw new EnrollmentError("The start date can't be in the past.");
+  }
+
+  const planProblem = getCyclePlanProblem(plan);
+
+  if (planProblem) {
+    throw new EnrollmentError(planProblem);
+  }
+
+  const student = await prisma.student.findFirst({
+    where: { id: input.studentId, parentId },
+    select: { id: true },
+  });
+
+  if (!student) {
+    throw new EnrollmentError(
+      "This child profile doesn't belong to your account.",
+      404,
+    );
+  }
+
+  const course = await prisma.course.findFirst({
+    where: {
+      id: input.courseId,
+      teacherId: input.teacherId,
+      status: "APPROVED",
+    },
+    select: { id: true, subject: true, price: true, duration: true },
+  });
+
+  if (!course) {
+    throw new EnrollmentError(
+      "Course not found, or isn't open for enrollment yet.",
+      404,
+    );
+  }
+
+  if (course.price == null) {
+    throw new EnrollmentError(
+      "This course doesn't have a rate set yet — ask the teacher to add one before enrolling.",
+    );
+  }
+
+  const ratePerSession = Number(course.price);
+  const totalAmount = priceForSessions(ratePerSession, plan.sessionCount);
+  const subject = (input.subject ?? course.subject ?? "").trim() || null;
+
+  const parent = await prisma.parentProfile.findUnique({
+    where: { id: parentId },
+    select: { nriOrIndian: true, country: true },
+  });
+
+  const { isInternationalPayment, surchargeAmount, amountPayable } =
+    priceWithInternationalSurcharge(
+      totalAmount,
+      parent ? isInternationalParent(parent) : false,
+    );
+
+  return {
+    studentId: input.studentId,
+    subject,
+    sessionsPerMonth: plan.sessionCount,
+    noOfMonths: 1,
+    ratePerSession,
+    monthlyRate: totalAmount,
+    totalAmount,
+    isInternationalPayment,
+    internationalSurchargeAmount: surchargeAmount,
+    amountPayable,
+    cycleStartDate: calendarDateToDate(plan.startDate),
+    dueDate: calendarDateToDate(plan.nextCycleStart),
+    scheduleDays,
+    scheduleTime: input.scheduleTime,
+    model: "CYCLE_V1",
+    cycleStartKey: toDateKey(plan.startDate),
+    cycleEndDate: calendarDateToDate(plan.endDate),
+    sessionLengthMinutes:
+      options.lockedSessionLengthMinutes ??
+      sessionLengthForCourse(course.duration),
+  };
+}
+
+function priceEnrollment(
+  parentId: string,
+  input: CreateEnrollmentInput,
+  options: PriceOptions,
+): Promise<PricedEnrollment> {
+  return options.model === "CYCLE_V1"
+    ? priceCycleEnrollment(parentId, input, options)
+    : priceLegacyEnrollment(parentId, input);
+}
+
+/**
+ * Builds the Enrollment row for either model — shared by the client
+ * verify path and the webhook path so they can never drift. A
+ * cycle-model enrollment is created together with its cycle 1
+ * record (status OPEN, paid by `paymentId`); its sessions are NOT
+ * created here, they're created once at activation.
+ */
+function buildEnrollmentCreateData(args: {
+  parentId: string;
+  input: CreateEnrollmentInput;
+  priced: PricedEnrollment;
+  orderId: string;
+  paymentId: string;
+}): Prisma.EnrollmentUncheckedCreateInput {
+  const { parentId, input, priced, orderId, paymentId } = args;
+  const isCycleModel = priced.model === "CYCLE_V1";
+
+  return {
+    studentId: priced.studentId,
+    parentId,
+    teacherId: input.teacherId,
+    courseId: input.courseId,
+    subject: priced.subject,
+    sessionsPerMonth: priced.sessionsPerMonth,
+    noOfMonths: priced.noOfMonths,
+    ratePerSession: priced.ratePerSession,
+    monthlyRate: priced.monthlyRate,
+    totalAmount: priced.totalAmount,
+    cycleStartDate: priced.cycleStartDate,
+    dueDate: priced.dueDate,
+    scheduleDays: priced.scheduleDays,
+    scheduleTime: priced.scheduleTime,
+    isLegacy: !isCycleModel,
+    sessionLengthMinutes: priced.sessionLengthMinutes,
+    // Payment already succeeded by this point — go straight into
+    // the Teacher's review queue (resolves #2's sequential flow).
+    status: EnrollmentStatus.PENDING_TEACHER_APPROVAL,
+    razorpayOrderId: orderId,
+    razorpayPaymentId: paymentId,
+    // amountPaid is the actual charge (base + international
+    // surcharge, if any) — can legitimately differ from
+    // totalAmount now, which is exactly what amountPaid being a
+    // separate field was already designed for.
+    amountPaid: priced.amountPayable,
+    isInternationalPayment: priced.isInternationalPayment,
+    internationalSurchargeAmount: priced.internationalSurchargeAmount,
+    ...(isCycleModel && priced.cycleEndDate
+      ? {
+          cycles: {
+            create: {
+              cycleNumber: 1,
+              startDate: priced.cycleStartDate,
+              endDate: priced.cycleEndDate,
+              sessionCount: priced.sessionsPerMonth,
+              ratePerSession: priced.ratePerSession,
+              price: priced.totalAmount,
+              paymentReference: paymentId,
+              status: CycleStatus.OPEN,
+            },
+          },
+        }
+      : {}),
+    // Every Enrollment gets exactly one ChatRoom, created in the
+    // same write — it's the sole Parent<->Teacher communication
+    // channel throughout the whole approval flow, so it needs to
+    // exist from the moment payment clears.
+    chatRoom: {
+      create: {
+        parentId,
+        teacherId: input.teacherId,
+        courseId: input.courseId,
+        studentId: priced.studentId,
+      },
+    },
+  };
+}
+
+/** Rebuilds the booking input from a Razorpay order's `notes` (the webhook's only source of truth). */
+function parseInputFromNotes(
+  notes: Record<string, unknown>,
+): CreateEnrollmentInput {
+  return {
+    studentId: String(notes.studentId ?? ""),
+    teacherId: String(notes.teacherId ?? ""),
+    courseId: String(notes.courseId ?? ""),
+    subject: notes.subject ? String(notes.subject) : null,
+    sessionsPerMonth: Number(notes.sessionsPerMonth),
+    noOfMonths: Number(notes.noOfMonths) || 1,
+    cycleStartDate: notes.cycleStartDate
+      ? String(notes.cycleStartDate)
+      : undefined,
+    scheduleDays: (() => {
+      try {
+        return JSON.parse(String(notes.scheduleDays ?? "[]"));
+      } catch {
+        return [];
+      }
+    })(),
+    scheduleTime: String(notes.scheduleTime ?? ""),
+  };
+}
+
+function priceOptionsFromNotes(
+  notes: Record<string, unknown>,
+): PriceOptions {
+  const locked = Number(notes.sessionLengthMinutes);
+
+  return {
+    model: notes.model === CYCLE_MODEL_TAG ? "CYCLE_V1" : "LEGACY",
+    // The order already exists and was paid — never reject it now
+    // because the calendar rolled over to the next day.
+    enforceStartNotPast: false,
+    lockedSessionLengthMinutes:
+      Number.isFinite(locked) && locked > 0 ? locked : null,
   };
 }
 
@@ -241,7 +562,10 @@ export async function createEnrollmentOrder(
   parentId: string,
   input: CreateEnrollmentInput,
 ) {
-  const priced = await priceEnrollment(parentId, input);
+  const priced = await priceEnrollment(parentId, input, {
+    model: "CYCLE_V1",
+    enforceStartNotPast: true,
+  });
 
   const razorpay = getRazorpayClient();
 
@@ -263,9 +587,12 @@ export async function createEnrollmentOrder(
       teacherId: input.teacherId,
       courseId: input.courseId,
       subject: priced.subject ?? "",
-      sessionsPerMonth: priced.sessionsPerMonth,
-      noOfMonths: priced.noOfMonths,
-      cycleStartDate: priced.cycleStartDate.toISOString(),
+      model: CYCLE_MODEL_TAG,
+      // "YYYY-MM-DD" in the platform timezone; the session count is
+      // re-derived from it + scheduleDays, never trusted from here.
+      cycleStartDate: priced.cycleStartKey ?? "",
+      sessionCount: priced.sessionsPerMonth,
+      sessionLengthMinutes: priced.sessionLengthMinutes ?? 0,
       scheduleDays: JSON.stringify(priced.scheduleDays),
       scheduleTime: priced.scheduleTime,
     },
@@ -295,10 +622,10 @@ export interface VerifyEnrollmentPaymentInput extends CreateEnrollmentInput {
  */
 export async function verifyEnrollmentPayment(
   parentId: string,
-  input: VerifyEnrollmentPaymentInput,
+  clientInput: VerifyEnrollmentPaymentInput,
 ) {
   const existing = await prisma.enrollment.findUnique({
-    where: { razorpayOrderId: input.razorpayOrderId },
+    where: { razorpayOrderId: clientInput.razorpayOrderId },
     include: { chatRoom: { select: { id: true } } },
   });
 
@@ -307,9 +634,9 @@ export async function verifyEnrollmentPayment(
   }
 
   const signatureOk = verifyCheckoutSignature({
-    orderId: input.razorpayOrderId,
-    paymentId: input.razorpayPaymentId,
-    signature: input.razorpaySignature,
+    orderId: clientInput.razorpayOrderId,
+    paymentId: clientInput.razorpayPaymentId,
+    signature: clientInput.razorpaySignature,
   });
 
   if (!signatureOk) {
@@ -319,10 +646,8 @@ export async function verifyEnrollmentPayment(
     );
   }
 
-  const priced = await priceEnrollment(parentId, input);
-
   const razorpay = getRazorpayClient();
-  const order = await razorpay.orders.fetch(input.razorpayOrderId);
+  const order = await razorpay.orders.fetch(clientInput.razorpayOrderId);
 
   if (order.status !== "paid") {
     throw new EnrollmentError(
@@ -330,6 +655,26 @@ export async function verifyEnrollmentPayment(
       402,
     );
   }
+
+  const notes = (order.notes ?? {}) as Record<string, unknown>;
+  const options = priceOptionsFromNotes(notes);
+
+  // Under the cycle model the order's own notes are the source of
+  // truth for what was booked (start date, weekdays, time) — not the
+  // request body — so a verify call can't swap the schedule after
+  // paying. Orders from before the cycle model (no `model` note) keep
+  // using the request body exactly as they always did.
+  let input: VerifyEnrollmentPaymentInput = clientInput;
+
+  if (options.model === "CYCLE_V1") {
+    if (notes.parentId && String(notes.parentId) !== parentId) {
+      throw new EnrollmentError("This payment belongs to another account.", 403);
+    }
+
+    input = { ...clientInput, ...parseInputFromNotes(notes) };
+  }
+
+  const priced = await priceEnrollment(parentId, input, options);
 
   const expectedPaise = rupeesToPaise(priced.amountPayable);
 
@@ -347,46 +692,13 @@ export async function verifyEnrollmentPayment(
   }
 
   const enrollment = await prisma.enrollment.create({
-    data: {
-      studentId: priced.studentId,
+    data: buildEnrollmentCreateData({
       parentId,
-      teacherId: input.teacherId,
-      courseId: input.courseId,
-      subject: priced.subject,
-      sessionsPerMonth: priced.sessionsPerMonth,
-      noOfMonths: priced.noOfMonths,
-      ratePerSession: priced.ratePerSession,
-      monthlyRate: priced.monthlyRate,
-      totalAmount: priced.totalAmount,
-      cycleStartDate: priced.cycleStartDate,
-      dueDate: priced.dueDate,
-      scheduleDays: priced.scheduleDays,
-      scheduleTime: priced.scheduleTime,
-      // Payment already succeeded by this point — go straight into
-      // the Teacher's review queue (resolves #2's sequential flow).
-      status: EnrollmentStatus.PENDING_TEACHER_APPROVAL,
-      razorpayOrderId: input.razorpayOrderId,
-      razorpayPaymentId: input.razorpayPaymentId,
-      // amountPaid is the actual charge (base + international
-      // surcharge, if any) — can legitimately differ from
-      // totalAmount now, which is exactly what amountPaid being a
-      // separate field was already designed for.
-      amountPaid: priced.amountPayable,
-      isInternationalPayment: priced.isInternationalPayment,
-      internationalSurchargeAmount: priced.internationalSurchargeAmount,
-      // Every Enrollment gets exactly one ChatRoom, created in the
-      // same write — it's the sole Parent<->Teacher communication
-      // channel throughout the whole approval flow, so it needs to
-      // exist from the moment payment clears.
-      chatRoom: {
-        create: {
-          parentId,
-          teacherId: input.teacherId,
-          courseId: input.courseId,
-          studentId: priced.studentId,
-        },
-      },
-    },
+      input,
+      priced,
+      orderId: input.razorpayOrderId,
+      paymentId: input.razorpayPaymentId,
+    }),
     // Included so the client can immediately offer "chat with your
     // teacher" right after payment confirmation without a second
     // round trip.
@@ -460,29 +772,13 @@ export async function reconcileEnrollmentFromWebhook(
     return null;
   }
 
-  const notes = order.notes ?? {};
+  const notes = (order.notes ?? {}) as Record<string, unknown>;
 
   if (notes.kind !== "enrollment") {
     return null;
   }
 
-  const input: CreateEnrollmentInput = {
-    studentId: String(notes.studentId ?? ""),
-    teacherId: String(notes.teacherId ?? ""),
-    courseId: String(notes.courseId ?? ""),
-    subject: notes.subject ? String(notes.subject) : null,
-    sessionsPerMonth: Number(notes.sessionsPerMonth),
-    noOfMonths: Number(notes.noOfMonths) || 1,
-    cycleStartDate: notes.cycleStartDate ? String(notes.cycleStartDate) : undefined,
-    scheduleDays: (() => {
-      try {
-        return JSON.parse(String(notes.scheduleDays ?? "[]"));
-      } catch {
-        return [];
-      }
-    })(),
-    scheduleTime: String(notes.scheduleTime ?? ""),
-  };
+  const input = parseInputFromNotes(notes);
   const parentId = String(notes.parentId ?? "");
 
   if (!parentId || !input.studentId || !input.teacherId || !input.courseId) {
@@ -490,7 +786,11 @@ export async function reconcileEnrollmentFromWebhook(
     return null;
   }
 
-  const priced = await priceEnrollment(parentId, input);
+  const priced = await priceEnrollment(
+    parentId,
+    input,
+    priceOptionsFromNotes(notes),
+  );
   const expectedPaise = rupeesToPaise(priced.amountPayable);
 
   if (Number(order.amount) !== expectedPaise) {
@@ -499,36 +799,13 @@ export async function reconcileEnrollmentFromWebhook(
   }
 
   const enrollment = await prisma.enrollment.create({
-    data: {
-      studentId: priced.studentId,
+    data: buildEnrollmentCreateData({
       parentId,
-      teacherId: input.teacherId,
-      courseId: input.courseId,
-      subject: priced.subject,
-      sessionsPerMonth: priced.sessionsPerMonth,
-      noOfMonths: priced.noOfMonths,
-      ratePerSession: priced.ratePerSession,
-      monthlyRate: priced.monthlyRate,
-      totalAmount: priced.totalAmount,
-      cycleStartDate: priced.cycleStartDate,
-      dueDate: priced.dueDate,
-      scheduleDays: priced.scheduleDays,
-      scheduleTime: priced.scheduleTime,
-      status: EnrollmentStatus.PENDING_TEACHER_APPROVAL,
-      razorpayOrderId: orderId,
-      razorpayPaymentId: paymentId,
-      amountPaid: priced.amountPayable,
-      isInternationalPayment: priced.isInternationalPayment,
-      internationalSurchargeAmount: priced.internationalSurchargeAmount,
-      chatRoom: {
-        create: {
-          parentId,
-          teacherId: input.teacherId,
-          courseId: input.courseId,
-          studentId: priced.studentId,
-        },
-      },
-    },
+      input,
+      priced,
+      orderId,
+      paymentId,
+    }),
   });
 
   // Same Refer & Earn hook as verifyEnrollmentPayment() — this path

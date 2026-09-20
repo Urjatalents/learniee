@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ClassSessionStatus } from "@prisma/client";
 import { notifyClassSessionStartingSoon } from "@/features/shared/server/notificationTriggers.service";
+import { PLATFORM_UTC_OFFSET_MINUTES } from "@/lib/platformConfig";
 
 /**
  * GET /api/cron/session-reminders
@@ -39,7 +40,8 @@ import { notifyClassSessionStartingSoon } from "@/features/shared/server/notific
  */
 
 const REMINDER_LEAD_MINUTES = 30;
-const IST_OFFSET_MINUTES = 5 * 60 + 30;
+// Single platform timezone — see src/lib/platformConfig.ts.
+const IST_OFFSET_MINUTES = PLATFORM_UTC_OFFSET_MINUTES;
 
 function computeSessionStartUtc(scheduledDate: Date, scheduledTime: string | null): Date | null {
   if (!scheduledTime) {
