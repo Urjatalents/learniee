@@ -23,6 +23,9 @@ export interface CourseFormInput {
   courseTags: string;
   price: string;
 
+  certificateEnabled?: boolean;
+  certificateSessionThreshold?: string;
+
   thumbnailKey?: string;
   introVideoKey?: string;
 }
@@ -50,6 +53,12 @@ function buildCourseData(input: CourseFormInput) {
     modules: input.modules || null,
     courseTags: input.courseTags || null,
     price: input.price ? Number(input.price) : null,
+
+    certificateEnabled: Boolean(input.certificateEnabled),
+    certificateSessionThreshold:
+      input.certificateEnabled && input.certificateSessionThreshold
+        ? Number(input.certificateSessionThreshold)
+        : null,
 
     thumbnailKey: input.thumbnailKey || null,
     introVideoKey: input.introVideoKey || null,

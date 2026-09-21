@@ -3,6 +3,7 @@
 import { useState } from "react";
 import CourseConfigFields from "@/features/courses/components/CourseConfigFields";
 import CourseDetailFields from "@/features/courses/components/CourseDetailFields";
+import CourseCertificateFields from "@/features/courses/components/CourseCertificateFields";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
 
 interface Props {
@@ -22,10 +23,22 @@ export default function CreateCourseForm({ onChange }: Props) {
     onChange(updatedData);
   }
 
+  function handleCertificateToggle(checked: boolean) {
+    const updatedData = { ...formData, certificateEnabled: checked };
+
+    setFormData(updatedData);
+    onChange(updatedData);
+  }
+
   return (
     <div className="space-y-6">
       <CourseConfigFields formData={formData} onChange={handleChange} />
       <CourseDetailFields formData={formData} onChange={handleChange} />
+      <CourseCertificateFields
+        formData={formData}
+        onChange={handleChange}
+        onToggle={handleCertificateToggle}
+      />
     </div>
   );
 }

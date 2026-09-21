@@ -431,6 +431,29 @@ export function notifyEnrollmentCompleted(enrollmentId: string) {
   });
 }
 
+/** Certification: the Teacher issued a certificate — lets the Parent know it's ready to view/download. */
+export function notifyCertificateIssued(enrollmentId: string) {
+  return safe("certificate issued", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "their course";
+    const studentName = displayName({
+      firstName: e.student.firstName,
+      visibleName: e.student.visibleName,
+    });
+
+    await createNotification({
+      recipientId: e.parentId,
+      recipientRole: R.PARENT,
+      type: T.CERTIFICATE_ISSUED,
+      title: "Certificate issued",
+      message: `${studentName} has been awarded a certificate for "${courseTitle}". View and download it from their profile.`,
+      link: `/parent/students/${e.studentId}`,
+    });
+  });
+}
+
 /** Part 2B: a Renew payment cleared and the next cycle's sessions were created. */
 export function notifyCycleRenewed(enrollmentId: string, cycleNumber: number) {
   return safe("cycle renewed", async () => {

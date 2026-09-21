@@ -9,6 +9,7 @@ import { useStudentProfile } from "@/features/parent/hooks/useStudentProfile";
 import { useParentCalendar } from "@/features/parent/hooks/useCalendar";
 import ChildAvatar from "@/features/parent/components/ChildAvatar";
 import MonthCalendar from "@/features/shared/components/calendar/MonthCalendar";
+import StudentCertificates from "@/features/parent/components/StudentCertificates";
 
 function currentMonthKey() {
   const now = new Date();
@@ -114,6 +115,10 @@ export default function StudentProfilePage() {
           />
         </dl>
       </div>
+
+      {/* CERTIFICATES - only renders once this Student has at least
+          one ISSUED certificate; see StudentCertificates.tsx. */}
+      <StudentCertificates studentId={params.studentId} />
 
       {/* SCHEDULE - one calendar scoped to this child, expanded from
           their ACTIVE/LAPSED enrollments' recurring schedule (see

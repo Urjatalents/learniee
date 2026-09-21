@@ -57,6 +57,7 @@ model ParentProfile {
   referralsMade       Referral[]           @relation("ReferralsMade")
   referralReceived    Referral?            @relation("ReferralReceived")
   reviews             Review[]
+  certificates        Certificate[]
 }
 
 model Admin {
@@ -89,6 +90,7 @@ model Student {
   enrollments          Enrollment[]
   homeworks            Homework[]
   parent               ParentProfile  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  certificates         Certificate[]
 
   @@index([parentId])
 }
@@ -136,6 +138,7 @@ model Teacher {
   bankAccount        BankAccount?
   reviews            Review[]
   strikes            TeacherStrike[]
+  certificates       Certificate[]
 }
 
 model TeacherProfessional {
@@ -225,11 +228,22 @@ model Course {
   updatedAt       DateTime      @updatedAt
   ageGroup        String?
   rejectionReason String?
+  /// Certification (Sep 2026). Off by default — most courses issue
+  /// no certificate. When on, `certificateSessionThreshold` is the
+  /// number of *counted* sessions (see `ClassSessionStatus` /
+  /// `COUNTED_SESSION_STATUSES` in sessionOutcome.ts — COMPLETED,
+  /// STUDENT_NO_SHOW, CANCELLED_LATE, same rule TCC already uses) an
+  /// Enrollment in this course needs before a certificate becomes
+  /// available for the Teacher to allot. Set once at course
+  /// creation — there's no course-edit screen yet to revise it.
+  certificateEnabled           Boolean       @default(false)
+  certificateSessionThreshold  Int?
   chatRooms       ChatRoom[]
   teacher         Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   demoBookings    DemoBooking[]
   enrollments     Enrollment[]
   reviews         Review[]
+  certificates    Certificate[]
 
   @@index([teacherId])
   @@index([status])
@@ -410,6 +424,7 @@ model Enrollment {
   ledgerEntries              TuitionLedgerEntry[]
   rescheduleRequests         RescheduleRequest[]
   review                     Review?
+  certificate                Certificate?
 
   @@index([parentId])
   @@index([teacherId])
@@ -1091,6 +1106,42 @@ model Review {
   @@index([teacherId])
 }
 
+/// Certification (Sep 2026). One row per Enrollment, written only
+/// once the Teacher makes a decision (ISSUED or DECLINED) — there is
+/// no row while the decision is still pending, so "eligible but not
+/// yet decided" is computed live from Course.certificateEnabled /
+/// certificateSessionThreshold + a live count of the Enrollment's
+/// counted ClassSessions (see certificate.service.ts), never cached
+/// here. The decision is final: no reissue/reconsider flow yet.
+/// `sessionsCompleted`/`sessionsRequired` are a snapshot of the count
+/// at decision time, kept for the certificate/audit trail even if
+/// later sessions change the live count.
+model Certificate {
+  id                String            @id @default(uuid())
+  enrollmentId      String            @unique
+  studentId         String
+  teacherId         String
+  parentId          String
+  courseId          String
+  status            CertificateStatus
+  sessionsCompleted Int
+  sessionsRequired  Int
+  issuedAt          DateTime?
+  declinedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  enrollment Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  student    Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher    Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  parent     ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  course     Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([courseId])
+}
+
 /// Refer & Earn (added Sep 8, 2026) — a Parent's own shareable code
 /// (`ParentProfile.referralCode`, lazily generated the first time
 /// they open /parent/referral, same lazy-creation pattern as
@@ -1420,6 +1471,12 @@ enum NotificationRecipientRole {
   ACCOUNTS
 }
 
+/// Certification (Sep 2026) — see the Certificate model's doc-comment.
+enum CertificateStatus {
+  ISSUED
+  DECLINED
+}
+
 enum NotificationType {
   ENROLLMENT_CREATED
   ENROLLMENT_TEACHER_APPROVED
@@ -1484,6 +1541,8 @@ enum NotificationType {
   /// Money and Renewal (Part 2B, Sep 21, 2026)
   CYCLE_RENEWED
   ENROLLMENT_COMPLETED
+  /// Certification (Sep 2026) — see the Certificate model's doc-comment.
+  CERTIFICATE_ISSUED
   GENERIC
 }
 
@@ -1592,6 +1651,8 @@ enum ActivityAction {
   CYCLE_PAYOUT_RELEASED
   CYCLE_RENEWED
   ENROLLMENT_COMPLETED
+  /// Certification (Sep 2026) — see the Certificate model's doc-comment.
+  CERTIFICATE_ISSUED
   GENERIC
 }
 

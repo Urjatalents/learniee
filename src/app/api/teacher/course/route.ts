@@ -93,6 +93,17 @@ export async function POST(req: Request) {
       );
     }
 
+    if (input.certificateEnabled) {
+      const threshold = Number(input.certificateSessionThreshold);
+
+      if (!Number.isFinite(threshold) || threshold < 1) {
+        return NextResponse.json(
+          { error: "Certificate session threshold must be a positive number." },
+          { status: 400 },
+        );
+      }
+    }
+
     const course = await createCourse(
       teacher.id,
       input,
