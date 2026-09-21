@@ -11,6 +11,10 @@ export interface ClassSessionRow {
   status: SessionStatusValue;
   /** Set on cycle-model sessions (Part 1B) — those are never marked complete by hand. */
   cycleId?: string | null;
+  /** Cycle-model sessions only: "class 3" of the cycle, and the real start/end instants (ISO). */
+  sessionNumber?: number | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
 }
 
 /**

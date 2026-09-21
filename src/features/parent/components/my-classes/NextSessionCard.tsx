@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { CheckCircle2, Loader2, Video } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, Loader2, Video } from "lucide-react";
 
 import { useSessionFlow } from "@/features/shared/hooks/useSessionFlow";
 import {
@@ -11,7 +11,11 @@ import {
   toActionInput,
 } from "@/features/shared/components/session-flow/sessionFlowText";
 import { getSessionActions } from "@/features/shared/utils/sessionOutcome";
-import { formatCountdown, formatDateKey } from "@/features/parent/utils/classProgress";
+import {
+  formatClassDay,
+  formatCountdown,
+  formatLongDate,
+} from "@/features/shared/utils/classTimeLabels";
 
 interface Props {
   sessionId: string;
@@ -42,7 +46,7 @@ export default function NextSessionCard({ sessionId, label, onChanged }: Props) 
 
   if (loading) {
     return (
-      <div className="bg-white border border-violet-100 rounded-2xl p-5 flex items-center gap-2 text-sm text-gray-500">
+      <div className="bg-white border border-violet-100 rounded-3xl p-6 flex items-center gap-2 text-sm text-gray-500">
         <Loader2 size={16} className="animate-spin text-brand" />
         Loading your next class…
       </div>
@@ -51,7 +55,7 @@ export default function NextSessionCard({ sessionId, label, onChanged }: Props) 
 
   if (!state || !state.isCycleSession || !state.startsAt || !state.endsAt) {
     return (
-      <div className="bg-white border border-violet-100 rounded-2xl p-5">
+      <div className="bg-white border border-violet-100 rounded-3xl p-6">
         <p className="text-sm text-red-600">{error || "Your next class couldn't be loaded."}</p>
       </div>
     );
@@ -62,19 +66,52 @@ export default function NextSessionCard({ sessionId, label, onChanged }: Props) 
   const opensAt = state.joinOpensAt ? new Date(state.joinOpensAt) : null;
   const beforeOpen = opensAt !== null && now < opensAt;
   const joined = state.studentJoinedAt !== null;
+  const startsAt = new Date(state.startsAt);
+  const dayLabel = formatClassDay(startsAt, now);
+  const isToday = dayLabel === "Today";
 
   return (
-    <div className="bg-white border border-violet-100 rounded-2xl shadow-playful p-5">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-brand">
-        Next class · {label}
-      </p>
+    <div
+      className={`rounded-3xl p-5 sm:p-6 border shadow-playful ${
+        isToday ? "bg-amber-50 border-amber-200" : "bg-white border-violet-100"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-brand">
+          Next class · {label}
+        </p>
 
-      <p className="font-heading text-lg font-bold text-gray-800 mt-1">
-        {formatDateKey(state.scheduledDate)} · {formatSessionRange(state)}
-      </p>
+        {isToday && (
+          <span className="flex-shrink-0 text-[11px] font-bold uppercase tracking-wide text-amber-800 bg-amber-200/70 px-3 py-1 rounded-full">
+            Today
+          </span>
+        )}
+      </div>
 
-      <p className="text-sm font-semibold text-gray-700 mt-3">{message.title}</p>
-      <p className="text-xs text-gray-500 mt-0.5">{message.body}</p>
+      <div className="flex items-center gap-4 mt-3">
+        <span
+          className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+            isToday ? "bg-amber-200/70 text-amber-800" : "bg-violet-100 text-brand"
+          }`}
+        >
+          <CalendarClock size={22} />
+        </span>
+
+        <div className="min-w-0">
+          <p className="font-heading text-lg sm:text-xl font-bold text-gray-800 leading-tight">
+            {formatLongDate(startsAt)}
+          </p>
+          <p className="flex items-center gap-1.5 text-sm text-gray-600 mt-0.5">
+            <Clock size={13} />
+            {formatSessionRange(state)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl bg-white/80 border border-gray-100 px-4 py-3">
+        <p className="text-sm font-semibold text-gray-700">{message.title}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{message.body}</p>
+      </div>
 
       {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
 
@@ -106,7 +143,7 @@ export default function NextSessionCard({ sessionId, label, onChanged }: Props) 
       </div>
 
       {actions.canCancel && (
-        <div className="flex flex-wrap gap-4 mt-4 text-xs font-bold">
+        <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-black/5 text-xs font-bold">
           <Link href={`/parent/classes/${sessionId}/reschedule`} className="text-brand hover:underline">
             Reschedule
           </Link>

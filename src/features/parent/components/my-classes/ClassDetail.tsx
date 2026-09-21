@@ -84,7 +84,10 @@ export default function ClassDetail({ enrollmentId, initialTab }: Props) {
 
       <ClassHeader enrollment={enrollment} />
 
-      <div className="flex gap-1 mt-5 mb-5 border-b border-violet-100" role="tablist">
+      <div
+        className="inline-flex flex-wrap gap-1 p-1 mt-5 mb-5 bg-white border border-violet-100 rounded-full"
+        role="tablist"
+      >
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -92,10 +95,10 @@ export default function ClassDetail({ enrollmentId, initialTab }: Props) {
             role="tab"
             aria-selected={tab === id}
             onClick={() => setTab(id)}
-            className={`flex items-center gap-2 text-sm font-semibold px-4 py-2.5 -mb-px border-b-2 transition-colors ${
+            className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full transition-colors ${
               tab === id
-                ? "border-brand text-brand"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "bg-brand text-white shadow-playful"
+                : "text-gray-500 hover:text-brand hover:bg-violet-50"
             }`}
           >
             <Icon size={15} />
@@ -112,7 +115,7 @@ export default function ClassDetail({ enrollmentId, initialTab }: Props) {
       {tab === "classes" && (
         <div className="space-y-5">
           {needsResponseCount > 0 && (
-            <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm text-amber-800">
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-800">
               {needsResponseCount} class{needsResponseCount === 1 ? "" : "es"} waiting for your answer
               below — tap <span className="font-semibold">All good</span> or{" "}
               <span className="font-semibold">Report a problem</span>. If you do nothing, a class is
@@ -120,25 +123,36 @@ export default function ClassDetail({ enrollmentId, initialTab }: Props) {
             </div>
           )}
 
-          <CycleProgressCard progress={progress} />
-
-          {enrollment.status === "ACTIVE" && (
-            <RenewalPanel enrollmentId={enrollment.id} onRenewed={reload} />
-          )}
-
-          {next ? (
-            <NextSessionCard key={next.id} sessionId={next.id} label={nextLabel} onChanged={reload} />
-          ) : (
-            <div className="bg-white border border-violet-100 rounded-2xl p-5 text-sm text-gray-500">
-              {ended
-                ? "This enrollment has ended. Enroll again to keep learning with this teacher."
-                : "No upcoming classes are scheduled right now."}
+          {/* On a wide screen: the next class and the history on the left,
+              cycle progress + renewal on the right. On a phone the order
+              is simply next class → progress → the rest. */}
+          <div className="grid gap-5 lg:grid-cols-3 items-start">
+            <div className="lg:col-span-2">
+              {next ? (
+                <NextSessionCard key={next.id} sessionId={next.id} label={nextLabel} onChanged={reload} />
+              ) : (
+                <div className="bg-white border-2 border-dashed border-violet-200 rounded-3xl p-6 text-sm text-gray-500 text-center">
+                  {ended
+                    ? "This enrollment has ended. Enroll again to keep learning with this teacher."
+                    : "No upcoming classes are scheduled right now."}
+                </div>
+              )}
             </div>
-          )}
 
-          <UpcomingSessionsList sessions={upcoming.slice(1)} />
+            <div className="space-y-5 lg:col-start-3 lg:row-start-1 lg:row-span-2">
+              <CycleProgressCard progress={progress} />
 
-          <SessionHistoryList sessions={history} onChanged={reload} />
+              {enrollment.status === "ACTIVE" && (
+                <RenewalPanel enrollmentId={enrollment.id} onRenewed={reload} />
+              )}
+            </div>
+
+            <div className="lg:col-span-2 space-y-6">
+              <UpcomingSessionsList sessions={upcoming.slice(1)} />
+
+              <SessionHistoryList sessions={history} onChanged={reload} />
+            </div>
+          </div>
         </div>
       )}
 
@@ -150,17 +164,21 @@ export default function ClassDetail({ enrollmentId, initialTab }: Props) {
             </p>
           </div>
         ) : (
-          <ParentHomeworkPanel enrollmentId={enrollment.id} />
+          <div className="max-w-3xl">
+            <ParentHomeworkPanel enrollmentId={enrollment.id} />
+          </div>
         ))}
 
       {tab === "chat" &&
         (enrollment.chatRoomId ? (
-          <ClassChatPanel
-            roomId={enrollment.chatRoomId}
-            teacherName={enrollment.teacher.name}
-            courseTitle={enrollment.courseTitle}
-            enrollmentStatus={enrollment.status}
-          />
+          <div className="max-w-3xl">
+            <ClassChatPanel
+              roomId={enrollment.chatRoomId}
+              teacherName={enrollment.teacher.name}
+              courseTitle={enrollment.courseTitle}
+              enrollmentStatus={enrollment.status}
+            />
+          </div>
         ) : (
           <div className="bg-white border border-violet-100 rounded-2xl p-6 text-center">
             <p className="text-sm text-gray-500">

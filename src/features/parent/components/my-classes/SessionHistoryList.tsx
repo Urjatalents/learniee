@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 
 import type { ClassSessionItem } from "@/features/parent/types/myClasses";
 import { formatPlatformTime } from "@/lib/platformTime";
+import { formatDateTile } from "@/features/shared/utils/classTimeLabels";
 import { useSessionFlow, type SessionFlowAction } from "@/features/shared/hooks/useSessionFlow";
 import SessionAfterClass from "@/features/shared/components/session-flow/SessionAfterClass";
 import { describeSession } from "@/features/shared/components/session-flow/sessionFlowText";
@@ -28,12 +29,12 @@ interface Props {
 export default function SessionHistoryList({ sessions, onChanged }: Props) {
   return (
     <section>
-      <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-2">
+      <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">
         Class history
       </h2>
 
       {sessions.length === 0 ? (
-        <div className="bg-white border border-violet-100 rounded-2xl p-6 text-center">
+        <div className="bg-white border-2 border-dashed border-violet-200 rounded-3xl p-6 text-center">
           <p className="text-sm text-gray-500">
             No classes yet — each class shows up here with its result once it is over.
           </p>
@@ -66,12 +67,30 @@ function HistoryRow({
   // A class waiting for the parent's answer opens by itself.
   const [open, setOpen] = useState(session.canRespond);
 
+  const start = new Date(session.startsAt);
+  const tile = formatDateTile(start);
+  const accent =
+    session.status === "COMPLETED"
+      ? "border-l-green-400"
+      : session.status === "NEEDS_REVIEW" || session.status === "STUDENT_NO_SHOW"
+        ? "border-l-amber-400"
+        : "border-l-red-300";
+
   return (
-    <div className="bg-white border border-violet-100 rounded-2xl p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+    <div className={`bg-white border border-violet-100 border-l-4 ${accent} rounded-2xl p-4`}>
+      <div className="flex items-start gap-3">
+        <span className="w-12 flex-shrink-0 rounded-xl bg-violet-50 border border-violet-100 text-center py-1">
+          <span className="block text-[10px] font-bold uppercase text-brand leading-tight">
+            {tile.month}
+          </span>
+          <span className="block font-heading text-lg font-bold text-gray-800 leading-tight">
+            {tile.day}
+          </span>
+        </span>
+
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-gray-800">
-            {formatPlatformTime(new Date(session.startsAt), true)}
+            {tile.weekday} · {formatPlatformTime(start)}
           </p>
           <p className="text-xs text-gray-400">
             {classLabel(session)}

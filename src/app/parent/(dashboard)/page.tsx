@@ -12,6 +12,7 @@ import LearnerSwitcher, {
   type LearnerFilter,
 } from "@/features/parent/components/LearnerSwitcher";
 import UpcomingLecturesCard from "@/features/shared/components/UpcomingLecturesCard";
+import DashboardClassesSection from "@/features/parent/components/my-classes/DashboardClassesSection";
 
 function currentMonthKey() {
   const d = new Date();
@@ -128,6 +129,10 @@ export default function ParentHome() {
           role="parent"
         />
       </section>
+
+      {/* MY CLASSES — a glance at each running course; the full page
+          (progress, history, homework, chat) is /parent/my-classes. */}
+      <DashboardClassesSection studentId={activeStudent?.id ?? null} />
 
       {/* ACTIVE COURSES */}
       <section>
