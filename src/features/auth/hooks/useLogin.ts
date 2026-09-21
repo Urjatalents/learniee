@@ -213,8 +213,10 @@ export function useLogin() {
             // -----------------------------
             // ADMIN REJECTED
             // -----------------------------
+            // There is no /teacher/rejected page — the pending-approval
+            // page shows the rejected state as well.
             if (data.approvalStatus === "REJECTED") {
-              router.push("/teacher/rejected");
+              router.push("/teacher/pending-approval");
               return;
             }
 

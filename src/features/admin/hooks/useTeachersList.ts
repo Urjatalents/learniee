@@ -1,22 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { AdminTeacher } from "@/features/admin/types/teacher";
+import { useCallback, useEffect, useState } from "react";
+import type {
+  AdminTeacherSummary,
+  TeacherApprovalCounts,
+  TeacherApprovalState,
+} from "@/features/admin/types/teacher";
 
-export function useTeachersList() {
-  const [teachers, setTeachers] = useState<AdminTeacher[]>([]);
+const EMPTY_COUNTS: TeacherApprovalCounts = { PENDING: 0, APPROVED: 0, REJECTED: 0 };
+
+/** Lists teacher applications for one status tab, plus the count for every tab. */
+export function useTeachersList(status: TeacherApprovalState) {
+  const [teachers, setTeachers] = useState<AdminTeacherSummary[]>([]);
+  const [counts, setCounts] = useState<TeacherApprovalCounts>(EMPTY_COUNTS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchTeachers();
-  }, []);
-
-  async function fetchTeachers() {
+  const fetchTeachers = useCallback(async () => {
     try {
       setLoading(true);
+      setError("");
 
-      const res = await fetch("/api/admin/teachers");
+      const res = await fetch(`/api/admin/teachers?status=${status}`, {
+        cache: "no-store",
+      });
 
       if (!res.ok) {
         throw new Error("Failed to fetch teachers");
@@ -24,35 +31,18 @@ export function useTeachersList() {
 
       const data = await res.json();
       setTeachers(data.teachers);
+      setCounts(data.counts);
     } catch (err) {
       console.error(err);
       setError("Unable to load teachers.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [status]);
 
-  async function updateApproval(teacherId: string, status: "APPROVED" | "REJECTED") {
-    try {
-      const res = await fetch(`/api/admin/teachers/${teacherId}/approval`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
+  useEffect(() => {
+    fetchTeachers();
+  }, [fetchTeachers]);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to update approval");
-      }
-
-      // Remove the teacher from the pending list
-      setTeachers((current) => current.filter((teacher) => teacher.id !== teacherId));
-    } catch (err) {
-      console.error(err);
-      setError("Failed to update teacher approval status.");
-    }
-  }
-
-  return { teachers, loading, error, updateApproval };
+  return { teachers, counts, loading, error, refetch: fetchTeachers };
 }
