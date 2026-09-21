@@ -15,10 +15,14 @@ import {
  */
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ enrollmentId: string }> },
+  { params }: { params: Promise<{ certificateId: string }> },
 ) {
   try {
-    const { enrollmentId } = await params;
+    // Next.js requires one slug name per path level, and the sibling
+    // route `[certificateId]/route.ts` already uses `certificateId`.
+    // In this URL that segment actually carries the ENROLLMENT id
+    // (`/api/teacher/certificates/<enrollmentId>/decision`), so alias it.
+    const { certificateId: enrollmentId } = await params;
 
     const teacher = await requireTeacherId(req);
 
