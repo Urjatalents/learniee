@@ -15,7 +15,7 @@ export interface ChatRoomSummary {
   teacher: ChatPartyRef;
   student: { id: string; firstName: string; lastName: string; visibleName: string | null };
   course: { id: string; courseTitle: string | null; subject: string | null };
-  enrollment: { id: string; status: string };
+  enrollment: { id: string; status: string; isLegacy: boolean };
   _count: { messages: number };
 }
 

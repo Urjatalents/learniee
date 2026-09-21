@@ -16,7 +16,8 @@ function formatTime(value: string) {
 interface ChatWindowProps {
   headerTitle: string;
   headerSubtitle?: string;
-  backPath: string;
+  /** Where the header's back arrow goes. Not needed when `embedded`. */
+  backPath?: string;
   messages: ChatMessage[];
   loading: boolean;
   error: string;
@@ -26,6 +27,12 @@ interface ChatWindowProps {
   canSend: boolean;
   onSend: (body: string) => Promise<void> | void;
   disabledReason?: string;
+  /**
+   * Draws the chat as a card inside another page (the Parent's My
+   * Classes page) instead of a full-screen conversation: no header,
+   * no back arrow, a fixed height.
+   */
+  embedded?: boolean;
 }
 
 export default function ChatWindow({
@@ -40,6 +47,7 @@ export default function ChatWindow({
   canSend,
   onSend,
   disabledReason,
+  embedded = false,
 }: ChatWindowProps) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
@@ -58,23 +66,33 @@ export default function ChatWindow({
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50">
-      <div className="bg-white border-b px-4 py-3 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => router.push(backPath)}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100"
-          aria-label="Back to conversations"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div className="min-w-0">
-          <p className="font-semibold text-gray-800 truncate">{headerTitle}</p>
-          {headerSubtitle && (
-            <p className="text-xs text-gray-500 truncate">{headerSubtitle}</p>
+    <div
+      className={
+        embedded
+          ? "flex flex-col h-[32rem] max-h-[70vh] bg-gray-50 border border-violet-100 rounded-2xl overflow-hidden"
+          : "flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50"
+      }
+    >
+      {!embedded && (
+        <div className="bg-white border-b px-4 py-3 flex items-center gap-3">
+          {backPath && (
+            <button
+              type="button"
+              onClick={() => router.push(backPath)}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100"
+              aria-label="Back to conversations"
+            >
+              <ArrowLeft size={18} />
+            </button>
           )}
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-800 truncate">{headerTitle}</p>
+            {headerSubtitle && (
+              <p className="text-xs text-gray-500 truncate">{headerSubtitle}</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {loading && messages.length === 0 ? (

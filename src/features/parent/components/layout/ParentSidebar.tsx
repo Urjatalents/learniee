@@ -6,14 +6,12 @@ import {
   Settings,
   Share2,
   Video,
-  MessageCircle,
   BookOpen,
   Calendar,
   Heart,
   RefreshCw,
   CreditCard,
   FolderOpen,
-  ClipboardCheck,
   ListChecks,
   GraduationCap,
   Star,
@@ -41,6 +39,11 @@ interface MenuSection {
 // no way back to /parent except browser back. It's now the first
 // item here, always visible regardless of screen size.
 //
+// Part 2C (Sep 2026): "My Enrollments", "Home works/tests" and "Chat"
+// are merged into "My Classes" (/parent/my-classes) — each course's
+// classes, homework and chat live on one page. The old routes stay
+// as redirects/legacy views so no existing link breaks.
+//
 // Note (still true): Preference, Notification, Gift, Go Live,
 // Learnie Mall, Suggestions, Transcripts, FAQs, and Blogs stay
 // removed — none of those pages are built yet (see
@@ -59,8 +62,7 @@ const menuSections: MenuSection[] = [
   {
     label: "My Learning",
     items: [
-      { label: "My Enrollments", path: "/parent/enrollments", icon: ListChecks },
-      { label: "Home works/tests", path: "/parent/homework-tests", icon: ClipboardCheck },
+      { label: "My Classes", path: "/parent/my-classes", icon: ListChecks },
       { label: "Reschedule", path: "/parent/reschedule", icon: RefreshCw },
       { label: "Payments", path: "/parent/payments", icon: CreditCard },
       { label: "Wallet", path: "/parent/wallet", icon: WalletIcon },
@@ -78,7 +80,6 @@ const menuSections: MenuSection[] = [
   {
     label: "Account & Support",
     items: [
-      { label: "Chat", path: "/parent/chat", icon: MessageCircle },
       { label: "Referral", path: "/parent/referral", icon: Share2 },
       { label: "Profile", path: "/parent/profile", icon: User },
       { label: "Settings", path: "/parent/settings", icon: Settings },

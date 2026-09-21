@@ -1,12 +1,14 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 import { useChatRooms } from "@/features/chat/hooks/useChatRooms";
 import { useChatMessages } from "@/features/chat/hooks/useChatMessages";
 import { displayName } from "@/features/chat/types/chat";
 import ChatWindow from "@/features/chat/components/ChatWindow";
 import { SENDABLE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
+import { usesClassView } from "@/features/parent/utils/classView";
 
 
 export default function ParentChatRoomPage({
@@ -27,13 +29,29 @@ export default function ParentChatRoomPage({
     true,
   );
 
+  // Part 2C: a cycle-model enrollment's chat lives on its My Classes
+  // page. Legacy enrollments (and ones not active yet) keep this page.
+  const router = useRouter();
+  const opensInMyClasses = !!room && usesClassView(room.enrollment);
+  const myClassesEnrollmentId = room?.enrollment.id;
+
+  useEffect(() => {
+    if (opensInMyClasses && myClassesEnrollmentId) {
+      router.replace(`/parent/my-classes/${myClassesEnrollmentId}?tab=chat`);
+    }
+  }, [opensInMyClasses, myClassesEnrollmentId, router]);
+
   const canSend = !room || SENDABLE_ENROLLMENT_STATUSES.has(room.enrollment.status);
+
+  if (opensInMyClasses) {
+    return <p className="p-6 text-gray-500">Opening your class…</p>;
+  }
 
   return (
     <ChatWindow
       headerTitle={room ? displayName(room.teacher) : "Conversation"}
       headerSubtitle={room ? room.course.courseTitle ?? undefined : undefined}
-      backPath="/parent/chat"
+      backPath="/parent/my-classes"
       messages={messages}
       loading={loading}
       error={error}

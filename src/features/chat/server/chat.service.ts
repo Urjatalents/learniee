@@ -38,7 +38,7 @@ const roomListSelect = {
     select: { id: true, courseTitle: true, subject: true },
   },
   enrollment: {
-    select: { id: true, status: true },
+    select: { id: true, status: true, isLegacy: true },
   },
   _count: {
     select: { messages: true },

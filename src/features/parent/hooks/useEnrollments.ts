@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import type { ParentClassSummary } from "@/features/parent/types/myClasses";
+
 export interface ParentEnrollment {
   id: string;
   status: string;
@@ -34,9 +36,19 @@ export interface ParentEnrollment {
   };
   course: { id: string; courseTitle: string | null };
   chatRoom: { id: string } | null;
+  /**
+   * Only on `/api/parent/my-classes` (Part 2C), and only for cycle-model
+   * enrollments that use the My Classes page: cycle progress, next
+   * class and classes waiting for the parent's confirmation.
+   */
+  classSummary?: ParentClassSummary | null;
 }
 
-export function useParentEnrollments() {
+/**
+ * `endpoint` defaults to the plain enrollment list;
+ * `/api/parent/my-classes` returns the same rows plus `classSummary`.
+ */
+export function useParentEnrollments(endpoint = "/api/parent/enrollments") {
   const [enrollments, setEnrollments] = useState<ParentEnrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -49,7 +61,7 @@ export function useParentEnrollments() {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/parent/enrollments");
+      const res = await fetch(endpoint);
       const data = await res.json();
 
       if (!res.ok) {
