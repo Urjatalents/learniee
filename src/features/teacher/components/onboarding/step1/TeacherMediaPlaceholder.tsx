@@ -82,8 +82,8 @@ export default function TeacherMediaPlaceholder({
       {/* ================================================== */}
 
       <div>
-        <label className="block text-sm font-semibold text-gray-800 mb-1">
-          Video Introduction <span className="text-red-600">*</span>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Video Introduction <span className="text-red-500 ml-0.5">*</span>
         </label>
 
         <p className="text-xs text-gray-500 mb-2">
@@ -92,7 +92,7 @@ export default function TeacherMediaPlaceholder({
 
         <label
           htmlFor="intro-video"
-          className="border-2 border-dashed rounded-md p-5 text-sm text-gray-500 bg-gray-50 cursor-pointer block hover:bg-gray-100"
+          className="border-2 border-dashed border-gray-200 rounded-xl p-5 bg-white text-sm text-gray-500 cursor-pointer block hover:bg-violet-50/50 hover:border-violet-200 transition-colors"
         >
           <input
             id="intro-video"
@@ -114,7 +114,7 @@ export default function TeacherMediaPlaceholder({
                 className="w-full max-h-64 rounded-md"
               />
 
-              <p className="text-purple-600 font-medium break-all">
+              <p className="text-violet-600 font-medium break-all">
                 {introVideo?.name}
               </p>
 
@@ -154,13 +154,13 @@ export default function TeacherMediaPlaceholder({
       {/* ================================================== */}
 
       <div>
-        <label className="block text-sm font-semibold text-gray-800 mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
           Profile Photo
         </label>
 
         <label
           htmlFor="profile-photo"
-          className="border-2 border-dashed rounded-md p-5 text-sm text-gray-500 bg-gray-50 cursor-pointer block hover:bg-gray-100"
+          className="border-2 border-dashed border-gray-200 rounded-xl p-5 bg-white text-sm text-gray-500 cursor-pointer block hover:bg-violet-50/50 hover:border-violet-200 transition-colors"
         >
           <input
             id="profile-photo"
@@ -182,7 +182,7 @@ export default function TeacherMediaPlaceholder({
                 className="w-40 h-40 object-cover rounded-md mx-auto"
               />
 
-              <p className="text-purple-600 font-medium break-all text-center">
+              <p className="text-violet-600 font-medium break-all text-center">
                 {profilePhoto?.name}
               </p>
 

@@ -1,3 +1,7 @@
+import { Laptop } from "lucide-react";
+
+import FormSection from "@/features/parent/components/onboarding/FormSection";
+import CheckboxField from "@/features/teacher/components/onboarding/CheckboxField";
 import type { Step2ChangeHandler, Step2FormData } from "@/features/teacher/types/step2";
 
 interface Props {
@@ -7,36 +11,31 @@ interface Props {
 
 export default function EquipmentSkillsSection({ formData, onChange }: Props) {
   return (
-    <div className="flex flex-wrap gap-6 text-sm text-gray-600">
-      <label className="flex items-center space-x-2">
-        <input
-          type="checkbox"
+    <FormSection
+      title="Equipment & skills"
+      description="Tick everything that applies"
+      icon={Laptop}
+    >
+      <div className="sm:col-span-2 flex flex-wrap gap-x-8 gap-y-3">
+        <CheckboxField
           name="hasLaptop"
+          label="I have a Laptop"
           checked={formData.hasLaptop}
           onChange={onChange}
         />
-        <span>I have a Laptop</span>
-      </label>
-
-      <label className="flex items-center space-x-2">
-        <input
-          type="checkbox"
+        <CheckboxField
           name="hasPenTab"
+          label="I have a PenTab"
           checked={formData.hasPenTab}
           onChange={onChange}
         />
-        <span>I have a PenTab</span>
-      </label>
-
-      <label className="flex items-center space-x-2">
-        <input
-          type="checkbox"
+        <CheckboxField
           name="proficientInEnglish"
+          label="I am Proficient in English"
           checked={formData.proficientInEnglish}
           onChange={onChange}
         />
-        <span>I am Proficient in English</span>
-      </label>
-    </div>
+      </div>
+    </FormSection>
   );
 }

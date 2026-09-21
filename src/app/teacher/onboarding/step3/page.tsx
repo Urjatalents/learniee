@@ -1,7 +1,13 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowLeft, FileText, CreditCard } from "lucide-react";
+
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import FormSection from "@/features/parent/components/onboarding/FormSection";
+import FormField from "@/features/parent/components/onboarding/FormField";
+import FormErrorBanner from "@/features/parent/components/onboarding/FormErrorBanner";
+import OnboardingSubmitButton from "@/features/parent/components/onboarding/OnboardingSubmitButton";
 import DocumentUpload from "@/features/teacher/components/onboarding/step3/DocumentUpload";
 import { useTeacherStep3Form } from "@/features/teacher/hooks/useTeacherStep3Form";
 import {
@@ -20,63 +26,65 @@ export default function TeacherStep3() {
     submitting,
     submitError,
     handleSubmit,
-    goBack,
   } = useTeacherStep3Form();
 
   return (
-    <div className="max-w-3xl mx-auto p-8 bg-white rounded-xl shadow-sm border mt-10">
-      <h2 className="text-2xl font-bold text-center text-purple-600 mb-8">Documents</h2>
+    <>
+      <div className="mb-8">
+        <Link
+          href="/teacher/onboarding/step2"
+          className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-violet-600 mb-3"
+        >
+          <ArrowLeft className="size-3.5" />
+          Back
+        </Link>
+        <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Upload your documents so our team can verify your profile.
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {DOCUMENT_SLOTS.map(({ key, label }) => (
-          <DocumentUpload
-            key={key}
-            id={`file-${key}`}
-            label={label}
-            file={files[key]}
-            error={fileErrors[key]}
-            acceptedTypes={STEP3_ACCEPTED_TYPES}
-            maxFileSizeMB={STEP3_MAX_FILE_SIZE_MB}
-            onChange={(file) => handleFileSelect(key, file)}
-          />
-        ))}
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
+        <FormSection
+          title="Proof documents"
+          description="PNG, JPG or PDF"
+          icon={FileText}
+        >
+          {DOCUMENT_SLOTS.map(({ key, label }) => (
+            <div key={key} className="sm:col-span-2">
+              <DocumentUpload
+                id={`file-${key}`}
+                label={label}
+                file={files[key]}
+                error={fileErrors[key]}
+                acceptedTypes={STEP3_ACCEPTED_TYPES}
+                maxFileSizeMB={STEP3_MAX_FILE_SIZE_MB}
+                onChange={(file) => handleFileSelect(key, file)}
+              />
+            </div>
+          ))}
+        </FormSection>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2">
-            PAN Card Number
-          </label>
-          <Input
-            name="panCardNumber"
-            placeholder="Enter PAN card number"
-            value={panCardNumber}
-            onChange={(e) => setPanCardNumber(e.target.value.toUpperCase())}
-          />
-        </div>
+        <FormSection title="Tax details" icon={CreditCard}>
+          <FormField label="PAN Card Number" htmlFor="panCardNumber">
+            <Input
+              id="panCardNumber"
+              name="panCardNumber"
+              placeholder="Enter PAN card number"
+              value={panCardNumber}
+              onChange={(e) => setPanCardNumber(e.target.value.toUpperCase())}
+            />
+          </FormField>
+        </FormSection>
 
-        {submitError && (
-          <p className="text-sm text-red-600 text-center">{submitError}</p>
-        )}
+        {submitError && <FormErrorBanner message={submitError} />}
 
-        <div className="flex justify-center gap-4 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={goBack}
-            disabled={submitting}
-            className="w-40 rounded-full border-purple-600 text-purple-600"
-          >
-            Back
-          </Button>
-
-          <Button
-            type="submit"
-            disabled={submitting}
-            className="bg-purple-600 hover:bg-purple-700 text-white w-40 rounded-full disabled:opacity-60"
-          >
-            {submitting ? "Uploading..." : "Submit"}
-          </Button>
-        </div>
+        <OnboardingSubmitButton
+          submitting={submitting}
+          label="Submit"
+          submittingLabel="Uploading..."
+        />
       </form>
-    </div>
+    </>
   );
 }

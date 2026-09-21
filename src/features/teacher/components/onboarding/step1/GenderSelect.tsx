@@ -1,30 +1,23 @@
 "use client";
 
+import SelectField from "@/features/shared/components/SelectField";
+
 interface GenderSelectProps {
   value: string;
-  onChange: (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => void;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
-export default function GenderSelect({
-  value,
-  onChange,
-}: GenderSelectProps) {
+const GENDER_OPTIONS = ["Male", "Female", "Other", "Prefer not to say"];
+
+export default function GenderSelect({ value, onChange }: GenderSelectProps) {
   return (
-    <select
+    <SelectField
+      id="gender"
       name="gender"
       value={value}
+      placeholder="Select gender"
+      options={GENDER_OPTIONS}
       onChange={onChange}
-      className="w-full border rounded-md px-3 py-2 text-sm text-gray-600"
-    >
-      <option value="">Gender</option>
-      <option value="Male">Male</option>
-      <option value="Female">Female</option>
-      <option value="Other">Other</option>
-      <option value="Prefer not to say">
-        Prefer not to say
-      </option>
-    </select>
+    />
   );
 }

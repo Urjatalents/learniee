@@ -1,4 +1,10 @@
+import { Globe } from "lucide-react";
+
 import { Input } from "@/components/ui/input";
+import FormSection from "@/features/parent/components/onboarding/FormSection";
+import FormField from "@/features/parent/components/onboarding/FormField";
+import CheckboxField from "@/features/teacher/components/onboarding/CheckboxField";
+import { TEXTAREA_CLASSNAME } from "@/features/teacher/components/onboarding/styles";
 import type { Step2ChangeHandler, Step2FormData } from "@/features/teacher/types/step2";
 
 interface Props {
@@ -8,43 +14,76 @@ interface Props {
 
 export default function AdditionalInfoAndSocialSection({ formData, onChange }: Props) {
   return (
-    <>
-      {/* -------------------------------- */}
-      {/* ADDITIONAL INFORMATION */}
-      {/* -------------------------------- */}
-
-      <div>
-        <label className="block text-sm font-semibold text-gray-800 mb-2">
-          Anything else that you would like to share with us? [OPTIONAL]
-        </label>
-
+    <FormSection
+      title="Additional info & social links"
+      description="All optional"
+      icon={Globe}
+    >
+      <FormField
+        label="Anything else you'd like to share with us?"
+        htmlFor="additionalInfo"
+        helperText="Optional"
+        fullWidth
+      >
         <textarea
+          id="additionalInfo"
           name="additionalInfo"
+          rows={4}
           placeholder="Type..."
           value={formData.additionalInfo}
           onChange={onChange}
-          rows={4}
-          className="w-full border rounded-md p-3 text-sm text-gray-600"
+          className={TEXTAREA_CLASSNAME}
         />
-      </div>
+      </FormField>
 
-      {/* -------------------------------- */}
-      {/* SOCIAL MEDIA */}
-      {/* -------------------------------- */}
-
-      <h3 className="font-semibold text-gray-800 mt-6">Social Media</h3>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input name="facebook" placeholder="Facebook" value={formData.facebook} onChange={onChange} />
-        <Input name="linkedin" placeholder="LinkedIn" value={formData.linkedin} onChange={onChange} />
+      <FormField label="Facebook" htmlFor="facebook">
         <Input
+          id="facebook"
+          name="facebook"
+          placeholder="Profile link"
+          value={formData.facebook}
+          onChange={onChange}
+        />
+      </FormField>
+
+      <FormField label="LinkedIn" htmlFor="linkedin">
+        <Input
+          id="linkedin"
+          name="linkedin"
+          placeholder="Profile link"
+          value={formData.linkedin}
+          onChange={onChange}
+        />
+      </FormField>
+
+      <FormField label="Instagram" htmlFor="instagram">
+        <Input
+          id="instagram"
           name="instagram"
-          placeholder="Instagram"
+          placeholder="Profile link"
           value={formData.instagram}
           onChange={onChange}
         />
-        <Input name="youtube" placeholder="Youtube" value={formData.youtube} onChange={onChange} />
+      </FormField>
+
+      <FormField label="YouTube" htmlFor="youtube">
+        <Input
+          id="youtube"
+          name="youtube"
+          placeholder="Channel link"
+          value={formData.youtube}
+          onChange={onChange}
+        />
+      </FormField>
+
+      <div className="sm:col-span-2 border-t border-gray-200 pt-5">
+        <CheckboxField
+          name="notWithOtherAcademy"
+          label="I am not working with any other academy"
+          checked={formData.notWithOtherAcademy}
+          onChange={onChange}
+        />
       </div>
-    </>
+    </FormSection>
   );
 }

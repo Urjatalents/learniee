@@ -1,13 +1,30 @@
 "use client";
 
+import SelectField from "@/features/shared/components/SelectField";
+
 interface DateOfBirthSelectProps {
   day: string;
   month: string;
   year: string;
-  onChange: (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => void;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
+
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 export default function DateOfBirthSelect({
   day,
@@ -15,75 +32,37 @@ export default function DateOfBirthSelect({
   year,
   onChange,
 }: DateOfBirthSelectProps) {
-  const days = Array.from({ length: 31 }, (_, i) => i + 1);
-
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
   const currentYear = new Date().getFullYear();
-  const years = Array.from(
-    { length: 100 },
-    (_, i) => currentYear - i
-  );
+  const years = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
 
   return (
-    <div className="flex gap-2">
-      <select
+    <div className="grid grid-cols-3 gap-2">
+      <SelectField
+        id="dobDay"
         name="dobDay"
         value={day}
+        placeholder="Date"
+        options={DAYS}
         onChange={onChange}
-        className="w-full border rounded-md px-3 py-2 text-sm text-gray-600"
-      >
-        <option value="">Date</option>
+      />
 
-        {days.map((value) => (
-          <option key={value} value={value}>
-            {value}
-          </option>
-        ))}
-      </select>
-
-      <select
+      <SelectField
+        id="dobMonth"
         name="dobMonth"
         value={month}
+        placeholder="Month"
+        options={MONTHS}
         onChange={onChange}
-        className="w-full border rounded-md px-3 py-2 text-sm text-gray-600"
-      >
-        <option value="">Month</option>
+      />
 
-        {months.map((value) => (
-          <option key={value} value={value}>
-            {value}
-          </option>
-        ))}
-      </select>
-
-      <select
+      <SelectField
+        id="dobYear"
         name="dobYear"
         value={year}
+        placeholder="Year"
+        options={years}
         onChange={onChange}
-        className="w-full border rounded-md px-3 py-2 text-sm text-gray-600"
-      >
-        <option value="">Year</option>
-
-        {years.map((value) => (
-          <option key={value} value={value}>
-            {value}
-          </option>
-        ))}
-      </select>
+      />
     </div>
   );
 }

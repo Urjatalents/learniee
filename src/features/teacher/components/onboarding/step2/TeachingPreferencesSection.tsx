@@ -1,4 +1,12 @@
+import { BookOpen } from "lucide-react";
+
 import { Input } from "@/components/ui/input";
+import SelectField from "@/features/shared/components/SelectField";
+import FormSection from "@/features/parent/components/onboarding/FormSection";
+import FormField from "@/features/parent/components/onboarding/FormField";
+import LabeledSelect, {
+  type LabeledOption,
+} from "@/features/teacher/components/onboarding/LabeledSelect";
 import type { Step2ChangeHandler, Step2FormData } from "@/features/teacher/types/step2";
 
 interface Props {
@@ -6,70 +14,88 @@ interface Props {
   onChange: Step2ChangeHandler;
 }
 
-const yesNoSelect = (
-  name: string,
-  value: string,
-  placeholder: string,
-  onChange: Step2ChangeHandler,
-) => (
-  <select
-    name={name}
-    value={value}
-    onChange={onChange}
-    className="w-full border rounded-md px-3 py-2 text-sm text-gray-600"
-  >
-    <option value="">{placeholder}</option>
-    <option value="Yes">Yes</option>
-    <option value="No">No</option>
-  </select>
-);
+const YES_NO_OPTIONS = ["Yes", "No"];
+
+const HOURS_PER_DAY_OPTIONS: LabeledOption[] = [
+  { value: "1", label: "1 hour" },
+  { value: "2", label: "2 hours" },
+  { value: "3", label: "3 hours" },
+  { value: "4", label: "4 hours" },
+  { value: "5+", label: "5+ hours" },
+];
 
 export default function TeachingPreferencesSection({ formData, onChange }: Props) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Input
-        name="studentsTaught"
-        placeholder="Number of Students taught"
-        value={formData.studentsTaught}
-        onChange={onChange}
-      />
+    <FormSection
+      title="Teaching preferences"
+      description="How you like to teach"
+      icon={BookOpen}
+    >
+      <FormField label="Number of Students Taught" htmlFor="studentsTaught">
+        <Input
+          id="studentsTaught"
+          name="studentsTaught"
+          inputMode="numeric"
+          placeholder="e.g. 25"
+          value={formData.studentsTaught}
+          onChange={onChange}
+        />
+      </FormField>
 
-      <select
-        name="hoursPerDay"
-        value={formData.hoursPerDay}
-        onChange={onChange}
-        className="w-full border rounded-md px-3 py-2 text-sm text-gray-600"
-      >
-        <option value="">No of hours can teach a day</option>
-        <option value="1">1 hour</option>
-        <option value="2">2 hours</option>
-        <option value="3">3 hours</option>
-        <option value="4">4 hours</option>
-        <option value="5+">5+ hours</option>
-      </select>
+      <FormField label="Hours You Can Teach a Day" htmlFor="hoursPerDay">
+        <LabeledSelect
+          id="hoursPerDay"
+          name="hoursPerDay"
+          value={formData.hoursPerDay}
+          placeholder="Select hours"
+          options={HOURS_PER_DAY_OPTIONS}
+          onChange={onChange}
+        />
+      </FormField>
 
-      {yesNoSelect("haveOwnNotes", formData.haveOwnNotes, "Do you have your own notes", onChange)}
+      <FormField label="Do you have your own notes?" htmlFor="haveOwnNotes">
+        <SelectField
+          id="haveOwnNotes"
+          name="haveOwnNotes"
+          value={formData.haveOwnNotes}
+          placeholder="Select one"
+          options={YES_NO_OPTIONS}
+          onChange={onChange}
+        />
+      </FormField>
 
-      {yesNoSelect(
-        "canMakePresentations",
-        formData.canMakePresentations,
-        "Can you make Presentations",
-        onChange,
-      )}
+      <FormField label="Can you make presentations?" htmlFor="canMakePresentations">
+        <SelectField
+          id="canMakePresentations"
+          name="canMakePresentations"
+          value={formData.canMakePresentations}
+          placeholder="Select one"
+          options={YES_NO_OPTIONS}
+          onChange={onChange}
+        />
+      </FormField>
 
-      {yesNoSelect(
-        "provideHomework",
-        formData.provideHomework,
-        "Will you provide homeworks & tests",
-        onChange,
-      )}
+      <FormField label="Will you provide homework & tests?" htmlFor="provideHomework">
+        <SelectField
+          id="provideHomework"
+          name="provideHomework"
+          value={formData.provideHomework}
+          placeholder="Select one"
+          options={YES_NO_OPTIONS}
+          onChange={onChange}
+        />
+      </FormField>
 
-      {yesNoSelect(
-        "conductPTM",
-        formData.conductPTM,
-        "Conduct parent-teacher meetings",
-        onChange,
-      )}
-    </div>
+      <FormField label="Conduct parent-teacher meetings?" htmlFor="conductPTM">
+        <SelectField
+          id="conductPTM"
+          name="conductPTM"
+          value={formData.conductPTM}
+          placeholder="Select one"
+          options={YES_NO_OPTIONS}
+          onChange={onChange}
+        />
+      </FormField>
+    </FormSection>
   );
 }

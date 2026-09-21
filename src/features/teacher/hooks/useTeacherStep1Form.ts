@@ -26,6 +26,7 @@ export function useTeacherStep1Form() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState<Step1FormData>(emptyStep1FormData);
   const [, setTeacherId] = useState<string | null>(null);
 
@@ -87,6 +88,7 @@ export function useTeacherStep1Form() {
       return;
     }
 
+    setError("");
     setSubmitting(true);
 
     try {
@@ -117,7 +119,7 @@ export function useTeacherStep1Form() {
       router.push("/teacher/onboarding/step2");
     } catch (error) {
       console.error("Step 1 submission error:", error);
-      alert(
+      setError(
         error instanceof Error
           ? error.message
           : "Something went wrong. Please try again.",
@@ -130,6 +132,7 @@ export function useTeacherStep1Form() {
   return {
     loading,
     submitting,
+    error,
     formData,
     handleChange,
     handleSubmit,

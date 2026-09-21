@@ -1,4 +1,11 @@
+import { Briefcase, Award } from "lucide-react";
+
 import { Input } from "@/components/ui/input";
+import FormSection from "@/features/parent/components/onboarding/FormSection";
+import FormField from "@/features/parent/components/onboarding/FormField";
+import LabeledSelect, {
+  type LabeledOption,
+} from "@/features/teacher/components/onboarding/LabeledSelect";
 import type {
   Step2ChangeHandler,
   Step2FormData,
@@ -31,6 +38,21 @@ interface Props {
   awardError?: string;
 }
 
+const REFERRED_BY_OPTIONS: LabeledOption[] = [
+  { value: "website", label: "Website" },
+  { value: "friend", label: "Friend" },
+  { value: "social_media", label: "Social Media" },
+  { value: "other", label: "Other" },
+];
+
+const EXPERIENCE_OPTIONS: LabeledOption[] = [
+  { value: "0", label: "Less than 1 year" },
+  { value: "1-3", label: "1-3 years" },
+  { value: "3-5", label: "3-5 years" },
+  { value: "5-10", label: "5-10 years" },
+  { value: "10+", label: "10+ years" },
+];
+
 export default function ProfessionalBackgroundSection({
   formData,
   onChange,
@@ -49,92 +71,73 @@ export default function ProfessionalBackgroundSection({
 }: Props) {
   return (
     <>
-      {/* -------------------------------- */}
-      {/* BASIC PROFESSIONAL INFORMATION */}
-      {/* -------------------------------- */}
+      <FormSection
+        title="Professional background"
+        description="Your qualifications and teaching experience"
+        icon={Briefcase}
+      >
+        <FormField label="Referred By" htmlFor="referredBy">
+          <LabeledSelect
+            id="referredBy"
+            name="referredBy"
+            value={formData.referredBy}
+            placeholder="How did you hear about us?"
+            options={REFERRED_BY_OPTIONS}
+            onChange={onChange}
+          />
+        </FormField>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <select
-          name="referredBy"
-          value={formData.referredBy}
-          onChange={onChange}
-          className="w-full border rounded-md px-3 py-2 text-sm text-gray-600"
+        <FormField label="Qualifications" htmlFor="qualifications">
+          <Input
+            id="qualifications"
+            name="qualifications"
+            placeholder="e.g. B.Ed, M.Sc Mathematics"
+            value={formData.qualifications}
+            onChange={onChange}
+          />
+        </FormField>
+
+        <FormField label="Overall Teaching Experience" htmlFor="overallExperience">
+          <LabeledSelect
+            id="overallExperience"
+            name="overallExperience"
+            value={formData.overallExperience}
+            placeholder="Select experience"
+            options={EXPERIENCE_OPTIONS}
+            onChange={onChange}
+          />
+        </FormField>
+
+        <FormField label="Comfortable Language" htmlFor="comfortableLanguage">
+          <Input
+            id="comfortableLanguage"
+            name="comfortableLanguage"
+            placeholder="e.g. English, Hindi"
+            value={formData.comfortableLanguage}
+            onChange={onChange}
+          />
+        </FormField>
+
+        <FormField
+          label="Schools You Taught Before"
+          htmlFor="schoolsTaught"
+          fullWidth
         >
-          <option value="">Referred by</option>
-          <option value="website">Website</option>
-          <option value="friend">Friend</option>
-          <option value="social_media">Social Media</option>
-          <option value="other">Other</option>
-        </select>
+          <Input
+            id="schoolsTaught"
+            name="schoolsTaught"
+            placeholder="School names, separated by commas"
+            value={formData.schoolsTaught}
+            onChange={onChange}
+          />
+        </FormField>
+      </FormSection>
 
-        <Input
-          name="qualifications"
-          placeholder="Qualifications"
-          value={formData.qualifications}
-          onChange={onChange}
-        />
-      </div>
-
-      {/* -------------------------------- */}
-      {/* EXPERIENCE */}
-      {/* -------------------------------- */}
-
-      <h3 className="font-semibold text-gray-800 mt-6">
-        Experience
-      </h3>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <select
-          name="overallExperience"
-          value={formData.overallExperience}
-          onChange={onChange}
-          className="w-full border rounded-md px-3 py-2 text-sm text-gray-600"
-        >
-          <option value="">
-            Overall Teaching Experience
-          </option>
-
-          <option value="0">
-            Less than 1 year
-          </option>
-
-          <option value="1-3">
-            1-3 years
-          </option>
-
-          <option value="3-5">
-            3-5 years
-          </option>
-
-          <option value="5-10">
-            5-10 years
-          </option>
-
-          <option value="10+">
-            10+ years
-          </option>
-        </select>
-
-        <Input
-          name="comfortableLanguage"
-          placeholder="Comfortable Language"
-          value={formData.comfortableLanguage}
-          onChange={onChange}
-        />
-      </div>
-
-      <Input
-        name="schoolsTaught"
-        placeholder="Schools you taught before"
-        value={formData.schoolsTaught}
-        onChange={onChange}
-      />
-
-      {/* -------------------------------- */}
-      {/* CERTIFICATIONS + AWARDS */}
-      {/* -------------------------------- */}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <FormSection
+        title="Certifications & awards"
+        description="Upload anything that supports your experience"
+        icon={Award}
+      >
         <CertificationUpload
           files={certificationFiles}
           existingFiles={existingCertificationFiles}
@@ -148,7 +151,7 @@ export default function ProfessionalBackgroundSection({
           onChange={onAwardChange}
           error={awardError}
         />
-      </div>
+      </FormSection>
     </>
   );
 }

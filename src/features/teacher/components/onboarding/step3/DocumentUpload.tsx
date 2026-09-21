@@ -75,14 +75,14 @@ export default function DocumentUpload({
 
   return (
     <div>
-      <label className="block text-sm font-semibold text-gray-800 mb-2">
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
         {label}
       </label>
 
       {!file ? (
         <label
           htmlFor={id}
-          className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center bg-gray-50 text-gray-400 cursor-pointer hover:bg-gray-100 transition-colors"
+          className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center bg-white text-gray-400 cursor-pointer hover:bg-violet-50/50 hover:border-violet-200 transition-colors"
         >
           <input
             id={id}
@@ -135,7 +135,7 @@ export default function DocumentUpload({
           {/* -------------------------------- */}
 
           <div className="p-4">
-            <p className="text-sm font-medium text-purple-600 break-all">
+            <p className="text-sm font-medium text-violet-600 break-all">
               {file.name}
             </p>
 

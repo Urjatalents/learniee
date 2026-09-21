@@ -96,14 +96,14 @@ export default function MultiFileUploadField({
 
   return (
     <div>
-      <label className="block text-sm font-semibold text-gray-800 mb-2">
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">
         {label}
       </label>
 
       {/* Upload box */}
       <label
         htmlFor={id}
-        className="border-2 border-dashed rounded-md p-5 text-sm text-gray-500 bg-gray-50 cursor-pointer block hover:bg-gray-100"
+        className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-sm text-gray-500 bg-white cursor-pointer block hover:bg-violet-50/50 hover:border-violet-200 transition-colors"
       >
         <input
           id={id}
@@ -153,7 +153,7 @@ export default function MultiFileUploadField({
 
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm text-purple-600 font-medium break-all">
+                  <p className="text-sm text-violet-600 font-medium break-all">
                     {file.name}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
