@@ -856,6 +856,13 @@ model EnrollmentCycle {
   closeReason           CycleCloseReason?
   countedSessionCount   Int?
   forfeitedSessionCount Int?
+  /// Part 2B (Sep 21, 2026): when this cycle's payout (ledger row, if
+  /// anything counted) was actually released — i.e. CLOSED AND every
+  /// session settled (`ClassSession.settledAt` all non-null). Null
+  /// while CLOSED but still waiting on an open dispute/confirmation
+  /// window. Set at most once; `cycleClose.service.ts` is the only
+  /// writer. Legacy cycles don't exist, so always null there.
+  payoutReleasedAt DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   enrollment       Enrollment     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
@@ -1293,6 +1300,11 @@ enum EnrollmentStatus {
   PENDING_TEACHER_APPROVAL
   PENDING_PARENT_RECONFIRMATION
   PENDING_ADMIN_APPROVAL
+  /// Part 2B (Sep 21, 2026), cycle-model enrollments only: a cycle
+  /// closed and the parent did not renew it in time. Terminal —
+  /// replaces auto-lapse for these rows (`enrollmentAutoLapse.service.ts`
+  /// already excludes them). Set by `enrollmentCompletion.service.ts`.
+  COMPLETED
 }
 
 /// Cycle payout status (added Sep 3, 2026) — informational/future
@@ -1469,6 +1481,9 @@ enum NotificationType {
   SESSION_OUTCOME_REPORTED
   SESSION_OUTCOME_DECIDED
   SESSION_NEEDS_REVIEW
+  /// Money and Renewal (Part 2B, Sep 21, 2026)
+  CYCLE_RENEWED
+  ENROLLMENT_COMPLETED
   GENERIC
 }
 
@@ -1573,6 +1588,10 @@ enum ActivityAction {
   SESSION_OUTCOME_REPORTED
   SESSION_OUTCOME_DECIDED
   SESSION_OUTCOME_OVERRIDDEN
+  /// Money and Renewal (Part 2B, Sep 21, 2026)
+  CYCLE_PAYOUT_RELEASED
+  CYCLE_RENEWED
+  ENROLLMENT_COMPLETED
   GENERIC
 }
 
@@ -1635,6 +1654,11 @@ enum InvoiceType {
   DEMO_BOOKING_PAYMENT
   WALLET_TOPUP
   DEMO_COUPON_PURCHASE
+  /// Part 2B (Sep 21, 2026): a Renew payment for cycle 2+ of a
+  /// cycle-model Enrollment. The Enrollment's own razorpayOrderId/
+  /// razorpayPaymentId still hold only the FIRST payment — this
+  /// Invoice's own razorpayOrderId/PaymentId are the renewal's.
+  CYCLE_RENEWAL_PAYMENT
 }
 
 /// Always PARENT today — see the `Invoice` model's doc-comment.

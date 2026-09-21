@@ -20,6 +20,7 @@ export type EnrollmentStatusValue =
   | "ACTIVE"
   | "LAPSED"
   | "CANCELLED"
+  | "COMPLETED"
   | string;
 
 export type EnrollmentViewerRole = "parent" | "teacher" | "admin";
@@ -45,6 +46,8 @@ export function getEnrollmentStatusLabel(
         return "Cancelled";
       case "LAPSED":
         return "Lapsed";
+      case "COMPLETED":
+        return "Completed";
       default:
         return status;
     }
@@ -70,6 +73,8 @@ export function getEnrollmentStatusLabel(
       return "Cancelled";
     case "LAPSED":
       return "Lapsed";
+    case "COMPLETED":
+      return "Completed";
     default:
       return status;
   }
@@ -85,6 +90,7 @@ const STATUS_STYLES: Record<string, string> = {
   LAPSED: "bg-gray-200 text-gray-600",
   REJECTED: "bg-red-100 text-red-700",
   CANCELLED: "bg-red-100 text-red-700",
+  COMPLETED: "bg-violet-100 text-violet-700",
 };
 
 export function getEnrollmentStatusStyle(status: EnrollmentStatusValue): string {

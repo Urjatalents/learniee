@@ -10,6 +10,7 @@ import {
 } from "@/features/shared/utils/enrollmentStatus";
 import { formatSchedule } from "@/features/shared/utils/weekdays";
 import CycleProgressRing from "@/features/shared/components/CycleProgressRing";
+import RenewalPanel from "@/features/parent/components/enrollments/RenewalPanel";
 
 interface Props {
   enrollment: ParentEnrollment;
@@ -117,6 +118,10 @@ export default function EnrollmentStatusCard({
           This enrollment wasn&apos;t approved. Message your teacher in chat
           for details.
         </p>
+      )}
+
+      {enrollment.status === "ACTIVE" && !enrollment.isLegacy && (
+        <RenewalPanel enrollmentId={enrollment.id} />
       )}
 
       <div className="flex flex-wrap gap-2 mt-4">

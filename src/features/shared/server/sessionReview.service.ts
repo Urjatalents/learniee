@@ -33,6 +33,7 @@ import { lockCycle } from "@/features/shared/server/cycleSlots.service";
 import { recomputeEnrollmentCounters } from "@/features/shared/server/classSession.service";
 import { runSessionFollowUps } from "@/features/shared/server/sessionFollowUp.service";
 import { reconcileLedgerEntryForClosedCycle } from "@/features/shared/server/tuitionLedger.service";
+import { releaseClosedCyclePayout } from "@/features/shared/server/cycleClose.service";
 import { notifySessionOutcomeDecided } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
 
@@ -434,7 +435,8 @@ export async function applySessionDecision(
 
   // Everything below runs after the decision is committed. A failure
   // is logged and reported, never thrown: the decision stands and the
-  // sweep repairs whatever is missing (follow-up, cycle close).
+  // sweep repairs whatever is missing (follow-up, cycle close, payout
+  // release).
   if (done.changed) {
     try {
       if (done.cycleWasClosed) {
@@ -447,6 +449,22 @@ export async function applySessionDecision(
       console.error(`Follow-up after Admin decision on ${input.sessionId} failed:`, err);
       warnings.push(
         "The decision is saved, but updating the cycle didn't fully finish. The next sweep will complete it.",
+      );
+    }
+  }
+
+  // Part 2B: every decision settles the session it decided (this is
+  // Admin's own action — nothing left for the parent to confirm), so
+  // this may be the one that clears the last unsettled session of an
+  // already-CLOSED cycle. Try releasing its payout right away, changed
+  // or not, and regardless of the branch above.
+  if (done.cycleWasClosed) {
+    try {
+      await releaseClosedCyclePayout(cycleId, now);
+    } catch (err) {
+      console.error(`Payout release after Admin decision on ${input.sessionId} failed:`, err);
+      warnings.push(
+        "The decision is saved, but releasing this cycle's payout didn't fully finish. The next sweep will complete it.",
       );
     }
   }
@@ -487,9 +505,14 @@ export async function applySessionDecision(
 
 /**
  * A decision changed how many sessions of an already-CLOSED cycle
- * count: bring the cycle's counted / forfeited totals in line and
- * correct its ledger row (see `reconcileLedgerEntryForClosedCycle`
- * for exactly what is and isn't touched). Returns warnings.
+ * count: brings the cycle's counted / forfeited totals in line, and —
+ * ONLY if this cycle's payout already released (Part 2B) — corrects
+ * its existing ledger row too (see `reconcileLedgerEntryForClosedCycle`
+ * for exactly what is and isn't touched). If the payout hasn't
+ * released yet, the corrected total is left for `releaseClosedCyclePayout()`
+ * (called right after this by the caller) to read once the cycle is
+ * fully settled — writing a ledger row here would skip that gate.
+ * Returns warnings.
  */
 async function reconcileClosedCycle(cycleId: string): Promise<string[]> {
   return prisma.$transaction(
@@ -528,15 +551,20 @@ async function reconcileClosedCycle(cycleId: string): Promise<string[]> {
         cycle.sessionCount,
       );
 
-      if (counted === (cycle.countedSessionCount ?? 0)) return [];
+      if (counted !== (cycle.countedSessionCount ?? 0)) {
+        await tx.enrollmentCycle.update({
+          where: { id: cycleId },
+          data: {
+            countedSessionCount: counted,
+            forfeitedSessionCount: Math.max(0, cycle.sessionCount - counted),
+          },
+        });
+      }
 
-      await tx.enrollmentCycle.update({
-        where: { id: cycleId },
-        data: {
-          countedSessionCount: counted,
-          forfeitedSessionCount: Math.max(0, cycle.sessionCount - counted),
-        },
-      });
+      // Payout not released yet — nothing more to do here; the
+      // caller's follow-up `releaseClosedCyclePayout()` call will
+      // pick up this corrected total once the cycle is fully settled.
+      if (!cycle.payoutReleasedAt) return [];
 
       const ledger = await reconcileLedgerEntryForClosedCycle(tx, {
         enrollment: cycle.enrollment,

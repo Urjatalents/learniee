@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 export interface ParentEnrollment {
   id: string;
   status: string;
+  isLegacy: boolean;
   sessionsPerMonth: number;
   noOfMonths: number;
   monthlyRate: string;

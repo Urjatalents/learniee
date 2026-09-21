@@ -37,6 +37,7 @@ import type { SessionFlowState } from "@/features/shared/types/sessionFlow";
 import { resolveSession } from "@/features/shared/server/sessionResolve.service";
 import { runSessionFollowUps } from "@/features/shared/server/sessionFollowUp.service";
 import { acceptExpiredConfirmationsQuietly } from "@/features/shared/server/sessionConfirmation.service";
+import { releaseClosedCyclePayout } from "@/features/shared/server/cycleClose.service";
 import { notifySessionOutcomeReported } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
 
@@ -596,6 +597,15 @@ export async function confirmSessionOutcome(
     where: { id: session.id, status: session.status, settledAt: null, confirmation: null },
     data: { confirmation: OutcomeConfirmation.PARENT_ACCEPTED, settledAt: now },
   });
+
+  // Part 2B: this may have been the last unsettled session of an
+  // already-CLOSED cycle — try to release its payout right away
+  // rather than waiting for the sweep. Never blocks the response.
+  if (session.cycleId) {
+    releaseClosedCyclePayout(session.cycleId, now).catch((err) =>
+      console.error(`Payout release after parent accept failed for cycle ${session.cycleId}:`, err),
+    );
+  }
 
   return reload(sessionId, actor, now);
 }

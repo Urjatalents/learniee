@@ -38,6 +38,12 @@ export const SESSION_POLICY = {
   /** Minimum sessions a cycle must contain to be bookable. */
   minSessionsPerCycle: 4,
   /**
+   * Part 2B: a cycle-model Enrollment's Renew action opens this many
+   * days before the current cycle's `endDate` (inclusive) and stays
+   * open until a next cycle exists or the Enrollment completes.
+   */
+  renewalWindowDays: 7,
+  /**
    * How long (minutes) after a session's scheduled end the sweep
    * (`/api/cron/resolve-sessions`) picks up any session nothing else
    * has resolved yet. Ending a session and reading one after its end

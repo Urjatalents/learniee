@@ -23,7 +23,7 @@ import {
   repairPendingFollowUps,
   runSessionFollowUps,
 } from "@/features/shared/server/sessionFollowUp.service";
-import { closeDueCycles } from "@/features/shared/server/cycleClose.service";
+import { closeDueCycles, releaseDueCyclePayouts } from "@/features/shared/server/cycleClose.service";
 import { reapplyApprovedLeaves } from "@/features/shared/server/leaveShift.service";
 
 /**
@@ -323,6 +323,8 @@ export interface SessionSweepResult {
   cyclesClosed: number;
   /** Part 2A: sessions accepted because the parent's 48 hours passed with no action. */
   confirmationsAccepted: number;
+  /** Part 2B: cycle payouts released (ledger row written) by this run. */
+  payoutsReleased: number;
   /** True if a full batch was found — more work may remain for the next run. */
   moreRemaining: boolean;
 }
@@ -391,7 +393,9 @@ export async function runSessionSweep(now: Date = new Date()): Promise<SessionSw
   let leaveSessionsShifted = 0;
   let cyclesClosed = 0;
   let confirmationsAccepted = 0;
+  let payoutsReleased = 0;
   let closeBacklog = false;
+  let releaseBacklog = false;
 
   // Part 2A: settle every session whose 48 hours ran out. Independent
   // of the steps below (a cycle can close before it is settled).
@@ -421,6 +425,18 @@ export async function runSessionSweep(now: Date = new Date()): Promise<SessionSw
     console.error("Sweep cycle close failed:", err);
   }
 
+  // Part 2B: backstop for any CLOSED cycle that became fully settled
+  // with nothing watching (`closeCycleIfDue` / `confirmSessionOutcome`
+  // / `applySessionDecision` already try to release immediately —
+  // this only catches what they missed).
+  try {
+    const releasing = await releaseDueCyclePayouts(now);
+    payoutsReleased = releasing.released;
+    releaseBacklog = releasing.moreRemaining;
+  } catch (err) {
+    console.error("Sweep payout release failed:", err);
+  }
+
   return {
     resolved,
     repaired,
@@ -428,7 +444,11 @@ export async function runSessionSweep(now: Date = new Date()): Promise<SessionSw
     leaveSessionsShifted,
     cyclesClosed,
     confirmationsAccepted,
+    payoutsReleased,
     moreRemaining:
-      due.length === SWEEP_BATCH_SIZE || unapplied.length === SWEEP_BATCH_SIZE || closeBacklog,
+      due.length === SWEEP_BATCH_SIZE ||
+      unapplied.length === SWEEP_BATCH_SIZE ||
+      closeBacklog ||
+      releaseBacklog,
   };
 }

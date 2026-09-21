@@ -402,6 +402,64 @@ export function notifyCyclePayoutReady(enrollmentId: string) {
   });
 }
 
+/** Part 2B: a cycle closed with no renewal — the Enrollment is done. */
+export function notifyEnrollmentCompleted(enrollmentId: string) {
+  return safe("enrollment completed", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "your course";
+    const studentName = displayName({ firstName: e.student.firstName, visibleName: e.student.visibleName });
+
+    await createNotification({
+      recipientId: e.parentId,
+      recipientRole: R.PARENT,
+      type: T.ENROLLMENT_COMPLETED,
+      title: "Enrollment completed",
+      message: `${studentName}'s last cycle in "${courseTitle}" closed with no renewal, so the enrollment is now complete. Enroll again any time to continue.`,
+      link: "/parent/enrollments",
+    });
+
+    await createNotification({
+      recipientId: e.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.ENROLLMENT_COMPLETED,
+      title: "Enrollment completed",
+      message: `${studentName}'s enrollment in "${courseTitle}" is now complete — no renewal came in before the cycle closed.`,
+      link: "/teacher/enrollments",
+    });
+  });
+}
+
+/** Part 2B: a Renew payment cleared and the next cycle's sessions were created. */
+export function notifyCycleRenewed(enrollmentId: string, cycleNumber: number) {
+  return safe("cycle renewed", async () => {
+    const e = await loadEnrollmentContext(enrollmentId);
+    if (!e) return;
+
+    const courseTitle = e.course.courseTitle || "your course";
+    const studentName = displayName({ firstName: e.student.firstName, visibleName: e.student.visibleName });
+
+    await createNotification({
+      recipientId: e.parentId,
+      recipientRole: R.PARENT,
+      type: T.CYCLE_RENEWED,
+      title: "Renewal confirmed",
+      message: `Cycle ${cycleNumber} for ${studentName}'s "${courseTitle}" is booked and paid.`,
+      link: "/parent/enrollments",
+    });
+
+    await createNotification({
+      recipientId: e.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.CYCLE_RENEWED,
+      title: "Enrollment renewed",
+      message: `${studentName}'s enrollment in "${courseTitle}" was renewed for cycle ${cycleNumber}.`,
+      link: "/teacher/enrollments",
+    });
+  });
+}
+
 /**
  * "Lecture will start in X" — called only from the reminder cron
  * (/api/cron/session-reminders), never from request-handling code,
