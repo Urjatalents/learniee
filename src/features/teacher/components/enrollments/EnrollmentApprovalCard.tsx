@@ -71,6 +71,9 @@ export default function EnrollmentApprovalCard({
   const style = getEnrollmentStatusStyle(enrollment.status);
   const actionable = enrollment.status === "PENDING_TEACHER_APPROVAL";
   const isActive = enrollment.status === "ACTIVE" || enrollment.status === "LAPSED";
+  // COMPLETED cycles can't be marked/edited any more, but the
+  // Teacher can still open the session history for the record.
+  const canViewSessions = isActive || enrollment.status === "COMPLETED";
   const hasSchedule = (enrollment.scheduleDays?.length ?? 0) > 0;
 
   // Cycle model (non-legacy): one monthly cycle, session count and
@@ -137,7 +140,10 @@ export default function EnrollmentApprovalCard({
   }
 
   return (
-    <div className="bg-white border rounded-xl p-5">
+    <div
+      id={`enrollment-${enrollment.id}`}
+      className="bg-white border rounded-xl p-5 scroll-mt-24"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-gray-800 truncate">
@@ -295,7 +301,7 @@ export default function EnrollmentApprovalCard({
           </button>
         )}
 
-        {isActive && (
+        {canViewSessions && (
           <button
             type="button"
             onClick={() => setShowSessions((s) => !s)}
@@ -317,7 +323,7 @@ export default function EnrollmentApprovalCard({
         )}
       </div>
 
-      {isActive && showSessions && (
+      {canViewSessions && showSessions && (
         <SessionsList
           enrollmentId={enrollment.id}
           onSessionMarked={(patch) => onSessionMarked?.(patch as Partial<TeacherEnrollment>)}

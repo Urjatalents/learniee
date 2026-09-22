@@ -104,9 +104,11 @@ const enrollmentListInclude = {
 
 /**
  * Enrollments this Teacher needs to see: still in the approval
- * queue, or already ACTIVE (added Sep 3, 2026 alongside cycle
+ * queue, already ACTIVE (added Sep 3, 2026 alongside cycle
  * progress — a Teacher needs to see ACTIVE enrollments to mark
- * sessions complete, not just pending ones).
+ * sessions complete, not just pending ones), or COMPLETED (added
+ * for the "My Classes"-style teacher page, so a finished cycle's
+ * history/roster entry doesn't just disappear).
  */
 export function getEnrollmentsForTeacher(teacherId: string) {
   return prisma.enrollment.findMany({
@@ -118,6 +120,8 @@ export function getEnrollmentsForTeacher(teacherId: string) {
           EnrollmentStatus.PENDING_PARENT_RECONFIRMATION,
           EnrollmentStatus.PENDING_ADMIN_APPROVAL,
           EnrollmentStatus.ACTIVE,
+          EnrollmentStatus.LAPSED,
+          EnrollmentStatus.COMPLETED,
         ],
       },
     },
