@@ -18,6 +18,7 @@ import {
   Radio,
   MessageCircle,
   ListChecks,
+  GraduationCap,
   AlertCircle,
   Settings,
   X,
@@ -51,6 +52,7 @@ const menuSections: MenuSection[] = [
     label: "Main",
     items: [
       { label: "Home", path: "/teacher", icon: LayoutDashboard },
+      { label: "My Classes", path: "/teacher/my-classes", icon: GraduationCap },
       { label: "Course Management", path: "/teacher/course-management", icon: BookOpen },
       { label: "Enrollments", path: "/teacher/enrollments", icon: ListChecks },
       { label: "Calendar", path: "/teacher/calendar", icon: CalendarDays },
