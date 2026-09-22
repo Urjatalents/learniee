@@ -19,6 +19,8 @@ import {
   AlertCircle,
   Wallet as WalletIcon,
   X,
+  MessageCircle,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,9 +42,16 @@ interface MenuSection {
 // item here, always visible regardless of screen size.
 //
 // Part 2C (Sep 2026): "My Enrollments", "Home works/tests" and "Chat"
-// are merged into "My Classes" (/parent/my-classes) — each course's
+// were merged into "My Classes" (/parent/my-classes) — each course's
 // classes, homework and chat live on one page. The old routes stay
 // as redirects/legacy views so no existing link breaks.
+//
+// Re-added (per request): standalone "Homework" and "Chat" sidebar
+// items, since parents wanted direct one-tap access instead of going
+// through My Classes first. They link to the existing legacy routes
+// (/parent/homework-tests, /parent/chat), which currently redirect to
+// My Classes — swap them to deep-link into a specific course's tab
+// there if/when that's wired up.
 //
 // Note (still true): Preference, Notification, Gift, Go Live,
 // Learnie Mall, Suggestions, Transcripts, FAQs, and Blogs stay
@@ -63,6 +72,8 @@ const menuSections: MenuSection[] = [
     label: "My Learning",
     items: [
       { label: "My Classes", path: "/parent/my-classes", icon: ListChecks },
+      { label: "Homework", path: "/parent/homework-tests", icon: ClipboardList },
+      { label: "Chat", path: "/parent/chat", icon: MessageCircle },
       { label: "Reschedule", path: "/parent/reschedule", icon: RefreshCw },
       { label: "Payments", path: "/parent/payments", icon: CreditCard },
       { label: "Wallet", path: "/parent/wallet", icon: WalletIcon },

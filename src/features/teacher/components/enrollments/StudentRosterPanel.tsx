@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, MessageCircle, Phone, Search, BookOpen, Users } from "lucide-react";
+import { MessageCircle, Search, BookOpen, Users } from "lucide-react";
 
 import type { TeacherEnrollment } from "@/features/teacher/hooks/useEnrollments";
 import { getEnrollmentStatusLabel, getEnrollmentStatusStyle } from "@/features/shared/utils/enrollmentStatus";
@@ -15,8 +15,6 @@ interface StudentRow {
   studentId: string;
   studentName: string;
   parentName: string;
-  parentPhone: string;
-  parentEmail: string;
   courses: { enrollmentId: string; title: string; status: string }[];
   /** Most relevant enrollment for this student — ACTIVE/LAPSED first,
    *  then anything still pending, then COMPLETED — used for the
@@ -63,8 +61,6 @@ function buildRoster(enrollments: TeacherEnrollment[]): StudentRow[] {
       studentId,
       studentName: primary.student.visibleName?.trim() || primary.student.firstName,
       parentName: displayName(primary.parent),
-      parentPhone: primary.parent.phone,
-      parentEmail: primary.parent.email,
       courses: list.map((e) => ({
         enrollmentId: e.id,
         title: e.course.courseTitle ?? "Untitled course",
@@ -82,10 +78,11 @@ function buildRoster(enrollments: TeacherEnrollment[]): StudentRow[] {
 /**
  * A single, searchable directory of every student across this
  * Teacher's enrollments — one row per student rather than per
- * enrollment — with the parent's contact details and one-tap
- * shortcuts (chat, homework, jump to the class card below) so a
- * Teacher with many students doesn't have to scan the whole class
- * list to find one.
+ * enrollment — with one-tap shortcuts (chat, homework, jump to the
+ * class card below) so a Teacher with many students doesn't have to
+ * scan the whole class list to find one. Parent call/email are
+ * intentionally not shown — Chat is the only contact channel exposed
+ * to Teachers here.
  */
 export default function StudentRosterPanel({ enrollments }: Props) {
   const router = useRouter();
@@ -157,49 +154,13 @@ export default function StudentRosterPanel({ enrollments }: Props) {
                       {label}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 truncate">
-                    Parent: {row.parentName}
-                    {row.parentPhone && (
-                      <>
-                        {" · "}
-                        <a href={`tel:${row.parentPhone}`} className="hover:underline">
-                          {row.parentPhone}
-                        </a>
-                      </>
-                    )}
-                    {row.parentEmail && (
-                      <>
-                        {" · "}
-                        <a href={`mailto:${row.parentEmail}`} className="hover:underline">
-                          {row.parentEmail}
-                        </a>
-                      </>
-                    )}
-                  </p>
+                  <p className="text-xs text-gray-500 truncate">Parent: {row.parentName}</p>
                   <p className="text-[11px] text-gray-400 truncate mt-0.5">
                     {row.courses.map((c) => c.title).join(" · ")}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {row.parentPhone && (
-                    <a
-                      href={`tel:${row.parentPhone}`}
-                      title="Call parent"
-                      className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 hover:bg-gray-100 text-gray-500"
-                    >
-                      <Phone size={13} />
-                    </a>
-                  )}
-                  {row.parentEmail && (
-                    <a
-                      href={`mailto:${row.parentEmail}`}
-                      title="Email parent"
-                      className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 hover:bg-gray-100 text-gray-500"
-                    >
-                      <Mail size={13} />
-                    </a>
-                  )}
                   {row.chatRoomId && (
                     <button
                       type="button"
