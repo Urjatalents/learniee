@@ -29,7 +29,10 @@ export async function GET(
 
     await getRoomForAccess(roomId, { role: "ADMIN" });
 
-    const messages = await listMessages(roomId);
+    // includeOriginal: Admin's moderation view needs the real text
+    // behind a phone-number flag (06 #31) — Parent/Teacher routes
+    // never pass this.
+    const messages = await listMessages(roomId, undefined, { includeOriginal: true });
 
     return NextResponse.json({ success: true, messages });
   } catch (error) {

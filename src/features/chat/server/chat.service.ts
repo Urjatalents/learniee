@@ -1,7 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { ChatSenderRole } from "@prisma/client";
+import { ActivityAction, ActivityActorRole, ChatSenderRole } from "@prisma/client";
 import { SENDABLE_ENROLLMENT_STATUSES } from "@/features/shared/utils/enrollmentStatus";
-import { notifyChatMessage } from "@/features/shared/server/notificationTriggers.service";
+import {
+  notifyAdminChatPhoneNumberFlagged,
+  notifyChatMessage,
+} from "@/features/shared/server/notificationTriggers.service";
+import { logActivity } from "@/features/shared/server/activityLog.service";
+import { maskPhoneNumbers } from "@/features/chat/utils/phoneDetection";
 
 export class ChatError extends Error {
   status: number;
@@ -78,9 +83,15 @@ export interface AdminChatFilters {
  * teacher/parent/course — Admin's "view any conversation" queue.
  * Deliberately unrestricted otherwise: Admin oversight of Parent<->
  * Teacher messaging is the whole point of this endpoint.
+ *
+ * Also marks `hasFlaggedMessages` (06 #31) so the Admin list/search
+ * can surface rooms with a possible phone-number share without
+ * opening each one. Done as a second query rather than a Prisma
+ * filtered relation count so `roomListSelect` stays shared with the
+ * Parent/Teacher listings, which have no reason to know about flags.
  */
-export function getChatRoomsForAdmin(filters: AdminChatFilters = {}) {
-  return prisma.chatRoom.findMany({
+export async function getChatRoomsForAdmin(filters: AdminChatFilters = {}) {
+  const rooms = await prisma.chatRoom.findMany({
     where: {
       teacherId: filters.teacherId || undefined,
       parentId: filters.parentId || undefined,
@@ -89,6 +100,22 @@ export function getChatRoomsForAdmin(filters: AdminChatFilters = {}) {
     select: roomListSelect,
     orderBy: [{ lastMessageAt: "desc" }, { createdAt: "desc" }],
   });
+
+  if (rooms.length === 0) {
+    return [] as Array<(typeof rooms)[number] & { hasFlaggedMessages: boolean }>;
+  }
+
+  const flagged = await prisma.chatMessage.findMany({
+    where: { chatRoomId: { in: rooms.map((room) => room.id) }, containsPhoneNumber: true },
+    select: { chatRoomId: true },
+    distinct: ["chatRoomId"],
+  });
+  const flaggedRoomIds = new Set(flagged.map((row) => row.chatRoomId));
+
+  return rooms.map((room) => ({
+    ...room,
+    hasFlaggedMessages: flaggedRoomIds.has(room.id),
+  }));
 }
 
 type RoomAccess =
@@ -125,18 +152,41 @@ export async function getRoomForAccess(roomId: string, access: RoomAccess) {
   return room;
 }
 
+const baseMessageSelect = {
+  id: true,
+  chatRoomId: true,
+  senderRole: true,
+  senderId: true,
+  body: true,
+  createdAt: true,
+  containsPhoneNumber: true,
+} as const;
+
 /**
  * Messages in a room, oldest first. `after` supports simple
  * polling — pass the timestamp of the last message you already have
  * and only newer ones come back (see useChatMessages.ts).
+ *
+ * `includeOriginal` (06 #31) additionally selects `originalBody` —
+ * the unmasked text for a phone-number-flagged message. Only the
+ * Admin messages route passes this; Parent/Teacher never receive the
+ * real number, so the field is left off their query entirely rather
+ * than fetched-then-hidden.
  */
-export function listMessages(roomId: string, after?: Date) {
+export function listMessages(
+  roomId: string,
+  after?: Date,
+  options: { includeOriginal?: boolean } = {},
+) {
   return prisma.chatMessage.findMany({
     where: {
       chatRoomId: roomId,
       createdAt: after ? { gt: after } : undefined,
     },
     orderBy: { createdAt: "asc" },
+    select: options.includeOriginal
+      ? { ...baseMessageSelect, originalBody: true }
+      : baseMessageSelect,
   });
 }
 
@@ -187,14 +237,25 @@ export async function sendMessage(input: SendMessageInput) {
     );
   }
 
+  // Phone-number flagging (06 #31): mask anything phone-shaped out of
+  // what gets saved as `body` (what everyone but Admin ever reads),
+  // and keep the real text in `originalBody` for Admin's moderation
+  // view only. The sender and recipient are never told this happened
+  // beyond the placeholder text itself — no separate warning, no
+  // notification to either of them.
+  const { masked, found } = maskPhoneNumbers(body);
+
   const [message] = await prisma.$transaction([
     prisma.chatMessage.create({
       data: {
         chatRoomId: input.roomId,
         senderRole: input.senderRole as ChatSenderRole,
         senderId: input.senderId,
-        body,
+        body: found ? masked : body,
+        containsPhoneNumber: found,
+        originalBody: found ? body : null,
       },
+      select: baseMessageSelect,
     }),
     prisma.chatRoom.update({
       where: { id: input.roomId },
@@ -203,6 +264,19 @@ export async function sendMessage(input: SendMessageInput) {
   ]);
 
   await notifyChatMessage(input.roomId, input.senderRole);
+
+  if (found) {
+    await notifyAdminChatPhoneNumberFlagged(input.roomId, input.senderRole);
+
+    await logActivity({
+      action: ActivityAction.CHAT_PHONE_NUMBER_FLAGGED,
+      actorRole:
+        input.senderRole === "PARENT" ? ActivityActorRole.PARENT : ActivityActorRole.TEACHER,
+      actorId: input.senderId,
+      description: `Possible phone number shared and masked in chat room ${input.roomId}.`,
+      metadata: { chatRoomId: input.roomId, chatMessageId: message.id },
+    });
+  }
 
   return message;
 }

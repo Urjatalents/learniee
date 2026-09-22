@@ -904,6 +904,42 @@ export function notifyChatMessage(roomId: string, senderRole: "PARENT" | "TEACHE
   });
 }
 
+/**
+ * A Parent or Teacher message contained something shaped like a phone
+ * number (`06` #31) — the number itself was already masked out of
+ * `body` before it was saved (see chat.service.ts's `sendMessage`),
+ * so this is Admin-only: the sender and recipient never learn a
+ * notification was even sent. Every Admin gets it, same fan-out as
+ * every other Admin action-queue notification.
+ */
+export function notifyAdminChatPhoneNumberFlagged(
+  roomId: string,
+  senderRole: "PARENT" | "TEACHER",
+) {
+  return safe("chat phone number flagged", async () => {
+    const room = await prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: {
+        parent: { select: { firstName: true, lastName: true, visibleName: true } },
+        teacher: { select: { firstName: true, lastName: true, visibleName: true } },
+        course: { select: { courseTitle: true } },
+      },
+    });
+    if (!room) return;
+
+    const courseTitle = room.course.courseTitle || "an enrollment";
+    const senderName =
+      senderRole === "PARENT" ? displayName(room.parent) : displayName(room.teacher);
+
+    await notifyAllAdmins({
+      type: T.CHAT_PHONE_NUMBER_FLAGGED,
+      title: "Possible phone number shared in chat",
+      message: `${senderName} (${senderRole.toLowerCase()}) may have shared a phone number in the chat for "${courseTitle}". It was hidden from the other party — review the conversation.`,
+      link: `/admin/chat/${roomId}`,
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Wallet
 // ---------------------------------------------------------------------------

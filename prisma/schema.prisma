@@ -634,7 +634,18 @@ model ChatMessage {
   createdAt  DateTime       @default(now())
   chatRoom   ChatRoom       @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
 
+  /// Phone-number flagging (`06` #31, Sep 22, 2026). If `body` (sent
+  /// to Parent/Teacher) contained anything shaped like a phone
+  /// number, it was masked out before saving and this is set true —
+  /// the sender/recipient never see the number. `originalBody` keeps
+  /// the unmasked text for Admin's moderation view only; null when
+  /// nothing was flagged (the common case, saves the duplicate row
+  /// width). See `src/features/chat/utils/phoneDetection.ts`.
+  containsPhoneNumber Boolean @default(false)
+  originalBody        String?
+
   @@index([chatRoomId, createdAt])
+  @@index([chatRoomId, containsPhoneNumber])
 }
 
 /// Homework module (added Sep 4, 2026) — deliberately simple, a
@@ -1543,6 +1554,10 @@ enum NotificationType {
   ENROLLMENT_COMPLETED
   /// Certification (Sep 2026) — see the Certificate model's doc-comment.
   CERTIFICATE_ISSUED
+  /// Chat phone-number flagging (`06` #31, Sep 22, 2026) — see the
+  /// `ChatMessage.containsPhoneNumber` doc-comment. Admin-only; never
+  /// sent to the Parent/Teacher who sent or received the message.
+  CHAT_PHONE_NUMBER_FLAGGED
   GENERIC
 }
 
@@ -1653,6 +1668,9 @@ enum ActivityAction {
   ENROLLMENT_COMPLETED
   /// Certification (Sep 2026) — see the Certificate model's doc-comment.
   CERTIFICATE_ISSUED
+  /// Chat phone-number flagging (`06` #31, Sep 22, 2026) — see the
+  /// `ChatMessage.containsPhoneNumber` doc-comment.
+  CHAT_PHONE_NUMBER_FLAGGED
   GENERIC
 }
 

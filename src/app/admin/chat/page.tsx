@@ -9,6 +9,12 @@ import ChatRoomList from "@/features/chat/components/ChatRoomList";
 export default function AdminChatPage() {
   const { rooms, loading, error } = useChatRooms("/api/admin/chat");
   const [search, setSearch] = useState("");
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
+
+  const flaggedCount = useMemo(
+    () => rooms.filter((room) => room.hasFlaggedMessages).length,
+    [rooms],
+  );
 
   // Client-side search over the already-loaded room list — the
   // `/api/admin/chat` route also accepts teacherId/parentId/courseId
@@ -17,9 +23,11 @@ export default function AdminChatPage() {
   // name search is what's actually useful from this page directly.
   const filteredRooms = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return rooms;
 
     return rooms.filter((room) => {
+      if (flaggedOnly && !room.hasFlaggedMessages) return false;
+      if (!query) return true;
+
       const haystack = [
         displayName(room.parent),
         displayName(room.teacher),
@@ -31,7 +39,7 @@ export default function AdminChatPage() {
 
       return haystack.includes(query);
     });
-  }, [rooms, search]);
+  }, [rooms, search, flaggedOnly]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -49,8 +57,23 @@ export default function AdminChatPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by parent, teacher, child, or course…"
-          className="w-full mb-6 border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+          className="w-full mb-4 border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
         />
+
+        <label className="flex items-center gap-2 mb-6 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            checked={flaggedOnly}
+            onChange={(e) => setFlaggedOnly(e.target.checked)}
+            className="rounded border-gray-300 text-amber-600 focus:ring-amber-400"
+          />
+          Show flagged conversations only
+          {flaggedCount > 0 && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+              {flaggedCount}
+            </span>
+          )}
+        </label>
 
         <ChatRoomList
           rooms={filteredRooms}
@@ -59,9 +82,11 @@ export default function AdminChatPage() {
           viewerRole="admin"
           basePath="/admin/chat"
           emptyMessage={
-            search
-              ? "No conversations match that search."
-              : "No conversations exist yet."
+            flaggedOnly
+              ? "No flagged conversations."
+              : search
+                ? "No conversations match that search."
+                : "No conversations exist yet."
           }
         />
       </div>

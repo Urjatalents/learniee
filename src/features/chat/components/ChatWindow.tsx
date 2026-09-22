@@ -104,6 +104,11 @@ export default function ChatWindow({
         ) : (
           messages.map((message) => {
             const isOwn = viewerSenderRole !== null && message.senderRole === viewerSenderRole;
+            // Admin-only: viewerSenderRole is null exactly when this is
+            // the Admin's read-only view (see the prop's doc-comment),
+            // so this never leaks to the Parent/Teacher who sent or
+            // received the message — see chat.service.ts's sendMessage.
+            const isAdminView = viewerSenderRole === null;
 
             return (
               <div
@@ -112,9 +117,11 @@ export default function ChatWindow({
               >
                 <div
                   className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${
-                    isOwn
-                      ? "bg-purple-600 text-white rounded-br-sm"
-                      : "bg-white border text-gray-800 rounded-bl-sm"
+                    message.containsPhoneNumber && isAdminView
+                      ? "bg-amber-50 border border-amber-300 text-gray-800 rounded-bl-sm"
+                      : isOwn
+                        ? "bg-purple-600 text-white rounded-br-sm"
+                        : "bg-white border text-gray-800 rounded-bl-sm"
                   }`}
                 >
                   {viewerSenderRole === null && (
@@ -122,7 +129,17 @@ export default function ChatWindow({
                       {message.senderRole === "PARENT" ? "Parent" : "Teacher"}
                     </p>
                   )}
+                  {message.containsPhoneNumber && isAdminView && (
+                    <p className="text-[10px] font-semibold text-amber-700 mb-1">
+                      ⚠ Possible phone number — hidden from the other party
+                    </p>
+                  )}
                   <p className="whitespace-pre-wrap break-words">{message.body}</p>
+                  {message.containsPhoneNumber && isAdminView && message.originalBody && (
+                    <p className="whitespace-pre-wrap break-words text-xs text-amber-800 mt-1 border-t border-amber-200 pt-1">
+                      Original: {message.originalBody}
+                    </p>
+                  )}
                   <p
                     className={`text-[10px] mt-1 ${
                       isOwn ? "text-white/70" : "text-gray-400"

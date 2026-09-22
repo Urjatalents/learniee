@@ -17,6 +17,8 @@ export interface ChatRoomSummary {
   course: { id: string; courseTitle: string | null; subject: string | null };
   enrollment: { id: string; status: string; isLegacy: boolean };
   _count: { messages: number };
+  /** Admin listing only (06 #31) — undefined on Parent/Teacher rooms. */
+  hasFlaggedMessages?: boolean;
 }
 
 export interface ChatMessage {
@@ -26,6 +28,14 @@ export interface ChatMessage {
   senderId: string;
   body: string;
   createdAt: string;
+  /** True when `body` had a phone number masked out of it (06 #31). */
+  containsPhoneNumber: boolean;
+  /**
+   * The unmasked text — only ever present on the Admin messages route
+   * (`/api/admin/chat/[roomId]/messages`), and only when the message
+   * was flagged. Parent/Teacher responses never include this field.
+   */
+  originalBody?: string | null;
 }
 
 /** Renders a display name consistently across every chat surface. */

@@ -89,6 +89,11 @@ export default function ChatRoomList({
             </div>
 
             <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+              {viewerRole === "admin" && room.hasFlaggedMessages && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                  ⚠ Phone number flagged
+                </span>
+              )}
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusStyle}`}>
                 {statusLabel}
               </span>
