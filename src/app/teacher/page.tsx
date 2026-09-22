@@ -20,6 +20,7 @@ import {
   getEnrollmentStatusStyle,
 } from "@/features/shared/utils/enrollmentStatus";
 import UpcomingLecturesCard from "@/features/shared/components/UpcomingLecturesCard";
+import CourseThumbStrip from "@/features/shared/components/CourseThumbStrip";
 
 interface TeacherProfile {
   firstName: string;
@@ -31,6 +32,12 @@ function currentMonthKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
+
+const COURSE_STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  APPROVED: { label: "Approved", className: "bg-green-100 text-green-700" },
+  UNDER_REVIEW: { label: "Under review", className: "bg-amber-100 text-amber-700" },
+  REJECTED: { label: "Rejected", className: "bg-red-100 text-red-700" },
+};
 
 export default function TeacherDashboard() {
   const [teacher, setTeacher] = useState<TeacherProfile | null>(null);
@@ -88,38 +95,30 @@ export default function TeacherDashboard() {
         <p className="text-sm font-bold uppercase tracking-wider text-brand">Home</p>
       </div>
 
-      {/* HERO */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand via-brand to-violet-800 p-6 sm:p-8 flex flex-col md:flex-row items-center gap-6 mb-8 shadow-playful">
+      {/* HERO — one line + the CTA, no separate marketing paragraph.
+          Quick stats right below already carry the "what needs
+          attention today" info visually. */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand via-brand to-violet-800 p-5 sm:p-6 flex items-center gap-5 mb-8 shadow-playful">
         <div className="pointer-events-none absolute inset-0 bg-dot-pattern text-white/10" />
         <div className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-brand-yellow/20 blur-2xl" />
 
-        <div className="relative flex-1">
-          <span className="inline-flex items-center gap-1.5 bg-white/15 text-white text-xs font-bold uppercase tracking-wide px-3 py-1 rounded-full mb-3">
-            <Sparkles size={13} className="text-brand-yellow" />
-            Teacher dashboard
-          </span>
+        <span className="relative hidden sm:flex w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex-shrink-0 items-center justify-center">
+          <Sparkles size={24} className="text-brand-yellow" />
+        </span>
 
-          <h1 className="font-heading text-xl sm:text-3xl font-bold text-white leading-snug">
+        <div className="relative flex-1 min-w-0">
+          <h1 className="font-heading text-lg sm:text-2xl font-bold text-white leading-snug truncate">
             Welcome back{teacherName ? `, ${teacherName}` : ""}
           </h1>
-
-          <p className="text-sm text-white/85 mt-3 max-w-lg">
-            Here&apos;s what needs your attention today — new enrollments to
-            review, your upcoming classes, and how your courses are doing.
-          </p>
-
-          <Link
-            href="/teacher/course-management/new"
-            className="inline-flex items-center gap-2 mt-5 bg-brand-yellow text-violet-900 text-sm font-bold px-4 py-2.5 rounded-full shadow-playful hover:brightness-95 transition"
-          >
-            <Plus size={16} />
-            Create a new course
-          </Link>
         </div>
 
-        <div className="relative w-full md:w-56 h-40 rounded-2xl bg-white/10 border border-white/20 flex-shrink-0 flex items-center justify-center">
-          <BookOpenCheck size={56} className="text-white/70" strokeWidth={1.3} />
-        </div>
+        <Link
+          href="/teacher/course-management/new"
+          className="relative flex-shrink-0 inline-flex items-center gap-1.5 bg-brand-yellow text-violet-900 text-sm font-bold px-4 py-2.5 rounded-full shadow-playful hover:brightness-95 transition"
+        >
+          <Plus size={16} />
+          New course
+        </Link>
       </div>
 
       {/* QUICK STATS */}
@@ -208,30 +207,40 @@ export default function TeacherDashboard() {
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
-            {needsAction.slice(0, 4).map((e) => (
-              <Link
-                key={e.id}
-                href="/teacher/enrollments"
-                className="bg-white rounded-2xl border border-violet-100 p-4 hover:border-violet-200 hover:shadow-playful transition"
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-semibold text-gray-800 text-sm truncate">
-                    {e.student.visibleName || e.student.firstName}
+            {needsAction.slice(0, 4).map((e) => {
+              const studentLabel = e.student.visibleName || e.student.firstName;
+              const initial = (studentLabel || "S").trim().charAt(0).toUpperCase();
+
+              return (
+                <Link
+                  key={e.id}
+                  href="/teacher/enrollments"
+                  className="flex items-center gap-3 bg-white rounded-2xl border border-violet-100 p-4 hover:border-violet-200 hover:shadow-playful transition"
+                >
+                  <span className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-brand flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+                    {initial}
                   </span>
-                  <span
-                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${getEnrollmentStatusStyle(
-                      e.status,
-                    )}`}
-                  >
-                    {getEnrollmentStatusLabel(e.status, "teacher")}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 truncate">
-                  {e.course.courseTitle || e.course.subject || "Course"} ·{" "}
-                  {e.sessionsPerMonth} sessions/month
-                </p>
-              </Link>
-            ))}
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-gray-800 text-sm truncate">
+                        {studentLabel}
+                      </span>
+                      <span
+                        className={`flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${getEnrollmentStatusStyle(
+                          e.status,
+                        )}`}
+                      >
+                        {getEnrollmentStatusLabel(e.status, "teacher")}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 truncate">
+                      {e.course.courseTitle || e.course.subject || "Course"}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>
@@ -263,7 +272,8 @@ export default function TeacherDashboard() {
         />
       </section>
 
-      {/* YOUR COURSES */}
+      {/* YOUR COURSES — poster-style strip; full detail (status,
+          modules, price editing) stays on Course Management. */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -283,68 +293,22 @@ export default function TeacherDashboard() {
           </Link>
         </div>
 
-        {coursesLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-            {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className="rounded-3xl border border-violet-100 bg-violet-50/60 animate-pulse min-h-[8rem]"
-              />
-            ))}
-          </div>
-        ) : courses.length === 0 ? (
-          <div className="bg-white border-2 border-dashed border-violet-200 rounded-3xl p-8 text-center">
-            <p className="text-gray-500 mb-4">
-              You haven&apos;t created any courses yet.
-            </p>
-            <Link
-              href="/teacher/course-management/new"
-              className="inline-flex items-center gap-2 bg-brand text-white text-sm font-bold px-4 py-2.5 rounded-full shadow-playful hover:bg-brand-dark transition"
-            >
-              <Plus size={16} />
-              Create your first course
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {courses.slice(0, 8).map((course) => (
-              <Link
-                key={course.id}
-                href="/teacher/course-management"
-                className="bg-white border border-violet-100 rounded-3xl p-5 hover:border-violet-200 hover:shadow-playful transition flex flex-col"
-              >
-                <span
-                  className={`self-start text-[11px] font-bold px-2.5 py-1 rounded-full mb-3 ${
-                    course.status === "APPROVED"
-                      ? "bg-green-100 text-green-700"
-                      : course.status === "UNDER_REVIEW"
-                        ? "bg-amber-100 text-amber-700"
-                        : course.status === "REJECTED"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {course.status === "APPROVED"
-                    ? "Approved"
-                    : course.status === "UNDER_REVIEW"
-                      ? "Under review"
-                      : course.status === "REJECTED"
-                        ? "Rejected"
-                        : "Draft"}
-                </span>
-                <h3 className="font-heading font-bold text-gray-800 truncate">
-                  {course.courseTitle || "Untitled course"}
-                </h3>
-                <p className="text-xs text-gray-500 mt-1 truncate">
-                  {course.subject || "—"} {course.grade ? `· ${course.grade}` : ""}
-                </p>
-                <p className="text-sm font-bold text-brand mt-3">
-                  {course.price ? `₹${course.price}` : "Price not set"}
-                </p>
-              </Link>
-            ))}
-          </div>
-        )}
+        <CourseThumbStrip
+          loading={coursesLoading}
+          emptyMessage="You haven't created any courses yet."
+          emptyAction={{ label: "Create your first course", href: "/teacher/course-management/new" }}
+          courses={courses.slice(0, 8).map((course) => ({
+            id: course.id,
+            href: "/teacher/course-management",
+            title: course.courseTitle || "Untitled course",
+            subject: course.subject,
+            price: course.price ? `₹${course.price}` : null,
+            badge: COURSE_STATUS_BADGE[course.status ?? ""] ?? {
+              label: "Draft",
+              className: "bg-gray-100 text-gray-600",
+            },
+          }))}
+        />
       </section>
     </div>
   );
