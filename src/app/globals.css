@@ -4,6 +4,29 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------------------------------------------------------------
+   Lavender palette (replaces the previous purple/violet scheme).
+   Overriding Tailwind's built-in `violet-*` scale here means every
+   existing `violet-50`…`violet-900` utility class already used
+   across the app repaints to lavender automatically — no need to
+   touch each of the ~140 files that reference it directly. `brand`
+   tokens below (used via bg-brand / text-brand / bg-brand-yellow)
+   are the same lavender, just under their semantic name.
+   --------------------------------------------------------------- */
+@theme {
+  --color-violet-50: #f6f4fd;
+  --color-violet-100: #ede8fb;
+  --color-violet-200: #dad0f7;
+  --color-violet-300: #c0aef0;
+  --color-violet-400: #a688e6;
+  --color-violet-500: #8d69d9;
+  --color-violet-600: #7451c9;
+  --color-violet-700: #6c5dd3;
+  --color-violet-800: #4d3a93;
+  --color-violet-900: #3c2d72;
+  --color-violet-950: #241a49;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -82,14 +105,15 @@
      the playful direction across the Parent/Teacher/kid-facing UI. */
   --radius: 0.85rem;
 
-  /* Brand palette — matches the Figma design tokens in
-     05-MODULE-SPECS-INDEX.md / 08-PROJECT-KNOWLEDGE-BASE.md
-     (primary violet #9347FF/#912EFF/#7E2BF1, accent yellow #F4C01E),
+  /* Brand palette — lavender (replaces the earlier purple/violet
+     tokens #9347FF/#912EFF/#7E2BF1), accent yellow #F4C01E unchanged,
      exposed as `bg-brand`, `text-brand-dark`, `bg-brand-yellow`, etc.
-     via the @theme mapping above. */
-  --brand-violet: #7e2bf1;
-  --brand-violet-light: #9347ff;
-  --brand-violet-dark: #5b1fb0;
+     via the @theme mapping above. Kept in step with the violet-*
+     scale override further up so brand-* and violet-* read as one
+     consistent palette everywhere. */
+  --brand-violet: #6c5dd3;
+  --brand-violet-light: #8d74e8;
+  --brand-violet-dark: #4d3a93;
   --brand-yellow: #f4c01e;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -161,8 +185,8 @@
 
 .shadow-playful {
   box-shadow:
-    0 10px 24px -8px rgba(126, 43, 241, 0.18),
-    0 2px 8px -2px rgba(126, 43, 241, 0.1);
+    0 10px 24px -8px rgba(108, 93, 211, 0.18),
+    0 2px 8px -2px rgba(108, 93, 211, 0.1);
 }
 
 .shadow-playful-hover {
@@ -171,8 +195,8 @@
 
 .shadow-playful-hover:hover {
   box-shadow:
-    0 16px 32px -10px rgba(126, 43, 241, 0.25),
-    0 4px 10px -2px rgba(126, 43, 241, 0.14);
+    0 16px 32px -10px rgba(108, 93, 211, 0.25),
+    0 4px 10px -2px rgba(108, 93, 211, 0.14);
   transform: translateY(-3px);
 }
 
