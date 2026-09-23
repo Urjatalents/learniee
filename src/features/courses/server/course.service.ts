@@ -37,13 +37,23 @@ export interface CourseFormInput {
  * client-computed price/flag, same principle as enrollment pricing
  * (see priceCycleEnrollment in enrollment.service.ts). `standardPrice`
  * is the tier rate for the chosen grade / IITian flag (null if
- * neither is set). A blank manual price falls back to it; a manual
- * price that differs from it sets `isPriceCustomized` for the Admin
- * review screen.
+ * neither is set). The form now prefills Price with the standard
+ * rate, so a manual price that differs from it sets
+ * `isPriceCustomized` for the Admin review screen.
+ *
+ * IITian-listed courses are always the fixed ₹700 rate — any
+ * client-submitted `price` is ignored for them, same as any other
+ * server-authoritative price. There is nothing to "customize" for an
+ * IITian listing, so `isPriceCustomized` is always false for one.
  */
 function priceCourse(input: CourseFormInput) {
   const isIITian = Boolean(input.isIITian);
   const standardPrice = getStandardPrice(input.grade || null, isIITian);
+
+  if (isIITian) {
+    return { isIITian, standardPrice, price: standardPrice, isPriceCustomized: false };
+  }
+
   const manualPrice = input.price ? Number(input.price) : null;
   const price = manualPrice ?? standardPrice;
   const isPriceCustomized =

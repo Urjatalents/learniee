@@ -105,7 +105,13 @@ export default function CourseDetailFields({ formData, onChange, onIITianToggle 
           value={formData.courseTags}
           onChange={onChange}
         />
-        <Input name="price" placeholder="Price" value={formData.price} onChange={onChange} />
+        <Input
+          name="price"
+          placeholder="Price"
+          value={formData.price}
+          onChange={onChange}
+          disabled={formData.isIITian}
+        />
       </div>
 
       <div className="border border-gray-200 rounded-lg p-4">
@@ -121,17 +127,16 @@ export default function CourseDetailFields({ formData, onChange, onIITianToggle 
 
         <p className="text-xs text-gray-500 mt-2">
           {formData.isIITian
-            ? `Standard price for an IITian-listed course is ₹${getStandardPrice(null, true)}/session.`
+            ? `This is always listed as an IITian course, fixed at ₹${getStandardPrice(null, true)}/session — the price can't be changed.`
             : standardPrice != null
-              ? `Standard price for Grade ${formData.grade.replace(/\D/g, "") || "-"} is ₹${standardPrice}/session.`
-              : "Select a grade to see the standard price, or mark this as an IITian listing."}
-          {" "}Leave Price blank to use it, or set your own.
+              ? `Price is prefilled with the standard rate for Grade ${formData.grade.replace(/\D/g, "") || "-"} (₹${standardPrice}/session). You can change it, but a different price will need Admin approval.`
+              : "Select a grade to prefill the standard price, or mark this as an IITian listing."}
         </p>
 
         {isPriceCustomized && (
           <p className="text-xs text-amber-600 mt-1">
-            Your price (₹{manualPrice}) differs from the standard rate (₹{standardPrice}) — Admin
-            will see this flagged as a non-standard price during review.
+            You changed the price to ₹{manualPrice} (standard is ₹{standardPrice}) — Admin
+            approval will be required before this course goes live.
           </p>
         )}
       </div>
