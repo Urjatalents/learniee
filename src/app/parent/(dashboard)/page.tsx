@@ -106,7 +106,7 @@ export default function ParentHome() {
       )}
 
       {/* HERO */}
-      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-violet-700 via-brand to-violet-900 p-6 sm:p-10 flex flex-col md:flex-row items-center gap-8 mb-8 shadow-playful">
+      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-violet-400 via-brand to-violet-700 p-6 sm:p-10 flex flex-col md:flex-row items-center gap-8 mb-8 shadow-playful">
         {/* Decorative dotted texture + layered glow orbs, kept
             subtle so it reads as "polished panel" rather than
             clutter behind the copy */}

@@ -96,7 +96,7 @@ export default function TeacherDashboard() {
       </div>
 
       {/* HERO */}
-      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-violet-700 via-brand to-violet-900 p-6 sm:p-10 flex flex-col md:flex-row items-center gap-8 mb-8 shadow-playful">
+      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-violet-400 via-brand to-violet-700 p-6 sm:p-10 flex flex-col md:flex-row items-center gap-8 mb-8 shadow-playful">
         <div className="pointer-events-none absolute inset-0 bg-dot-pattern text-white/10" />
         <div className="pointer-events-none absolute -top-16 -right-10 w-56 h-56 rounded-full bg-brand-yellow/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-16 w-64 h-64 rounded-full bg-white/10 blur-3xl" />

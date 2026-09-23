@@ -14,17 +14,17 @@
    are the same lavender, just under their semantic name.
    --------------------------------------------------------------- */
 @theme {
-  --color-violet-50: #f6f4fd;
-  --color-violet-100: #ede8fb;
-  --color-violet-200: #dad0f7;
-  --color-violet-300: #c0aef0;
-  --color-violet-400: #a688e6;
-  --color-violet-500: #8d69d9;
-  --color-violet-600: #7451c9;
-  --color-violet-700: #6c5dd3;
-  --color-violet-800: #4d3a93;
-  --color-violet-900: #3c2d72;
-  --color-violet-950: #241a49;
+  --color-violet-50: #f8f6fe;
+  --color-violet-100: #f1ecfd;
+  --color-violet-200: #e1d6fa;
+  --color-violet-300: #cbb8f4;
+  --color-violet-400: #b093ec;
+  --color-violet-500: #9c81e6;
+  --color-violet-600: #7c6fe0;
+  --color-violet-700: #6552b9;
+  --color-violet-800: #4f3f92;
+  --color-violet-900: #3d3072;
+  --color-violet-950: #251d47;
 }
 
 @theme inline {
@@ -111,9 +111,9 @@
      via the @theme mapping above. Kept in step with the violet-*
      scale override further up so brand-* and violet-* read as one
      consistent palette everywhere. */
-  --brand-violet: #6c5dd3;
-  --brand-violet-light: #8d74e8;
-  --brand-violet-dark: #4d3a93;
+  --brand-violet: #7c6fe0;
+  --brand-violet-light: #9f91f0;
+  --brand-violet-dark: #5b4db8;
   --brand-yellow: #f4c01e;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -185,8 +185,8 @@
 
 .shadow-playful {
   box-shadow:
-    0 10px 24px -8px rgba(108, 93, 211, 0.18),
-    0 2px 8px -2px rgba(108, 93, 211, 0.1);
+    0 10px 24px -8px rgba(124, 111, 224, 0.2),
+    0 2px 8px -2px rgba(124, 111, 224, 0.12);
 }
 
 .shadow-playful-hover {
@@ -195,8 +195,8 @@
 
 .shadow-playful-hover:hover {
   box-shadow:
-    0 16px 32px -10px rgba(108, 93, 211, 0.25),
-    0 4px 10px -2px rgba(108, 93, 211, 0.14);
+    0 16px 32px -10px rgba(124, 111, 224, 0.28),
+    0 4px 10px -2px rgba(124, 111, 224, 0.16);
   transform: translateY(-3px);
 }
 
