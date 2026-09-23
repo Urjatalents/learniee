@@ -20,8 +20,9 @@ export default async function ItDashboardPage() {
       welcomeName={welcomeName}
       cards={[
         {
-          title: "Access & Accounts",
-          description: "Cognito/staff-account provisioning tools — coming soon.",
+          title: "Account Access",
+          description: "Reset a Teacher or Parent's password, or update their email/phone.",
+          href: "/it/account-access",
         },
         {
           title: "System Health",

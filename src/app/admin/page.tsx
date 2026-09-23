@@ -249,6 +249,21 @@ export default function AdminDashboard() {
 
           <div className="bg-white rounded-xl border shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-800">
+              Account Access
+            </h3>
+            <p className="text-sm text-gray-500 mt-2">
+              Reset a login&apos;s password, or update the email/phone connected to it.
+            </p>
+            <button
+              onClick={() => router.push("/admin/account-access")}
+              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
+            >
+              Manage Account Access
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800">
               Accounts
             </h3>
             <p className="text-sm text-gray-500 mt-2">

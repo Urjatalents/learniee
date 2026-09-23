@@ -1562,6 +1562,10 @@ enum NotificationType {
   /// `ChatMessage.containsPhoneNumber` doc-comment. Admin-only; never
   /// sent to the Parent/Teacher who sent or received the message.
   CHAT_PHONE_NUMBER_FLAGGED
+  /// Account Access (Sep 23, 2026) — sent to a Parent/Teacher when
+  /// Admin or IT resets their password or changes their email/phone.
+  /// See features/shared/server/accountAccess.service.ts.
+  ACCOUNT_CREDENTIALS_UPDATED
   GENERIC
 }
 
@@ -1619,6 +1623,10 @@ enum ActivityActorRole {
   ADMIN
   ACCOUNTS
   HR
+  /// Account Access (Sep 23, 2026) — IT staff can also act on this
+  /// log (password resets / contact updates), see ActivityAction's
+  /// ACCOUNT_PASSWORD_RESET / ACCOUNT_CONTACT_UPDATED below.
+  IT
   SYSTEM
 }
 
@@ -1675,6 +1683,12 @@ enum ActivityAction {
   /// Chat phone-number flagging (`06` #31, Sep 22, 2026) — see the
   /// `ChatMessage.containsPhoneNumber` doc-comment.
   CHAT_PHONE_NUMBER_FLAGGED
+  /// Account Access (Sep 23, 2026) — Admin (any account) or IT
+  /// (Teacher/Parent only) resetting a password or changing the
+  /// email/phone Cognito has on file. See
+  /// features/shared/server/accountAccess.service.ts.
+  ACCOUNT_PASSWORD_RESET
+  ACCOUNT_CONTACT_UPDATED
   GENERIC
 }
 

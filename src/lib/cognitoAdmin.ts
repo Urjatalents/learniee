@@ -2,6 +2,8 @@ import {
   CognitoIdentityProviderClient,
   AdminDeleteUserCommand,
   AdminCreateUserCommand,
+  AdminSetUserPasswordCommand,
+  AdminUpdateUserAttributesCommand,
   UsernameExistsException,
 } from "@aws-sdk/client-cognito-identity-provider";
 
@@ -75,3 +77,80 @@ export async function adminCreateStaffCognitoUser(
   }
 }
 
+
+export interface SetAccountPasswordInput {
+  /** Cognito Username — we pass the same cognitoSub/cognitoId already
+   * used for AdminDeleteUserCommand above, not the email. */
+  cognitoUsername: string;
+  newPassword: string;
+  /** true = permanent password, done. false = temporary password —
+   * Cognito puts the account in FORCE_CHANGE_PASSWORD status, so the
+   * next login gets the NEW_PASSWORD_REQUIRED challenge already
+   * handled generically in useLogin.ts (same flow AdminCreateUser's
+   * TemporaryPassword triggers for new staff logins above). */
+  permanent: boolean;
+}
+
+/**
+ * Account Access (Sep 23, 2026) — lets Admin/IT reset the login
+ * password for any account without ever reading or storing the old
+ * one (Cognito never exposes it). See accountAccess.service.ts for
+ * the role-scoping and audit trail around this.
+ */
+export async function adminSetAccountPassword({
+  cognitoUsername,
+  newPassword,
+  permanent,
+}: SetAccountPasswordInput): Promise<void> {
+  await client.send(
+    new AdminSetUserPasswordCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: cognitoUsername,
+      Password: newPassword,
+      Permanent: permanent,
+    }),
+  );
+}
+
+export interface UpdateAccountContactInput {
+  cognitoUsername: string;
+  /** New email, if changing it. */
+  email?: string;
+  /** New phone in E.164, if changing it. */
+  phone?: string;
+}
+
+/**
+ * Updates the email and/or phone number Cognito has on file for an
+ * account. Both are marked pre-verified (same reasoning as
+ * adminCreateStaffCognitoUser above): an Admin/IT staff member is
+ * making this change directly, not the account holder self-serving
+ * through a verification-code flow. Caller is responsible for also
+ * updating the matching Prisma row (email/phone are unique columns
+ * on Teacher/ParentProfile/StaffAccount) — see
+ * accountAccess.service.ts.
+ */
+export async function adminUpdateAccountContact({
+  cognitoUsername,
+  email,
+  phone,
+}: UpdateAccountContactInput): Promise<void> {
+  const UserAttributes: { Name: string; Value: string }[] = [];
+  if (email) {
+    UserAttributes.push({ Name: "email", Value: email });
+    UserAttributes.push({ Name: "email_verified", Value: "true" });
+  }
+  if (phone) {
+    UserAttributes.push({ Name: "phone_number", Value: phone });
+    UserAttributes.push({ Name: "phone_number_verified", Value: "true" });
+  }
+  if (UserAttributes.length === 0) return;
+
+  await client.send(
+    new AdminUpdateUserAttributesCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: cognitoUsername,
+      UserAttributes,
+    }),
+  );
+}
