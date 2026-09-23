@@ -76,6 +76,7 @@ export async function POST(req: Request) {
       select: {
         id: true,
         isIITian: true,
+        approvalStatus: true,
       },
     });
 
@@ -88,13 +89,15 @@ export async function POST(req: Request) {
 
     const input: CourseFormInput = await req.json();
 
-    // A self-declared IITian teacher (Sep 2026, onboarding Step 1) has
-    // every course forced to the IITian listing/price — this overrides
-    // whatever the client sent, same "never trust a client-computed
-    // price/flag" principle as priceCourse() in course.service.ts.
-    if (teacher.isIITian) {
-      input.isIITian = true;
-    }
+    // IITian listing requires both: self-declared at onboarding Step 1
+    // (`teacher.isIITian`) AND the teacher being Admin-approved
+    // ("verified", `approvalStatus === APPROVED`). This is always
+    // re-derived from the DB and overrides whatever the client sent —
+    // never trust a client-computed price/flag, same principle as
+    // priceCourse() in course.service.ts. An unapproved or
+    // non-self-declared teacher can never get isIITian:true through,
+    // no matter what the request body contains.
+    input.isIITian = Boolean(teacher.isIITian) && teacher.approvalStatus === "APPROVED";
 
     if (!input.courseTitle?.trim()) {
       return NextResponse.json(

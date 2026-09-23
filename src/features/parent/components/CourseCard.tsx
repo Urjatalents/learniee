@@ -78,18 +78,22 @@ export default function CourseCard({ course }: Props) {
             <p className="text-[11px] text-gray-400">Group Class</p>
           </div>
 
-          {/* Rating — from the teacher-entered Course.rating field.
-              No Review/Rating entity exists yet (Month 2, see
-              02-ARCHITECTURE.md deferred list), so this is not a
-              parent/aggregate rating, just what's on the course record. */}
-          {course.rating != null && (
-            <div className="ml-auto flex items-center gap-1 flex-shrink-0">
-              <Star size={13} className="text-brand-yellow fill-brand-yellow" />
-              <span className="text-xs font-semibold text-gray-600">
-                {course.rating.toFixed(1)}
-              </span>
-            </div>
-          )}
+          {/* Rating — the teacher's own overall average across every
+              review they've received (see getTeacherRatingsByIds in
+              review.service.ts). A teacher with no reviews yet shows
+              "New" instead of a blank or a fake 0-star score. */}
+          <div className="ml-auto flex items-center gap-1 flex-shrink-0">
+            {course.teacher.averageRating != null ? (
+              <>
+                <Star size={13} className="text-brand-yellow fill-brand-yellow" />
+                <span className="text-xs font-semibold text-gray-600">
+                  {course.teacher.averageRating.toFixed(1)}
+                </span>
+              </>
+            ) : (
+              <span className="text-[11px] font-semibold text-gray-400">New</span>
+            )}
+          </div>
         </div>
 
         {/* Enrollment isn't built yet (Enrollment isn't modeled in

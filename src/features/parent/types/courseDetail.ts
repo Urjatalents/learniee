@@ -8,6 +8,13 @@ export interface ParentCourseDetailTeacher {
   country: string | null;
   photoUrl: string | null;
   introVideoUrl: string | null;
+  /**
+   * The teacher's own overall average rating across every review
+   * they've received (see getTeacherRatingSummary in
+   * review.service.ts) — null when they have none yet.
+   */
+  averageRating: number | null;
+  reviewCount: number;
 }
 
 export interface ParentCourseDetail {
@@ -28,7 +35,6 @@ export interface ParentCourseDetail {
   frequency: string | null;
 
   courseTitle: string | null;
-  rating: number | null;
   objective: string | null;
   description: string | null;
 

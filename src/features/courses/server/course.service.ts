@@ -16,7 +16,6 @@ export interface CourseFormInput {
   frequency: string;
 
   courseTitle: string;
-  rating: string;
   objective: string;
   description: string;
 
@@ -80,7 +79,9 @@ function buildCourseData(input: CourseFormInput) {
     frequency: input.frequency || null,
 
     courseTitle: input.courseTitle || null,
-    rating: input.rating ? Number(input.rating) : null,
+    // `rating` is deliberately not set here — see the doc-comment on
+    // Course.rating in schema.prisma. It's never teacher-entered;
+    // the rating shown to Parents is computed live from Reviews.
     objective: input.objective || null,
     description: input.description || null,
 

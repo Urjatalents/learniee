@@ -41,14 +41,24 @@ export default function CourseInfoSection({ course }: Props) {
         {course.courseTitle || "Untitled Course"}
       </h1>
 
-      {course.rating != null && (
-        <div className="flex items-center gap-1.5 mt-2">
-          <Star size={15} className="text-brand-yellow fill-brand-yellow" />
-          <span className="text-sm font-semibold text-gray-600">
-            {course.rating.toFixed(1)}
-          </span>
-        </div>
-      )}
+      {/* Rating — the teacher's own overall average across every
+          review they've received. "Not yet rated" when they have
+          none, instead of hiding the line or showing a fake score. */}
+      <div className="flex items-center gap-1.5 mt-2">
+        {course.teacher.averageRating != null ? (
+          <>
+            <Star size={15} className="text-brand-yellow fill-brand-yellow" />
+            <span className="text-sm font-semibold text-gray-600">
+              {course.teacher.averageRating.toFixed(1)}
+            </span>
+            <span className="text-xs text-gray-400">
+              ({course.teacher.reviewCount})
+            </span>
+          </>
+        ) : (
+          <span className="text-xs font-medium text-gray-400">Not yet rated</span>
+        )}
+      </div>
 
       {course.objective && (
         <div className="mt-5">

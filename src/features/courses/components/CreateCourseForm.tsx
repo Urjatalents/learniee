@@ -27,13 +27,15 @@ export default function CreateCourseForm({ onChange }: Props) {
   // so we stop auto-prefilling once they have (and never for IITian,
   // whose price is always fixed).
   const [priceTouched, setPriceTouched] = useState(false);
-  // Whether the logged-in teacher's own profile is self-declared IITian
-  // (Sep 2026, onboarding Step 1). When true, the per-course "Listed by
-  // an IITian" question is skipped — every course is forced to the
-  // IITian listing/price. This is a UX convenience only: the create-course
-  // API route re-derives the same flag from the teacher's own DB record
-  // and is authoritative regardless of what this component sends.
-  const [teacherIsIITian, setTeacherIsIITian] = useState(false);
+  // Whether the logged-in teacher is eligible for an IITian listing:
+  // self-declared IITian at onboarding Step 1 AND Admin-approved
+  // ("verified"). Only then is the course forced to the IITian
+  // listing/price — a teacher who never declared IITian, or isn't
+  // verified yet, is never even shown the option. This is a UX
+  // convenience only: the create-course API route re-derives the same
+  // flag from the teacher's own DB record and is authoritative
+  // regardless of what this component sends.
+  const [teacherIITianEligible, setTeacherIITianEligible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,17 +46,20 @@ export default function CreateCourseForm({ onChange }: Props) {
         if (!res.ok) return;
 
         const data = await res.json();
-        if (cancelled || !data.teacher?.isIITian) return;
+        const eligible =
+          Boolean(data.teacher?.isIITian) && data.teacher?.approvalStatus === "APPROVED";
 
-        setTeacherIsIITian(true);
+        if (cancelled || !eligible) return;
+
+        setTeacherIITianEligible(true);
         setFormData((prev) => {
           const updated = withStandardPrice({ ...prev, isIITian: true });
           onChange(updated);
           return updated;
         });
       } catch {
-        // Non-fatal — worst case the teacher sees the manual toggle;
-        // the price/flag are still enforced server-side on submit.
+        // Non-fatal — worst case the teacher doesn't see the IITian
+        // lock; the price/flag are still enforced server-side on submit.
       }
     }
 
@@ -92,35 +97,13 @@ export default function CreateCourseForm({ onChange }: Props) {
     onChange(updatedData);
   }
 
-  function handleIITianToggle(checked: boolean) {
-    // Locked on for a self-declared IITian teacher — nothing to toggle.
-    if (teacherIsIITian) return;
-
-    let updatedData = { ...formData, isIITian: checked };
-
-    if (checked) {
-      // IITian courses are always the fixed ₹700 rate — lock it in
-      // and discard any manual edit the teacher had made.
-      updatedData = withStandardPrice(updatedData);
-      setPriceTouched(false);
-    } else if (!priceTouched) {
-      // Back to a grade-based course — refill with that grade's
-      // standard rate, unless the teacher had already set their own.
-      updatedData = withStandardPrice(updatedData);
-    }
-
-    setFormData(updatedData);
-    onChange(updatedData);
-  }
-
   return (
     <div className="space-y-6">
       <CourseConfigFields formData={formData} onChange={handleChange} />
       <CourseDetailFields
         formData={formData}
         onChange={handleChange}
-        onIITianToggle={handleIITianToggle}
-        lockedIITian={teacherIsIITian}
+        iitianEligible={teacherIITianEligible}
       />
       <CourseCertificateFields
         formData={formData}

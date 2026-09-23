@@ -221,6 +221,13 @@ model Course {
   language        String?
   frequency       String?
   courseTitle     String?
+  /// Deprecated (Sep 2026) — used to be a free-typed field on the
+  /// create-course form. The rating shown to Parents is now always
+  /// computed live from the teacher's Review aggregate (see
+  /// getTeacherRatingSummary/getTeacherRatingsByIds in
+  /// review.service.ts), never teacher-entered, and can't be edited
+  /// at creation. Left in place (null going forward) rather than
+  /// migrated away, same as ageGroup/rejectionReason above.
   rating          Float?
   objective       String?
   description     String?

@@ -4,6 +4,7 @@ import { requireCognitoAuth } from "@/lib/api-auth";
 import { createPresignedDownloadUrl } from "@/lib/s3";
 
 import { getApprovedCourses } from "@/features/parent/server/course.service";
+import { getTeacherRatingsByIds } from "@/features/shared/server/review.service";
 
 type ApprovedCourse = Awaited<ReturnType<typeof getApprovedCourses>>[number];
 
@@ -23,13 +24,30 @@ export async function GET(req: Request) {
 
     const courses = await getApprovedCourses();
 
+    // Rating shown per course is the teacher's own overall average
+    // (across every review they've received, any course) — never the
+    // deprecated Course.rating column. One batched query for every
+    // teacher on the page instead of one per course.
+    const ratings = await getTeacherRatingsByIds(
+      Array.from(new Set(courses.map((course: ApprovedCourse) => course.teacherId))),
+    );
+
     const coursesWithThumbnails = await Promise.all(
-      courses.map(async (course: ApprovedCourse) => ({
-        ...course,
-        thumbnailUrl: course.thumbnailKey
-          ? await createPresignedDownloadUrl(course.thumbnailKey)
-          : null,
-      })),
+      courses.map(async (course: ApprovedCourse) => {
+        const rating = ratings.get(course.teacherId);
+
+        return {
+          ...course,
+          teacher: {
+            ...course.teacher,
+            averageRating: rating?.averageRating ?? null,
+            reviewCount: rating?.totalReviews ?? 0,
+          },
+          thumbnailUrl: course.thumbnailKey
+            ? await createPresignedDownloadUrl(course.thumbnailKey)
+            : null,
+        };
+      }),
     );
 
     return NextResponse.json({

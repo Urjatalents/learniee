@@ -8,6 +8,7 @@ import {
   getApprovedCourseById,
   getOtherApprovedCoursesByTeacher,
 } from "@/features/parent/server/course.service";
+import { getTeacherRatingSummary } from "@/features/shared/server/review.service";
 
 type CourseDetailRow = NonNullable<
   Awaited<ReturnType<typeof getApprovedCourseById>>
@@ -48,10 +49,16 @@ export async function GET(
       );
     }
 
+    // Rating shown is the teacher's own overall average (see
+    // getTeacherRatingSummary) — every "other course by this teacher"
+    // shares the same teacherId, so one lookup covers all of them.
+    const rating = await getTeacherRatingSummary(course.teacherId);
+
     const [courseWithMedia, otherCourses] = await Promise.all([
-      attachCourseMedia(course),
+      attachCourseMedia(course, rating),
       getOtherApprovedCoursesByTeacher(course.teacherId, course.id).then(
-        (courses) => Promise.all(courses.map(attachThumbnail)),
+        (courses) =>
+          Promise.all(courses.map((c) => attachThumbnail(c, rating))),
       ),
     ]);
 
@@ -70,12 +77,15 @@ export async function GET(
   }
 }
 
+type TeacherRating = Awaited<ReturnType<typeof getTeacherRatingSummary>>;
+
 /**
  * Resolves the course's own thumbnail/intro-video keys, plus the
  * teacher's profile-photo/intro-video keys (pulled from
- * TeacherFile), into short-lived presigned S3 GET URLs.
+ * TeacherFile), into short-lived presigned S3 GET URLs, and attaches
+ * the teacher's overall rating.
  */
-async function attachCourseMedia(course: CourseDetailRow) {
+async function attachCourseMedia(course: CourseDetailRow, rating: TeacherRating) {
   const teacherPhoto = course.teacher.files.find(
     (file) => file.type === TeacherFileType.PROFILE_PHOTO,
   );
@@ -111,13 +121,20 @@ async function attachCourseMedia(course: CourseDetailRow) {
       country: course.teacher.country,
       photoUrl: teacherPhotoUrl,
       introVideoUrl: teacherIntroVideoUrl,
+      averageRating: rating.averageRating,
+      reviewCount: rating.totalReviews,
     },
   };
 }
 
-async function attachThumbnail(course: OtherCourseRow) {
+async function attachThumbnail(course: OtherCourseRow, rating: TeacherRating) {
   return {
     ...course,
+    teacher: {
+      ...course.teacher,
+      averageRating: rating.averageRating,
+      reviewCount: rating.totalReviews,
+    },
     thumbnailUrl: course.thumbnailKey
       ? await createPresignedDownloadUrl(course.thumbnailKey)
       : null,

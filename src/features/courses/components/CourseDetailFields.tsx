@@ -15,22 +15,22 @@ interface Props {
   onChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => void;
-  onIITianToggle: (checked: boolean) => void;
   /**
-   * True when the teacher's own profile is self-declared IITian
-   * (Sep 2026, onboarding Step 1) — every course they create is
-   * forced to the IITian listing/price, so the manual question below
-   * is hidden instead of asked per course. Server-side re-derives
-   * this independently and is authoritative regardless of this prop.
+   * True only when the teacher's own profile is both self-declared
+   * IITian (Sep 2026, onboarding Step 1) AND Admin-approved
+   * ("verified"). There is no manual per-course "list as IITian"
+   * question — a teacher who hasn't declared IITian at onboarding,
+   * or hasn't been verified yet, never sees the option at all.
+   * Server-side re-derives this independently and is authoritative
+   * regardless of this prop.
    */
-  lockedIITian?: boolean;
+  iitianEligible?: boolean;
 }
 
 export default function CourseDetailFields({
   formData,
   onChange,
-  onIITianToggle,
-  lockedIITian,
+  iitianEligible,
 }: Props) {
   const standardPrice = getStandardPrice(formData.grade || null, formData.isIITian);
   const manualPrice = formData.price ? Number(formData.price) : null;
@@ -70,23 +70,12 @@ export default function CourseDetailFields({
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="md:col-span-3">
-          <Input
-            name="courseTitle"
-            placeholder="Course Title"
-            value={formData.courseTitle}
-            onChange={onChange}
-          />
-        </div>
-
-        <Input
-          name="rating"
-          placeholder="Rating"
-          value={formData.rating}
-          onChange={onChange}
-        />
-      </div>
+      <Input
+        name="courseTitle"
+        placeholder="Course Title"
+        value={formData.courseTitle}
+        onChange={onChange}
+      />
 
       <Input
         name="objective"
@@ -127,43 +116,29 @@ export default function CourseDetailFields({
         />
       </div>
 
-      <div className="border border-gray-200 rounded-lg p-4">
-        {lockedIITian ? (
-          <>
-            <p className="text-sm font-medium text-gray-800">IITian course</p>
-            <p className="text-xs text-gray-500 mt-2">
-              {`Your profile is marked as an IITian, so this course is always listed as an IITian course, fixed at ₹${getStandardPrice(null, true)}/session.`}
-            </p>
-          </>
-        ) : (
-          <>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
-              <input
-                type="checkbox"
-                checked={formData.isIITian}
-                onChange={(e) => onIITianToggle(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-              />
-              Listed by an IITian
-            </label>
+      {iitianEligible ? (
+        <div className="border border-gray-200 rounded-lg p-4">
+          <p className="text-sm font-medium text-gray-800">IITian course</p>
+          <p className="text-xs text-gray-500 mt-2">
+            {`Your profile is marked as an IITian, so this course is always listed as an IITian course, fixed at ₹${getStandardPrice(null, true)}/session.`}
+          </p>
+        </div>
+      ) : (
+        <div className="border border-gray-200 rounded-lg p-4">
+          <p className="text-xs text-gray-500">
+            {standardPrice != null
+              ? `Price is prefilled with the standard rate for Grade ${formData.grade.replace(/\D/g, "") || "-"} (₹${standardPrice}/session). You can change it, but a different price will need Admin approval.`
+              : "Select a grade to prefill the standard price, or enter your own."}
+          </p>
 
-            <p className="text-xs text-gray-500 mt-2">
-              {formData.isIITian
-                ? `This is always listed as an IITian course, fixed at ₹${getStandardPrice(null, true)}/session — the price can't be changed.`
-                : standardPrice != null
-                  ? `Price is prefilled with the standard rate for Grade ${formData.grade.replace(/\D/g, "") || "-"} (₹${standardPrice}/session). You can change it, but a different price will need Admin approval.`
-                  : "Select a grade to prefill the standard price, or mark this as an IITian listing."}
+          {isPriceCustomized && (
+            <p className="text-xs text-amber-600 mt-1">
+              You changed the price to ₹{manualPrice} (standard is ₹{standardPrice}) — Admin
+              approval will be required before this course goes live.
             </p>
-
-            {isPriceCustomized && (
-              <p className="text-xs text-amber-600 mt-1">
-                You changed the price to ₹{manualPrice} (standard is ₹{standardPrice}) — Admin
-                approval will be required before this course goes live.
-              </p>
-            )}
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </>
   );
 }

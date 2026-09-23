@@ -13,7 +13,6 @@ export interface CourseFormData {
   frequency: string;
 
   courseTitle: string;
-  rating: string;
   objective: string;
   description: string;
 
@@ -41,7 +40,6 @@ export const initialCourseFormData: CourseFormData = {
   frequency: "",
 
   courseTitle: "",
-  rating: "",
   objective: "",
   description: "",
 
