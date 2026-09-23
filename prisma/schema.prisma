@@ -124,6 +124,12 @@ model Teacher {
   /// Account Settings (Sep 10, 2026) — same toggle as
   /// `ParentProfile.notificationsEnabled`, backing `/teacher/settings`.
   notificationsEnabled Boolean             @default(true)
+  /// Self-declared at onboarding Step 1 (Sep 2026) — no Admin approval
+  /// gate, unlike `approvalStatus`. When true, every course this
+  /// Teacher creates is forced to `Course.isIITian = true` / the fixed
+  /// ₹700 rate server-side (see createCourse in course.service.ts),
+  /// regardless of what the create-course form submits.
+  isIITian           Boolean               @default(false)
   chatRooms          ChatRoom[]
   classSessions      ClassSession[]
   courses            Course[]

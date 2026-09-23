@@ -16,6 +16,8 @@ export interface TeacherProfileData {
   pincode: string | null;
   aboutMe: string | null;
   approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  /** Self-declared at onboarding, no approval gate — see schema.prisma. */
+  isIITian: boolean;
   createdAt: string;
   /** Average of Parent-left course reviews, out of 5. Null = no reviews yet. */
   averageRating: number | null;
@@ -89,11 +91,13 @@ export function useProfile() {
       }
 
       // PATCH only returns the editable "contact card" fields — carry the
-      // rating over from what GET last loaded rather than dropping it.
+      // rating and IITian flag over from what GET last loaded rather than
+      // dropping them.
       setProfile((prev) => ({
         ...data.teacher,
         averageRating: prev?.averageRating ?? null,
         reviewCount: prev?.reviewCount ?? 0,
+        isIITian: prev?.isIITian ?? false,
       }));
       return true;
     } catch (err) {

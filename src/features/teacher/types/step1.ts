@@ -24,6 +24,9 @@ export interface Step1FormData {
 
   aboutMe: string;
   criminalCase: string;
+
+  /** Self-declared, no Admin approval gate — see schema.prisma. */
+  isIITian: boolean;
 }
 
 export interface CognitoProfile {
@@ -62,6 +65,8 @@ export const emptyStep1EditableFields = {
 
   aboutMe: "",
   criminalCase: "",
+
+  isIITian: false,
 };
 
 /** Full empty form state (Cognito fields + editable fields), used client-side. */

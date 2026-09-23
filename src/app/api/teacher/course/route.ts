@@ -75,6 +75,7 @@ export async function POST(req: Request) {
       },
       select: {
         id: true,
+        isIITian: true,
       },
     });
 
@@ -86,6 +87,14 @@ export async function POST(req: Request) {
     }
 
     const input: CourseFormInput = await req.json();
+
+    // A self-declared IITian teacher (Sep 2026, onboarding Step 1) has
+    // every course forced to the IITian listing/price — this overrides
+    // whatever the client sent, same "never trust a client-computed
+    // price/flag" principle as priceCourse() in course.service.ts.
+    if (teacher.isIITian) {
+      input.isIITian = true;
+    }
 
     if (!input.courseTitle?.trim()) {
       return NextResponse.json(

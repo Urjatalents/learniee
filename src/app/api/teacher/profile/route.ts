@@ -36,6 +36,7 @@ export async function GET(req: Request) {
         pincode: true,
         aboutMe: true,
         approvalStatus: true,
+        isIITian: true,
         createdAt: true,
       },
     });

@@ -38,6 +38,7 @@ export async function getStep1FormData(
       whatsapp: true,
       aboutMe: true,
       criminalCase: true,
+      isIITian: true,
       currentStep: true,
       onboardingStatus: true,
       approvalStatus: true,
@@ -84,6 +85,7 @@ export async function getStep1FormData(
       whatsapp: teacher.whatsapp || "",
       aboutMe: teacher.aboutMe || "",
       criminalCase: teacher.criminalCase || "",
+      isIITian: teacher.isIITian,
     },
     currentStep: teacher.currentStep,
     onboardingStatus: teacher.onboardingStatus,
@@ -117,6 +119,7 @@ export async function saveStep1FormData(
     whatsapp: input.whatsapp,
     aboutMe: input.aboutMe,
     criminalCase: input.criminalCase,
+    isIITian: Boolean(input.isIITian),
   };
 
   const teacher = await prisma.teacher.upsert({

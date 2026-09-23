@@ -15,6 +15,7 @@ import DateOfBirthSelect from "@/features/teacher/components/onboarding/step1/Da
 import GenderSelect from "@/features/teacher/components/onboarding/step1/GenderSelect";
 import CriminalCaseSelect from "@/features/teacher/components/onboarding/step1/CriminalCaseSelect";
 import TeacherMediaPlaceholder from "@/features/teacher/components/onboarding/step1/TeacherMediaPlaceholder";
+import CheckboxField from "@/features/teacher/components/onboarding/CheckboxField";
 import { TEXTAREA_CLASSNAME } from "@/features/teacher/components/onboarding/styles";
 
 import { useTeacherStep1Form } from "@/features/teacher/hooks/useTeacherStep1Form";
@@ -155,6 +156,20 @@ export default function TeacherStep1() {
               value={formData.aboutMe}
               onChange={handleChange}
               className={TEXTAREA_CLASSNAME}
+            />
+          </FormField>
+
+          <FormField
+            label="IITian"
+            htmlFor="isIITian"
+            helperText="Self-declared — no separate approval needed. Every course you create will always be listed as an IITian course at the fixed rate."
+            fullWidth
+          >
+            <CheckboxField
+              name="isIITian"
+              label="I am an IITian"
+              checked={formData.isIITian}
+              onChange={handleChange}
             />
           </FormField>
         </FormSection>

@@ -69,7 +69,13 @@ export function useTeacherStep1Form() {
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const target = e.target;
+    const value =
+      target instanceof HTMLInputElement && target.type === "checkbox"
+        ? target.checked
+        : target.value;
+
+    setFormData((prev) => ({ ...prev, [target.name]: value }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
