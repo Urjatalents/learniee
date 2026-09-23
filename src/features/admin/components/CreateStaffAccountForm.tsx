@@ -70,11 +70,12 @@ export default function CreateStaffAccountForm({ onCreated, onCancel }: CreateSt
 
           <select
             value={role}
-            onChange={(e) => setRole(e.target.value as "HR" | "ACCOUNTS")}
+            onChange={(e) => setRole(e.target.value as "HR" | "ACCOUNTS" | "IT")}
             className="border rounded-lg p-2 w-full outline-none"
           >
             <option value="HR">HR</option>
             <option value="ACCOUNTS">Accounts</option>
+            <option value="IT">IT</option>
           </select>
 
           {error && <p className="text-red-600 text-sm">{error}</p>}

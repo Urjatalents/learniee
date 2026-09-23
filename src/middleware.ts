@@ -6,6 +6,7 @@ const roleRoutes: Record<string, string> = {
   "/teacher": "teacher",
   "/parent": "parent",
   "/hr": "hr",
+  "/it": "it",
   "/accounts": "accounts",
 };
 
@@ -55,5 +56,12 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/teacher/:path*", "/parent/:path*", "/hr/:path*", "/accounts/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/teacher/:path*",
+    "/parent/:path*",
+    "/hr/:path*",
+    "/it/:path*",
+    "/accounts/:path*",
+  ],
 };

@@ -30,8 +30,8 @@ export default function AdminStaffAccountsPage() {
         )}
       </div>
       <p className="text-sm text-gray-500 mb-6">
-        Create and manage HR and Accounts logins. Profile details and dashboards for these roles
-        aren&apos;t built yet — this only creates the Cognito identity.
+        Create and manage HR, IT and Accounts logins. Each gets a simple dashboard on first login
+        — full profile details for these roles aren&apos;t built yet.
       </p>
 
       {showCreateForm && (

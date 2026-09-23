@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "All fields are required." }, { status: 400 });
   }
 
-  if (role !== "HR" && role !== "ACCOUNTS") {
-    return NextResponse.json({ error: "Role must be HR or ACCOUNTS." }, { status: 400 });
+  if (role !== "HR" && role !== "ACCOUNTS" && role !== "IT") {
+    return NextResponse.json({ error: "Role must be HR, ACCOUNTS or IT." }, { status: 400 });
   }
 
   const adminRow = await prisma.admin.findUnique({ where: { cognitoId: admin.sub } });

@@ -1,4 +1,4 @@
-export type StaffRole = "HR" | "ACCOUNTS";
+export type StaffRole = "HR" | "ACCOUNTS" | "IT";
 
 export interface StaffAccount {
   id: string;

@@ -42,3 +42,41 @@ export async function requireAdminOrAccounts() {
     return null;
   }
 }
+
+/**
+ * Signature-verified check for the "hr" staff role, used by the HR
+ * dashboard page. Doesn't also allow "admin" — unlike
+ * requireAdminOrAccounts, there's no Admin-facing HR data yet, so this
+ * is just the HR login's own page.
+ */
+export async function requireHr() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("idToken")?.value;
+  if (!token) return null;
+
+  try {
+    const payload = await verifier.verify(token);
+    if (payload["custom:role"] !== "hr") return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Signature-verified check for the "it" staff role, used by the IT
+ * dashboard page (added Sep 23, 2026 alongside the IT staff role).
+ */
+export async function requireIt() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("idToken")?.value;
+  if (!token) return null;
+
+  try {
+    const payload = await verifier.verify(token);
+    if (payload["custom:role"] !== "it") return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}

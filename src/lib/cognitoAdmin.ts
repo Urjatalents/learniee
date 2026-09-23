@@ -22,12 +22,12 @@ export interface CreateStaffCognitoUserInput {
   firstName: string;
   lastName: string;
   phone: string; // E.164, e.g. +91XXXXXXXXXX
-  role: "hr" | "accounts";
+  role: "hr" | "accounts" | "it";
   tempPassword: string;
 }
 
 /**
- * Creates a Cognito user for an internal staff account (HR/Accounts).
+ * Creates a Cognito user for an internal staff account (HR/Accounts/IT).
  * MessageAction is suppressed — we've already OTP-verified the email and
  * phone ourselves before calling this, and we send the temp password via
  * our own email (see src/lib/ses.ts) rather than Cognito's default

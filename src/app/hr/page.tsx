@@ -1,13 +1,37 @@
-export default function HrDashboardPlaceholder() {
+import { redirect } from "next/navigation";
+
+import { requireHr } from "@/lib/verifyAdmin";
+import StaffDashboardShell from "@/features/shared/components/layout/StaffDashboardShell";
+
+export default async function HrDashboardPage() {
+  const auth = await requireHr();
+  if (!auth) {
+    redirect("/login");
+  }
+
+  const welcomeName =
+    [auth.given_name, auth.family_name].filter(Boolean).join(" ").trim() ||
+    (typeof auth.email === "string" ? auth.email : "there");
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
-      <div className="bg-white rounded-xl border shadow-sm p-8 text-center max-w-md">
-        <h1 className="text-xl font-bold text-purple-600 mb-2">HR Dashboard</h1>
-        <p className="text-gray-500 text-sm">
-          Your account is set up. The HR dashboard itself hasn&apos;t been built yet — check back
-          soon.
-        </p>
-      </div>
-    </div>
+    <StaffDashboardShell
+      heading="HR Dashboard"
+      subheading="Your account is set up. HR's own tools aren't built yet — this is a starting point."
+      welcomeName={welcomeName}
+      cards={[
+        {
+          title: "Staff Directory",
+          description: "A directory of Parent/Teacher/Admin staff accounts — coming soon.",
+        },
+        {
+          title: "Leave & Attendance",
+          description: "Internal staff leave tracking — coming soon.",
+        },
+        {
+          title: "Onboarding",
+          description: "New-hire onboarding checklists — coming soon.",
+        },
+      ]}
+    />
   );
 }

@@ -20,7 +20,7 @@ export function useLogin() {
   // Set when Cognito responds to authenticateUser() with a
   // NEW_PASSWORD_REQUIRED challenge — this happens on a user's first
   // login after an admin created their account via AdminCreateUser
-  // (e.g. Staff Accounts / HR / Accounts), which leaves them in
+  // (e.g. Staff Accounts / HR / Accounts / IT), which leaves them in
   // FORCE_CHANGE_PASSWORD status until they set a real password.
   const [forcePasswordChange, setForcePasswordChange] = useState(false);
   const [pendingCognitoUser, setPendingCognitoUser] = useState<CognitoUser | null>(null);
@@ -34,6 +34,10 @@ export function useLogin() {
     }
     if (role === "accounts") {
       router.push("/accounts");
+      return true;
+    }
+    if (role === "it") {
+      router.push("/it");
       return true;
     }
     return false;

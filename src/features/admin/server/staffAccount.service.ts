@@ -27,12 +27,15 @@ export async function createStaffAccount(input: CreateStaffAccountInput) {
 
   const tempPassword = generateTempPassword();
 
+  const cognitoRole: "hr" | "accounts" | "it" =
+    input.role === "HR" ? "hr" : input.role === "IT" ? "it" : "accounts";
+
   const { cognitoSub } = await adminCreateStaffCognitoUser({
     email: input.email,
     firstName: input.firstName,
     lastName: input.lastName,
     phone: input.phone,
-    role: input.role === "HR" ? "hr" : "accounts",
+    role: cognitoRole,
     tempPassword,
   });
 

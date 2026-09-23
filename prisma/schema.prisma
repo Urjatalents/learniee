@@ -702,15 +702,16 @@ model HomeworkSubmission {
   homework    Homework                 @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
 }
 
-/// Admin-created internal staff accounts (HR, Accounts). Cognito remains
-/// the identity source (custom:role = "hr" | "accounts") — this row is
+/// Admin-created internal staff accounts (HR, Accounts, IT). Cognito remains
+/// the identity source (custom:role = "hr" | "accounts" | "it") — this row is
 /// only a lightweight directory entry so Admin's Manage Staff Accounts
 /// screen has something to list/search/delete against, following the
 /// same pattern as ParentProfile/Teacher. Deliberately minimal for now —
-/// no onboarding/profile/dashboard fields yet, those come later per
-/// 06-OPEN-DECISIONS.md #16 (Accounts role scope still unconfirmed) and
-/// HR isn't in the original 4-role MVP model (02-ARCHITECTURE.md) at all,
-/// so this is explicitly scoped as "create the identity, nothing else."
+/// no onboarding/profile fields yet, those come later per
+/// 06-OPEN-DECISIONS.md #16 (Accounts role scope still unconfirmed). HR/IT
+/// aren't in the original 4-role MVP model (02-ARCHITECTURE.md) at all, so
+/// this is explicitly scoped as "create the identity (+ a simple dashboard),
+/// nothing else." (IT added Sep 23, 2026.)
 model StaffAccount {
   id          String    @id @default(uuid())
   cognitoSub  String    @unique
@@ -1394,6 +1395,9 @@ enum HomeworkSubmissionStatus {
 enum StaffRole {
   HR
   ACCOUNTS
+  /// Added Sep 23, 2026 so Admin can provision IT logins the same way
+  /// as HR/Accounts (see StaffAccount doc-comment below).
+  IT
 }
 
 /// The first four values predate the cycle model and are used as-is
