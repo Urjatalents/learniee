@@ -30,6 +30,9 @@ export interface AdminCourse {
   modules: string | null;
   courseTags: string | null;
   price: string | null;
+  isIITian: boolean;
+  standardPrice: string | null;
+  isPriceCustomized: boolean;
 
   thumbnailUrl: string | null;
 

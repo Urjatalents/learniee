@@ -20,6 +20,7 @@ export interface CourseFormData {
   modules: string;
   courseTags: string;
   price: string;
+  isIITian: boolean;
 
   certificateEnabled: boolean;
   certificateSessionThreshold: string;
@@ -47,6 +48,7 @@ export const initialCourseFormData: CourseFormData = {
   modules: "",
   courseTags: "",
   price: "",
+  isIITian: false,
 
   certificateEnabled: false,
   certificateSessionThreshold: "",

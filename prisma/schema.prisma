@@ -238,6 +238,16 @@ model Course {
   /// creation — there's no course-edit screen yet to revise it.
   certificateEnabled           Boolean       @default(false)
   certificateSessionThreshold  Int?
+  /// Standard pricing (Sep 2026). `standardPrice` is the platform's
+  /// per-session rate snapshot computed at creation from `grade` /
+  /// `isIITian` (see coursePricing.ts) — null if neither was set,
+  /// which forces a manual price. `isPriceCustomized` is true when
+  /// the teacher's own `price` differs from that standard rate, and
+  /// is what the Admin course-review screen flags. Both are set once
+  /// at creation; there's no course-edit screen yet to revise them.
+  isIITian          Boolean       @default(false)
+  standardPrice     Decimal?      @db.Decimal(10, 2)
+  isPriceCustomized Boolean       @default(false)
   chatRooms       ChatRoom[]
   teacher         Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   demoBookings    DemoBooking[]

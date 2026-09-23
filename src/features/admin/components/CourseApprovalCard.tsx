@@ -87,9 +87,25 @@ export default function CourseApprovalCard({
 
         <div>
           <p className="font-medium text-gray-700">Price</p>
-          <p className="text-gray-500">{course.price || "-"}</p>
+          <p className="text-gray-500">
+            {course.price || "-"}
+            {course.isIITian && (
+              <span className="ml-2 text-xs text-violet-600 font-medium">IITian</span>
+            )}
+          </p>
         </div>
       </div>
+
+      {course.isPriceCustomized && (
+        <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-medium text-amber-800">Non-standard price</p>
+          <p className="text-xs text-amber-700 mt-1">
+            The standard rate for this course{course.isIITian ? " (IITian listing)" : ""} is ₹
+            {course.standardPrice}/session, but the teacher has set it to ₹{course.price}
+            /session.
+          </p>
+        </div>
+      )}
 
       {course.objective && (
         <div className="mt-4">

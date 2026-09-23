@@ -7,6 +7,7 @@ import {
   getTeacherCourses,
   type CourseFormInput,
 } from "@/features/courses/server/course.service";
+import { getStandardPrice } from "@/features/courses/utils/coursePricing";
 
 import { prisma } from "@/lib/prisma";
 
@@ -102,6 +103,23 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
+    }
+
+    // Standard pricing (Sep 2026): a manual price always works, but
+    // if the teacher leaves Price blank we need a standard rate to
+    // fall back to — i.e. a recognised grade, or the IITian flag.
+    const hasManualPrice = Boolean(input.price) && Number.isFinite(Number(input.price));
+    const hasStandardPrice =
+      getStandardPrice(input.grade || null, Boolean(input.isIITian)) != null;
+
+    if (!hasManualPrice && !hasStandardPrice) {
+      return NextResponse.json(
+        {
+          error:
+            "Select a grade (or mark this course as IITian-listed) to get a standard price, or enter your own price.",
+        },
+        { status: 400 },
+      );
     }
 
     const course = await createCourse(

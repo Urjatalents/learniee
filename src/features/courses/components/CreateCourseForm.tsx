@@ -30,10 +30,21 @@ export default function CreateCourseForm({ onChange }: Props) {
     onChange(updatedData);
   }
 
+  function handleIITianToggle(checked: boolean) {
+    const updatedData = { ...formData, isIITian: checked };
+
+    setFormData(updatedData);
+    onChange(updatedData);
+  }
+
   return (
     <div className="space-y-6">
       <CourseConfigFields formData={formData} onChange={handleChange} />
-      <CourseDetailFields formData={formData} onChange={handleChange} />
+      <CourseDetailFields
+        formData={formData}
+        onChange={handleChange}
+        onIITianToggle={handleIITianToggle}
+      />
       <CourseCertificateFields
         formData={formData}
         onChange={handleChange}

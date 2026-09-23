@@ -7,6 +7,7 @@ import {
   FREQUENCY_OPTIONS,
   MODULE_OPTIONS,
 } from "@/features/courses/constants/courseOptions";
+import { getStandardPrice } from "@/features/courses/utils/coursePricing";
 import type { CourseFormData } from "@/features/courses/types/course";
 
 interface Props {
@@ -14,9 +15,15 @@ interface Props {
   onChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => void;
+  onIITianToggle: (checked: boolean) => void;
 }
 
-export default function CourseDetailFields({ formData, onChange }: Props) {
+export default function CourseDetailFields({ formData, onChange, onIITianToggle }: Props) {
+  const standardPrice = getStandardPrice(formData.grade || null, formData.isIITian);
+  const manualPrice = formData.price ? Number(formData.price) : null;
+  const isPriceCustomized =
+    standardPrice != null && manualPrice != null && manualPrice !== standardPrice;
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -99,6 +106,34 @@ export default function CourseDetailFields({ formData, onChange }: Props) {
           onChange={onChange}
         />
         <Input name="price" placeholder="Price" value={formData.price} onChange={onChange} />
+      </div>
+
+      <div className="border border-gray-200 rounded-lg p-4">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
+          <input
+            type="checkbox"
+            checked={formData.isIITian}
+            onChange={(e) => onIITianToggle(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+          />
+          Listed by an IITian
+        </label>
+
+        <p className="text-xs text-gray-500 mt-2">
+          {formData.isIITian
+            ? `Standard price for an IITian-listed course is ₹${getStandardPrice(null, true)}/session.`
+            : standardPrice != null
+              ? `Standard price for Grade ${formData.grade.replace(/\D/g, "") || "-"} is ₹${standardPrice}/session.`
+              : "Select a grade to see the standard price, or mark this as an IITian listing."}
+          {" "}Leave Price blank to use it, or set your own.
+        </p>
+
+        {isPriceCustomized && (
+          <p className="text-xs text-amber-600 mt-1">
+            Your price (₹{manualPrice}) differs from the standard rate (₹{standardPrice}) — Admin
+            will see this flagged as a non-standard price during review.
+          </p>
+        )}
       </div>
     </>
   );
