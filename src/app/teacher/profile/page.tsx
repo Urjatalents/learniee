@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Pencil, X, Check } from "lucide-react";
+import { User, Pencil, X, Check, Star } from "lucide-react";
 
 import { useProfile, type TeacherProfileFormFields } from "@/features/teacher/hooks/useProfile";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
@@ -54,6 +54,32 @@ function approvalBadge(status: "PENDING" | "APPROVED" | "REJECTED") {
   return (
     <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${styles[status]}`}>
       {labels[status]}
+    </span>
+  );
+}
+
+function RatingBadge({
+  averageRating,
+  reviewCount,
+}: {
+  averageRating: number | null;
+  reviewCount: number;
+}) {
+  if (averageRating === null) {
+    return (
+      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
+        No ratings yet
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
+      <Star size={12} className="text-amber-500 fill-amber-500" />
+      {averageRating.toFixed(1)} / 5
+      <span className="font-medium text-amber-600/80">
+        ({reviewCount} review{reviewCount === 1 ? "" : "s"})
+      </span>
     </span>
   );
 }
@@ -131,6 +157,12 @@ export default function TeacherProfilePage() {
                 {loading ? "Your Profile" : displayName || "Your Profile"}
               </h1>
               {profile && approvalBadge(profile.approvalStatus)}
+              {profile && (
+                <RatingBadge
+                  averageRating={profile.averageRating}
+                  reviewCount={profile.reviewCount}
+                />
+              )}
             </div>
             <p className="text-sm text-gray-500">{profile?.email}</p>
           </div>

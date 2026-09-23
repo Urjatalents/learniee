@@ -103,6 +103,58 @@ export async function getReviewsForCourse(courseId: string, parentId?: string) {
 }
 
 /**
+ * A Teacher's overall rating — averaged across every course review
+ * they've received (a review is per (parent, course) but carries the
+ * denormalized `teacherId`, so one teacher's rating spans all their
+ * courses). Used by the Admin Teacher Directory and the Teacher's own
+ * profile page. Returns `null` for `averageRating` when the teacher
+ * has no reviews yet — callers should render that as "No ratings yet"
+ * rather than a 0-star score.
+ */
+export async function getTeacherRatingSummary(teacherId: string) {
+  const aggregate = await prisma.review.aggregate({
+    where: { teacherId },
+    _avg: { rating: true },
+    _count: { rating: true },
+  });
+
+  return {
+    averageRating: aggregate._avg.rating,
+    totalReviews: aggregate._count.rating,
+  };
+}
+
+/**
+ * Batched version of `getTeacherRatingSummary` for list pages (Teacher
+ * Directory) — one `groupBy` instead of one query per row.
+ */
+export async function getTeacherRatingsByIds(
+  teacherIds: string[],
+): Promise<Map<string, { averageRating: number | null; totalReviews: number }>> {
+  const map = new Map<string, { averageRating: number | null; totalReviews: number }>();
+
+  if (teacherIds.length === 0) {
+    return map;
+  }
+
+  const groups = await prisma.review.groupBy({
+    by: ["teacherId"],
+    where: { teacherId: { in: teacherIds } },
+    _avg: { rating: true },
+    _count: { rating: true },
+  });
+
+  for (const g of groups) {
+    map.set(g.teacherId, {
+      averageRating: g._avg.rating,
+      totalReviews: g._count.rating,
+    });
+  }
+
+  return map;
+}
+
+/**
  * Creates the Parent's one-and-only review for a course. Re-checks
  * the ACTIVE-enrollment requirement server-side — never trust a
  * client-computed `canReview` flag for the actual write.

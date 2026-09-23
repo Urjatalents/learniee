@@ -17,6 +17,9 @@ export interface TeacherProfileData {
   aboutMe: string | null;
   approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
+  /** Average of Parent-left course reviews, out of 5. Null = no reviews yet. */
+  averageRating: number | null;
+  reviewCount: number;
 }
 
 export type TeacherProfileFormFields = Pick<
@@ -85,7 +88,13 @@ export function useProfile() {
         throw new Error(data.error || "Failed to update your profile.");
       }
 
-      setProfile(data.teacher);
+      // PATCH only returns the editable "contact card" fields — carry the
+      // rating over from what GET last loaded rather than dropping it.
+      setProfile((prev) => ({
+        ...data.teacher,
+        averageRating: prev?.averageRating ?? null,
+        reviewCount: prev?.reviewCount ?? 0,
+      }));
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update your profile.";

@@ -1,5 +1,7 @@
 "use client";
 
+import { Star } from "lucide-react";
+
 import type { TeacherDirectoryRow } from "@/features/admin/hooks/useTeacherDirectory";
 
 function formatDate(value: string) {
@@ -38,6 +40,7 @@ export default function TeacherDirectoryTable({ teachers }: TeacherDirectoryTabl
             <th className="px-4 py-3">Onboarding</th>
             <th className="px-4 py-3 text-right">Courses</th>
             <th className="px-4 py-3 text-right">Active Enrollments</th>
+            <th className="px-4 py-3 text-right">Rating</th>
             <th className="px-4 py-3 text-right">Strikes</th>
             <th className="px-4 py-3">Joined</th>
           </tr>
@@ -62,6 +65,19 @@ export default function TeacherDirectoryTable({ teachers }: TeacherDirectoryTabl
               </td>
               <td className="px-4 py-3 text-right">{t.coursesCount}</td>
               <td className="px-4 py-3 text-right">{t.activeEnrollmentsCount}</td>
+              <td className="px-4 py-3 text-right">
+                {t.averageRating === null ? (
+                  <span className="text-gray-400">—</span>
+                ) : (
+                  <span className="inline-flex items-center justify-end gap-1">
+                    <Star size={13} className="text-amber-400 fill-amber-400" />
+                    <span className="font-semibold text-gray-800">
+                      {t.averageRating.toFixed(1)}
+                    </span>
+                    <span className="text-xs text-gray-400">({t.reviewCount})</span>
+                  </span>
+                )}
+              </td>
               <td
                 className={`px-4 py-3 text-right ${t.strikesCount > 0 ? "font-semibold text-red-600" : ""}`}
               >
@@ -72,7 +88,7 @@ export default function TeacherDirectoryTable({ teachers }: TeacherDirectoryTabl
           ))}
           {teachers.length === 0 && (
             <tr>
-              <td colSpan={9} className="px-4 py-6 text-center text-gray-400">
+              <td colSpan={10} className="px-4 py-6 text-center text-gray-400">
                 No teachers found.
               </td>
             </tr>

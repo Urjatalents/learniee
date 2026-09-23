@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCognitoAuth } from "@/lib/api-auth";
+import { getTeacherRatingSummary } from "@/features/shared/server/review.service";
 
 /**
  * GET
@@ -46,8 +47,14 @@ export async function GET(req: Request) {
       );
     }
 
+    const rating = await getTeacherRatingSummary(teacher.id);
+
     return NextResponse.json({
-      teacher,
+      teacher: {
+        ...teacher,
+        averageRating: rating.averageRating,
+        reviewCount: rating.totalReviews,
+      },
     });
 
   } catch (error) {

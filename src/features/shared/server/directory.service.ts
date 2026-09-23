@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { TeacherApprovalStatus } from "@prisma/client";
+import { getTeacherRatingsByIds } from "@/features/shared/server/review.service";
 
 /**
  * Admin "Teacher Directory" / "Parent Directory" — read-only summary
@@ -34,6 +35,9 @@ export interface TeacherDirectoryRow {
   activeEnrollmentsCount: number;
   /** Strikes recorded for teacher no-shows and teacher cancellations (Part 1C). */
   strikesCount: number;
+  /** Average of the Parent-left course reviews for this teacher, out of 5. Null = no reviews yet. */
+  averageRating: number | null;
+  reviewCount: number;
   createdAt: Date;
 }
 
@@ -78,6 +82,8 @@ export async function getTeacherDirectory(): Promise<{
     prisma.teacher.count(),
   ]);
 
+  const ratings = await getTeacherRatingsByIds(teachers.map((t) => t.id));
+
   const approvalCounts = { pending: 0, approved: 0, rejected: 0 };
   for (const g of approvalGroups) {
     if (g.approvalStatus === "PENDING") approvalCounts.pending = g._count._all;
@@ -98,6 +104,8 @@ export async function getTeacherDirectory(): Promise<{
       coursesCount: t._count.courses,
       activeEnrollmentsCount: t._count.enrollments,
       strikesCount: t._count.strikes,
+      averageRating: ratings.get(t.id)?.averageRating ?? null,
+      reviewCount: ratings.get(t.id)?.totalReviews ?? 0,
       createdAt: t.createdAt,
     })),
     summary: {

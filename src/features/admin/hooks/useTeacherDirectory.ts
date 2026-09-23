@@ -14,6 +14,8 @@ export interface TeacherDirectoryRow {
   coursesCount: number;
   activeEnrollmentsCount: number;
   strikesCount: number;
+  averageRating: number | null;
+  reviewCount: number;
   createdAt: string;
 }
 
