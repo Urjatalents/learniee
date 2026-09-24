@@ -51,13 +51,6 @@ export default function AccountsNavbar() {
       <div className="ml-auto flex items-center gap-4">
         <button
           type="button"
-          onClick={() => router.push("/accounts/community")}
-          className="text-sm font-semibold text-gray-500 hover:text-brand transition"
-        >
-          Community
-        </button>
-        <button
-          type="button"
           onClick={handleLogout}
           className="text-sm font-semibold text-gray-500 hover:text-brand transition"
         >

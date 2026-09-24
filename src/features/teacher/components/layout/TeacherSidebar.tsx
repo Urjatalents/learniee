@@ -21,7 +21,6 @@ import {
   GraduationCap,
   AlertCircle,
   Settings,
-  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -81,7 +80,6 @@ const menuSections: MenuSection[] = [
   {
     label: "Community & Live",
     items: [
-      { label: "Community", path: "/teacher/community", icon: Users },
       { label: "Blogs", path: "/teacher/blogs", icon: Newspaper },
       { label: "Demo", path: "/teacher/demo", icon: Video },
       { label: "Go Live", path: "/teacher/go-live", icon: Radio },

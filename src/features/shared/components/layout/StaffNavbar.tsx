@@ -11,8 +11,6 @@ interface StaffNavbarProps {
   label: string;
   /** Where the logo click and this staff role's dashboard live, e.g. "/hr". */
   homePath: string;
-  /** Where this role's Community page lives, e.g. "/hr/community". */
-  communityPath?: string;
 }
 
 /**
@@ -23,7 +21,7 @@ interface StaffNavbarProps {
  * Extend AccountsNavbar to use this too if Accounts ever needs the
  * same shape.
  */
-export default function StaffNavbar({ label, homePath, communityPath }: StaffNavbarProps) {
+export default function StaffNavbar({ label, homePath }: StaffNavbarProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -50,15 +48,6 @@ export default function StaffNavbar({ label, homePath, communityPath }: StaffNav
       </button>
 
       <div className="ml-auto flex items-center gap-4">
-        {communityPath && (
-          <button
-            type="button"
-            onClick={() => router.push(communityPath)}
-            className="text-sm font-semibold text-gray-500 hover:text-brand transition"
-          >
-            Community
-          </button>
-        )}
         <button
           type="button"
           onClick={handleLogout}

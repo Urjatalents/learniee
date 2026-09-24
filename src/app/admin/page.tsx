@@ -114,21 +114,6 @@ export default function AdminDashboard() {
 
           <div className="bg-white rounded-xl border shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-800">
-              Community
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Group chat with all teachers and staff. Send announcements to every teacher.
-            </p>
-            <button
-              onClick={() => router.push("/admin/community")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              Open Community
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
               Leave Requests
             </h3>
             <p className="text-sm text-gray-500 mt-2">
