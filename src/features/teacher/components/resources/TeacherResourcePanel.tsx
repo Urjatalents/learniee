@@ -161,12 +161,14 @@ function ShareResourceForm({
 
       {type === "FILE" ? (
         <input
+          key="file-input"
           type="file"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           className="text-xs"
         />
       ) : (
         <input
+          key="url-input"
           type="url"
           value={externalUrl}
           onChange={(e) => setExternalUrl(e.target.value)}
