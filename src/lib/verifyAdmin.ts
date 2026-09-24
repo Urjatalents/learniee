@@ -80,3 +80,33 @@ export async function requireIt() {
     return null;
   }
 }
+
+/**
+ * Signature-verified check for anyone allowed into the internal
+ * Community room: Teacher, Admin and the staff logins (Accounts, HR,
+ * IT). Parents are excluded on purpose. Returns the verified token
+ * payload; the caller resolves the actual person and, for a Teacher,
+ * checks approval (see features/community/server/auth.ts).
+ */
+export async function requireCommunityMember() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("idToken")?.value;
+  if (!token) return null;
+
+  try {
+    const payload = await verifier.verify(token);
+    const role = payload["custom:role"];
+    if (
+      role !== "teacher" &&
+      role !== "admin" &&
+      role !== "accounts" &&
+      role !== "hr" &&
+      role !== "it"
+    ) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}

@@ -1398,3 +1398,33 @@ export function notifySessionOutcomeDecided(notice: SessionOutcomeDecidedNotice)
   });
 }
 
+// ---------------------------------------------------------------------------
+// Community
+// ---------------------------------------------------------------------------
+
+/**
+ * Admin broadcast in the Teacher & Staff Community: one notification per
+ * approved Teacher. Staff logins (Accounts/HR/IT) have no notification
+ * path yet (06 #32), so they only see it in the room.
+ */
+export function notifyCommunityAnnouncement(senderName: string, body: string) {
+  return safe("community announcement", async () => {
+    const teachers = await prisma.teacher.findMany({
+      where: { approvalStatus: "APPROVED" },
+      select: { id: true },
+    });
+
+    const preview = body.length > 140 ? `${body.slice(0, 137)}...` : body;
+
+    await createNotifications(
+      teachers.map((teacher) => ({
+        recipientId: teacher.id,
+        recipientRole: R.TEACHER,
+        type: T.COMMUNITY_ANNOUNCEMENT,
+        title: "Announcement from Admin",
+        message: `${senderName}: ${preview}`,
+        link: "/teacher/community",
+      })),
+    );
+  });
+}

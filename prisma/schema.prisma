@@ -671,6 +671,47 @@ model ChatMessage {
   @@index([chatRoomId, containsPhoneNumber])
 }
 
+/// Who can post in the Community room. Parents are deliberately not
+/// here — the room is internal (Teachers + Admin + staff logins).
+enum CommunitySenderRole {
+  TEACHER
+  ADMIN
+  ACCOUNTS
+  HR
+  IT
+}
+
+/// Community (Sep 2026) — ONE global group chat for every approved
+/// Teacher, Admin and staff login (Accounts / HR / IT). No parents.
+/// There is no room table on purpose: there is exactly one room.
+///
+/// `senderId` is `Teacher.id`, `Admin.id` or `StaffAccount.id` (or the
+/// Cognito `sub` for a staff login with no StaffAccount row) — loosely
+/// typed like `ChatMessage.senderId`, disambiguated by `senderRole`.
+/// `senderName` is a snapshot so listing needs no joins.
+///
+/// `isAnnouncement` = an Admin broadcast: highlighted in the room and
+/// notifies every approved Teacher. Only Admin can set it.
+///
+/// Deletion is soft (Admin only): `deletedAt` is set and the body is
+/// blanked on read. `updatedAt` is the polling cursor, so a deletion
+/// reaches clients that already hold the message.
+model CommunityMessage {
+  id             String              @id @default(uuid())
+  senderRole     CommunitySenderRole
+  senderId       String
+  senderName     String
+  body           String
+  isAnnouncement Boolean             @default(false)
+  deletedAt      DateTime?
+  deletedByName  String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @default(now()) @updatedAt
+
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
 /// Homework module (added Sep 4, 2026) — deliberately simple, a
 /// Google-Classroom-style "assign once, submit once" flow scoped to
 /// one Enrollment, not a general LMS. Only unlocked once the
@@ -1589,6 +1630,10 @@ enum NotificationType {
   /// Admin or IT resets their password or changes their email/phone.
   /// See features/shared/server/accountAccess.service.ts.
   ACCOUNT_CREDENTIALS_UPDATED
+  /// Community (Sep 2026) — sent to every approved Teacher when Admin
+  /// posts an announcement (broadcast) in the Teacher & Staff
+  /// Community room. See features/community/server/community.service.ts.
+  COMMUNITY_ANNOUNCEMENT
   GENERIC
 }
 
