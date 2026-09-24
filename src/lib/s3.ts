@@ -34,6 +34,7 @@ export const UPLOAD_FOLDERS = {
   CHILD_PHOTOS: "child-photos",
   COURSE_MEDIA: "course-media",
   HOMEWORK: "homework",
+  RESOURCES: "resources",
 } as const;
 
 export type UploadFolder =
@@ -53,6 +54,17 @@ export const ALLOWED_UPLOAD_MIME_TYPES = [
   "text/plain",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  // Added for the Resource Library (Sep 24, 2026) — a Teacher can
+  // share "anything" with a Student, so the allow-list grows to
+  // cover the other common study-material formats beyond
+  // worksheets/PDFs: slides, spreadsheets, zipped bundles, audio.
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.ms-excel",
+  "application/zip",
+  "audio/mpeg",
+  "audio/mp4",
 ] as const;
 
 /**

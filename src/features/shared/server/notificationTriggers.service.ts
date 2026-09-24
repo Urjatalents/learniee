@@ -727,6 +727,30 @@ export function notifyHomeworkAssigned(homeworkId: string) {
   });
 }
 
+/** Resource Library (Sep 24, 2026) — Parent is notified once when a Teacher shares a new resource. */
+export function notifyResourceShared(resourceId: string) {
+  return safe("resource shared", async () => {
+    const resource = await prisma.resource.findUnique({
+      where: { id: resourceId },
+      select: {
+        parentId: true,
+        title: true,
+        enrollment: { select: { course: { select: { courseTitle: true } } } },
+      },
+    });
+    if (!resource) return;
+
+    await createNotification({
+      recipientId: resource.parentId,
+      recipientRole: R.PARENT,
+      type: T.RESOURCE_SHARED,
+      title: "New resource shared",
+      message: `"${resource.title}" was shared for ${resource.enrollment.course.courseTitle || "your course"}.`,
+      link: "/parent/resources",
+    });
+  });
+}
+
 export function notifyHomeworkSubmitted(homeworkId: string) {
   return safe("homework submitted", async () => {
     const homework = await prisma.homework.findUnique({

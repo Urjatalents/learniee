@@ -18,10 +18,10 @@ export function usesClassView(enrollment: { isLegacy: boolean; status: string })
 }
 
 /** Tabs of the class detail page. */
-export type ClassTab = "classes" | "homework" | "chat";
+export type ClassTab = "classes" | "homework" | "resources" | "chat";
 
 export function parseClassTab(value: string | string[] | undefined): ClassTab {
   const tab = Array.isArray(value) ? value[0] : value;
 
-  return tab === "homework" || tab === "chat" ? tab : "classes";
+  return tab === "homework" || tab === "resources" || tab === "chat" ? tab : "classes";
 }

@@ -4,7 +4,8 @@ export type UploadFolder =
   | "teacher-documents"
   | "child-photos"
   | "course-media"
-  | "homework";
+  | "homework"
+  | "resources";
 
 interface UploadOptions {
   file: File;

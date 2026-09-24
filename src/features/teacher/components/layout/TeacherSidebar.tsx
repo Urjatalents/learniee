@@ -14,6 +14,7 @@ import {
   Newspaper,
   ClipboardCheck,
   CalendarOff,
+  FolderOpen,
   Video,
   Radio,
   MessageCircle,
@@ -63,6 +64,7 @@ const menuSections: MenuSection[] = [
     label: "Schedule",
     items: [
       { label: "HW & Tests", path: "/teacher/hw-tests", icon: ClipboardCheck },
+      { label: "Resources", path: "/teacher/resources", icon: FolderOpen },
       { label: "Reschedule", path: "/teacher/reschedule", icon: RefreshCw },
       { label: "Leave", path: "/teacher/leave", icon: CalendarOff },
       { label: "Complain", path: "/teacher/complain", icon: AlertCircle },

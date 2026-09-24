@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BookOpen, CalendarClock, MessageCircle } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarClock, FolderOpen, MessageCircle } from "lucide-react";
 
 import { useClassDetail } from "@/features/parent/hooks/useClassDetail";
 import type { ClassTab } from "@/features/parent/utils/classView";
 import ParentHomeworkPanel from "@/features/parent/components/homework/ParentHomeworkPanel";
+import ParentResourcePanel from "@/features/parent/components/resources/ParentResourcePanel";
 import RenewalPanel from "@/features/parent/components/enrollments/RenewalPanel";
 import ClassHeader from "@/features/parent/components/my-classes/ClassHeader";
 import CycleProgressCard from "@/features/parent/components/my-classes/CycleProgressCard";
@@ -24,16 +25,19 @@ interface Props {
 const TABS: { id: ClassTab; label: string; icon: typeof CalendarClock }[] = [
   { id: "classes", label: "Classes", icon: CalendarClock },
   { id: "homework", label: "Homework", icon: BookOpen },
+  { id: "resources", label: "Resources", icon: FolderOpen },
   { id: "chat", label: "Chat", icon: MessageCircle },
 ];
 
 /**
  * One enrolled course's page (Part 2C) for a cycle-model enrollment:
  * course and teacher info, cycle progress, the Join button for the
- * next class, session history — with Homework and Chat built in as
- * tabs, and the parent's "All good" / "Report a problem" (Part 2A)
- * and Renew in the last week (Part 2B) right on the Classes tab.
- * Everything comes from the real cycle and session data.
+ * next class, session history — with Homework, the Resource Library
+ * and Chat built in as tabs, and the parent's "All good" / "Report a
+ * problem" (Part 2A) and Renew in the last week (Part 2B) right on
+ * the Classes tab. Everything comes from the real cycle and session
+ * data. Resources (Sep 24, 2026) stays open even once the enrollment
+ * has `ended`, unlike Homework — resources are permanent once shared.
  */
 export default function ClassDetail({ enrollmentId, initialTab }: Props) {
   const { detail, loading, error, reload } = useClassDetail(enrollmentId);
@@ -168,6 +172,12 @@ export default function ClassDetail({ enrollmentId, initialTab }: Props) {
             <ParentHomeworkPanel enrollmentId={enrollment.id} />
           </div>
         ))}
+
+      {tab === "resources" && (
+        <div className="max-w-3xl">
+          <ParentResourcePanel enrollmentId={enrollment.id} />
+        </div>
+      )}
 
       {tab === "chat" &&
         (enrollment.chatRoomId ? (

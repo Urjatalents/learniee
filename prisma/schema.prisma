@@ -58,6 +58,7 @@ model ParentProfile {
   referralReceived    Referral?            @relation("ReferralReceived")
   reviews             Review[]
   certificates        Certificate[]
+  resources           Resource[]
 }
 
 model Admin {
@@ -91,6 +92,7 @@ model Student {
   homeworks            Homework[]
   parent               ParentProfile  @relation(fields: [parentId], references: [id], onDelete: Cascade)
   certificates         Certificate[]
+  resources            Resource[]
 
   @@index([parentId])
 }
@@ -145,6 +147,7 @@ model Teacher {
   reviews            Review[]
   strikes            TeacherStrike[]
   certificates       Certificate[]
+  resources          Resource[]
 }
 
 model TeacherProfessional {
@@ -448,6 +451,7 @@ model Enrollment {
   rescheduleRequests         RescheduleRequest[]
   review                     Review?
   certificate                Certificate?
+  resources                  Resource[]
 
   @@index([parentId])
   @@index([teacherId])
@@ -1177,6 +1181,55 @@ model Certificate {
   @@index([courseId])
 }
 
+/// Resource Library (Sep 24, 2026). Deliberately simple: a Teacher
+/// shares anything — a file (worksheet, recording, reading) or a
+/// plain link — onto one Enrollment, and it shows up for that
+/// Student/Parent from then on. There is no expiry, archive or
+/// deletion path by design: once shared, a resource stays visible
+/// to the Parent for the rest of the relationship (even after the
+/// Enrollment ends), the same "permanent" behaviour Certificates and
+/// issued Invoices already have. A Teacher can still delete their
+/// own mistaken upload — that's a correction, not an expiry rule.
+///
+/// Scoped to Enrollment (not directly to Student) so it fits the
+/// same per-course "My Classes" surface as Homework/Chat/Classes,
+/// and so Admin's "who shared what to whom" view (`06`-style
+/// decode-only listing, same as teacher-strikes) can read
+/// teacher/parent/student straight off the row without a join
+/// through Course. `type` distinguishes an uploaded file
+/// (`fileKey` on S3) from a plain link (`externalUrl`) — "everything
+/// can be a resource" was the brief, so both are first-class.
+model Resource {
+  id           String       @id @default(uuid())
+  enrollmentId String
+  teacherId    String
+  parentId     String
+  studentId    String
+  title        String
+  description  String?
+  type         ResourceType @default(FILE)
+  fileKey      String?
+  fileName     String?
+  externalUrl  String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  enrollment Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  teacher    Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  parent     ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student    Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId])
+  @@index([teacherId])
+  @@index([parentId])
+  @@index([studentId])
+}
+
+enum ResourceType {
+  FILE
+  LINK
+}
+
 /// Refer & Earn (added Sep 8, 2026) — a Parent's own shareable code
 /// (`ParentProfile.referralCode`, lazily generated the first time
 /// they open /parent/referral, same lazy-creation pattern as
@@ -1589,6 +1642,10 @@ enum NotificationType {
   /// Admin or IT resets their password or changes their email/phone.
   /// See features/shared/server/accountAccess.service.ts.
   ACCOUNT_CREDENTIALS_UPDATED
+  /// Resource Library (Sep 24, 2026) — see the Resource model's
+  /// doc-comment. Sent to the Parent when a Teacher shares a new
+  /// resource on one of their enrollments.
+  RESOURCE_SHARED
   GENERIC
 }
 
@@ -1712,6 +1769,9 @@ enum ActivityAction {
   /// features/shared/server/accountAccess.service.ts.
   ACCOUNT_PASSWORD_RESET
   ACCOUNT_CONTACT_UPDATED
+  /// Resource Library (Sep 24, 2026) — see the Resource model's
+  /// doc-comment.
+  RESOURCE_SHARED
   GENERIC
 }
 

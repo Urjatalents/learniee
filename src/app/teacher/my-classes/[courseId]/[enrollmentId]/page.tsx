@@ -2,30 +2,35 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BookOpen, CalendarClock, MessageCircle } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarClock, FolderOpen, MessageCircle } from "lucide-react";
 
 import { useTeacherStudentDetail } from "@/features/teacher/hooks/useMyClasses";
 import TeacherHomeworkPanel from "@/features/teacher/components/homework/TeacherHomeworkPanel";
+import TeacherResourcePanel from "@/features/teacher/components/resources/TeacherResourcePanel";
 import TeacherClassChatPanel from "@/features/teacher/components/my-classes/TeacherClassChatPanel";
 import UpcomingClassesList from "@/features/teacher/components/my-classes/UpcomingClassesList";
 import ClassHistoryList from "@/features/teacher/components/my-classes/ClassHistoryList";
 import CycleProgressCard from "@/features/parent/components/my-classes/CycleProgressCard";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
-type Tab = "classes" | "homework" | "chat";
+type Tab = "classes" | "homework" | "resources" | "chat";
 
 const TABS: { id: Tab; label: string; icon: typeof CalendarClock }[] = [
   { id: "classes", label: "Classes", icon: CalendarClock },
   { id: "homework", label: "Homework", icon: BookOpen },
+  { id: "resources", label: "Resources", icon: FolderOpen },
   { id: "chat", label: "Chat", icon: MessageCircle },
 ];
 
 /**
  * One enrolled student's page under My Classes ↦ course ↦ student:
- * cycle progress and upcoming/history classes, with Homework and
- * Chat built in as tabs — the Teacher-side mirror of the Parent's
- * per-enrollment My Classes page (Part 2C), minus the Parent-only
- * confirm/report and renewal actions.
+ * cycle progress and upcoming/history classes, with Homework, the
+ * Resource Library and Chat built in as tabs — the Teacher-side
+ * mirror of the Parent's per-enrollment My Classes page (Part 2C),
+ * minus the Parent-only confirm/report and renewal actions.
+ * Resources (Sep 24, 2026) — unlike Homework, this tab stays open
+ * for an ended (COMPLETED) enrollment: a Teacher can still add to,
+ * or simply see, what's been permanently shared with the student.
  */
 export default function TeacherStudentClassesPage({
   params,
@@ -126,6 +131,12 @@ export default function TeacherStudentClassesPage({
             <TeacherHomeworkPanel enrollmentId={enrollment.id} />
           </div>
         ))}
+
+      {tab === "resources" && (
+        <div className="max-w-3xl">
+          <TeacherResourcePanel enrollmentId={enrollment.id} />
+        </div>
+      )}
 
       {tab === "chat" &&
         (enrollment.chatRoomId ? (

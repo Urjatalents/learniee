@@ -44,7 +44,10 @@ export async function POST(req: NextRequest) {
 
     if (!contentType || !ALLOWED_UPLOAD_MIME_TYPES.includes(contentType)) {
       return NextResponse.json(
-        { error: "Unsupported file type. Allowed types are PNG, JPG, PDF, and MP4." },
+        {
+          error:
+            "Unsupported file type. Allowed types are images, PDF, video, Word/Excel/PowerPoint, plain text, zip and audio files.",
+        },
         { status: 400 },
       );
     }
