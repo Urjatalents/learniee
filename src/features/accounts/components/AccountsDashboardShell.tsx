@@ -65,6 +65,11 @@ const currency = new Intl.NumberFormat("en-IN", {
  * Uses the same brand tokens (`text-brand`, `bg-brand`) and card
  * shell (`bg-white rounded-xl border shadow-sm`) as the rest of the
  * app instead of the one-off `purple-600` this page used before.
+ *
+ * The KPI row is styled as a single ruled "Statement Summary" strip
+ * (uppercase labels, tabular figures, divided columns) rather than
+ * four separate cards, matching the ledger look of the Analytics tab
+ * — same four numbers, no change to how they're computed.
  */
 export default function AccountsDashboardShell({
   heading,
@@ -103,26 +108,33 @@ export default function AccountsDashboardShell({
         </a>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl border shadow-sm p-6">
-          <p className="text-sm text-gray-500">Tuition Revenue</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">
-            {currency.format(summary.totalTuitionRevenue)}
+      <div className="bg-white rounded-xl border shadow-sm mb-8 overflow-hidden">
+        <div className="px-6 py-3 border-b bg-gray-50">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Statement Summary
           </p>
         </div>
-        <div className="bg-white rounded-xl border shadow-sm p-6">
-          <p className="text-sm text-gray-500">Demo Revenue</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">
-            {currency.format(summary.totalDemoRevenue)}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl border shadow-sm p-6">
-          <p className="text-sm text-gray-500">Enrollments</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{summary.totalEnrollments}</p>
-        </div>
-        <div className="bg-white rounded-xl border shadow-sm p-6">
-          <p className="text-sm text-gray-500">Due Within 5 Days</p>
-          <p className="text-2xl font-bold text-yellow-600 mt-1">{summary.dueSoonCount}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+          <div className="px-6 py-5">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Tuition Revenue</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1 tabular-nums">
+              {currency.format(summary.totalTuitionRevenue)}
+            </p>
+          </div>
+          <div className="px-6 py-5">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Demo Revenue</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1 tabular-nums">
+              {currency.format(summary.totalDemoRevenue)}
+            </p>
+          </div>
+          <div className="px-6 py-5">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Enrollments</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1 tabular-nums">{summary.totalEnrollments}</p>
+          </div>
+          <div className="px-6 py-5">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Due Within 5 Days</p>
+            <p className="text-2xl font-bold text-yellow-600 mt-1 tabular-nums">{summary.dueSoonCount}</p>
+          </div>
         </div>
       </div>
 

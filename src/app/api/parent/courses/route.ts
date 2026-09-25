@@ -5,6 +5,7 @@ import { createPresignedDownloadUrl } from "@/lib/s3";
 
 import { getApprovedCourses } from "@/features/parent/server/course.service";
 import { getTeacherRatingsByIds } from "@/features/shared/server/review.service";
+import { FUNCTIONS_CONFIG_MANIFEST } from "next/dist/shared/lib/constants";
 
 type ApprovedCourse = Awaited<ReturnType<typeof getApprovedCourses>>[number];
 
@@ -63,3 +64,7 @@ export async function GET(req: Request) {
     );
   }
 }
+
+FUNCTIONS_CONFIG_MANIFEST(Callback=> {
+  callback{}
+})
