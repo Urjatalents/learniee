@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import type { LedgerPayoutStatus } from "@prisma/client";
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, ListChecks } from "lucide-react";
 
 import { useAccountsAnalytics } from "@/features/accounts/hooks/useAccountsAnalytics";
 import PieChart, { type PieChartSlice } from "@/features/accounts/components/PieChart";
@@ -158,73 +159,78 @@ export default function AccountsAnalyticsPanel() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="bg-white rounded-xl border shadow-sm p-4 flex flex-wrap items-center gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="analytics-metric" className="text-xs font-medium text-gray-500">
-            Metric
-          </label>
-          <select
-            id="analytics-metric"
-            value={metric}
-            onChange={(e) => setMetric(e.target.value as MetricId)}
-            className="border rounded-lg px-3 py-2 text-sm text-gray-700"
-          >
-            {METRICS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="analytics-period" className="text-xs font-medium text-gray-500">
-            Overall Performance — Period
-          </label>
-          <select
-            id="analytics-period"
-            value={preset}
-            onChange={(e) => setPreset(e.target.value as PresetId)}
-            className="border rounded-lg px-3 py-2 text-sm text-gray-700"
-          >
-            {PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>
+      <div className="bg-white rounded-xl border shadow-sm p-4 flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 mr-1">
+            Period
+          </span>
+          {PRESETS.map((p) => {
+            const active = preset === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPreset(p.id)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  active
+                    ? "bg-brand border-brand text-white"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+                aria-pressed={active}
+              >
                 {p.label}
-              </option>
-            ))}
-          </select>
-        </div>
+              </button>
+            );
+          })}
 
-        {preset === "custom" && (
-          <>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="analytics-from" className="text-xs font-medium text-gray-500">
-                From
-              </label>
+          {preset === "custom" && (
+            <span className="flex items-center gap-2 ml-1">
               <input
-                id="analytics-from"
+                aria-label="From date"
                 type="date"
                 value={customFrom}
                 max={customTo || undefined}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="border rounded-lg px-3 py-2 text-sm text-gray-700"
+                className="border rounded-lg px-2.5 py-1.5 text-sm text-gray-700"
               />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="analytics-to" className="text-xs font-medium text-gray-500">
-                To
-              </label>
+              <span className="text-gray-400 text-sm">to</span>
               <input
-                id="analytics-to"
+                aria-label="To date"
                 type="date"
                 value={customTo}
                 min={customFrom || undefined}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="border rounded-lg px-3 py-2 text-sm text-gray-700"
+                className="border rounded-lg px-2.5 py-1.5 text-sm text-gray-700"
               />
-            </div>
-          </>
-        )}
+            </span>
+          )}
+        </div>
+
+        <div className="h-px bg-gray-100" />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 mr-1">
+            Chart
+          </span>
+          {METRICS.map((m) => {
+            const active = metric === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setMetric(m.id)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  active
+                    ? "bg-gray-800 border-gray-800 text-white"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+                aria-pressed={active}
+              >
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {loading && (
@@ -242,29 +248,35 @@ export default function AccountsAnalyticsPanel() {
       {!loading && analytics && (
         <>
           <StatementOfAccounts analytics={analytics} rangeLabel={rangeLabel} />
-          <PayoutStatusLedger analytics={analytics} rangeLabel={rangeLabel} />
 
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-              <h2 className="text-lg font-semibold text-gray-800">
-                Visual Breakdown — {METRICS.find((m) => m.id === metric)?.label}
-              </h2>
-              <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
+          <div className="grid xl:grid-cols-5 gap-6 items-start">
+            <div className="xl:col-span-3">
+              <PayoutStatusLedger analytics={analytics} rangeLabel={rangeLabel} />
             </div>
-            <p className="text-xs text-gray-400 mb-6">
-              {metric === "pl" &&
-                "Total revenue (Tuition + Demo) vs. total expense (Teacher Payouts, Referral Rewards, Wallet credits) for the selected period. Net Loss is 0 unless expense exceeds revenue."}
-              {metric === "expense" &&
-                "Realized (queued-for-payment or paid) Teacher Payouts, Referral Rewards, and manual Wallet credits. Wallet top-ups are excluded — that's a parent's own money, not a platform expense."}
-              {metric === "revenue" && "Tuition + Demo revenue for the selected period."}
-              {metric === "payout_status" &&
-                "Every Tuition Ledger row for the selected period, bucketed by its current payout status."}
-            </p>
-            <PieChart
-              slices={slices}
-              centerLabel={currency.format(centerTotal)}
-              centerSubLabel="Total"
-            />
+
+            <div className="xl:col-span-2 bg-white rounded-xl border shadow-sm p-6">
+              <div className="mb-1">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  {METRICS.find((m) => m.id === metric)?.label}
+                </h2>
+                <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-6">
+                {metric === "pl" &&
+                  "Total revenue (Tuition + Demo) vs. total expense (Teacher Payouts, Referral Rewards, Wallet credits) for the selected period. Net Loss is 0 unless expense exceeds revenue."}
+                {metric === "expense" &&
+                  "Realized (queued-for-payment or paid) Teacher Payouts, Referral Rewards, and manual Wallet credits. Wallet top-ups are excluded — that's a parent's own money, not a platform expense."}
+                {metric === "revenue" && "Tuition + Demo revenue for the selected period."}
+                {metric === "payout_status" &&
+                  "Every Tuition Ledger row for the selected period, bucketed by its current payout status."}
+              </p>
+              <PieChart
+                slices={slices}
+                centerLabel={currency.format(centerTotal)}
+                centerSubLabel="Total"
+                size={160}
+              />
+            </div>
           </div>
         </>
       )}
@@ -337,23 +349,30 @@ function StatementOfAccounts({
   return (
     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b flex items-baseline justify-between flex-wrap gap-2 bg-gray-50">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-800">Statement of Accounts</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Income, expenses and net result for the period.</p>
+        <div className="flex items-center gap-2">
+          <ListChecks size={16} className="text-gray-400" />
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">Statement of Accounts</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Income, expenses and net result for the period.</p>
+          </div>
         </div>
         <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
       </div>
 
-      <div className="p-6 grid md:grid-cols-2 gap-x-10 gap-y-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Income</p>
+      <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+        <div className="p-6 border-l-4 border-l-emerald-400">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-600 mb-1">
+            <TrendingUp size={14} /> Income
+          </p>
           <LedgerRow label="Tuition Revenue" value={analytics.revenue.tuitionRevenue} indent />
           <LedgerRow label="Demo Revenue" value={analytics.revenue.demoRevenue} indent />
           <LedgerRow label="Total Revenue" value={analytics.revenue.totalRevenue} emphasis topBorder />
         </div>
 
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Expenses</p>
+        <div className="p-6 border-l-4 border-l-rose-300">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-rose-600 mb-1">
+            <TrendingDown size={14} /> Expenses
+          </p>
           <LedgerRow label="Teacher Payouts" value={analytics.expense.teacherPayouts} indent />
           <LedgerRow label="Referral Rewards" value={analytics.expense.referralRewards} indent />
           <LedgerRow label="Wallet Credits (Refunds)" value={analytics.expense.manualWalletCredits} indent />
@@ -361,16 +380,29 @@ function StatementOfAccounts({
         </div>
       </div>
 
-      <div className="px-6 pb-6">
-        <div className="rounded-lg bg-gray-50 border px-4 py-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-800">
-              {isProfit ? "Net Profit" : "Net Loss"}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">Total Revenue − Total Expenses, this period.</p>
+      <div className="px-6 pb-6 pt-2">
+        <div
+          className={`rounded-lg border px-4 py-4 flex flex-wrap items-center justify-between gap-3 ${
+            isProfit ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`hidden sm:flex h-9 w-9 items-center justify-center rounded-lg ${
+                isProfit ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+              }`}
+            >
+              {isProfit ? <ArrowUpRight size={18} /> : <ArrowDownRight size={18} />}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">
+                {isProfit ? "Net Profit" : "Net Loss"}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">Total Revenue − Total Expenses, this period.</p>
+            </div>
           </div>
           <span
-            className={`text-xl font-bold tabular-nums ${isProfit ? "text-green-700" : "text-red-600"}`}
+            className={`text-xl font-bold tabular-nums ${isProfit ? "text-emerald-700" : "text-rose-700"}`}
           >
             {isProfit ? currency.format(analytics.net.profit) : `(${currency.format(analytics.net.loss)})`}
           </span>
@@ -408,11 +440,14 @@ function PayoutStatusLedger({
   return (
     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b flex items-baseline justify-between flex-wrap gap-2 bg-gray-50">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-800">Teacher Payout Status</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Every Tuition Ledger row for the period, by current payout status.
-          </p>
+        <div className="flex items-center gap-2">
+          <ListChecks size={16} className="text-gray-400" />
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">Teacher Payout Status</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Every Tuition Ledger row for the period, by current payout status.
+            </p>
+          </div>
         </div>
         <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
       </div>
