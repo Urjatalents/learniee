@@ -65,6 +65,3 @@ export async function GET(req: Request) {
   }
 }
 
-FUNCTIONS_CONFIG_MANIFEST(Callback=> {
-  callback{}
-})
