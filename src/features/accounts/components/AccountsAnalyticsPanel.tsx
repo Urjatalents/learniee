@@ -1,7 +1,17 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
+import type { LedgerPayoutStatus } from "@prisma/client";
+
 import { useAccountsAnalytics } from "@/features/accounts/hooks/useAccountsAnalytics";
-import PieChart from "@/features/accounts/components/PieChart";
+import PieChart, { type PieChartSlice } from "@/features/accounts/components/PieChart";
+import {
+  daysInMonth,
+  toDateKey,
+  todayInPlatformTz,
+  type CalendarDate,
+} from "@/lib/platformTime";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -11,84 +21,245 @@ const currency = new Intl.NumberFormat("en-IN", {
 
 // Brand violet/yellow first, then a small extended palette for the
 // remaining slices — see globals.css for --brand-violet/--brand-yellow.
-const EXPENSE_COLORS = ["#7e2bf1", "#f4c01e", "#0ea5a4"];
-const BUDGET_COLORS = ["#7e2bf1", "#f4c01e"];
+const PALETTE = ["#7e2bf1", "#f4c01e", "#0ea5a4", "#ef4444", "#3b82f6", "#22c55e", "#f97316"];
+
+type MetricId = "pl" | "expense" | "revenue" | "payout_status";
+type PresetId = "all" | "this_month" | "last_month" | "this_year" | "custom";
+
+const METRICS: { id: MetricId; label: string }[] = [
+  { id: "pl", label: "Profit & Loss" },
+  { id: "expense", label: "Expense Distribution" },
+  { id: "revenue", label: "Revenue Breakdown" },
+  { id: "payout_status", label: "Teacher Payout Status" },
+];
+
+const PRESETS: { id: PresetId; label: string }[] = [
+  { id: "all", label: "All Time" },
+  { id: "this_month", label: "This Month" },
+  { id: "last_month", label: "Last Month" },
+  { id: "this_year", label: "This Year" },
+  { id: "custom", label: "Custom Range" },
+];
+
+const PAYOUT_STATUS_LABELS: Record<LedgerPayoutStatus, string> = {
+  PENDING_VERIFICATION: "Pending Verification",
+  ON_HOLD: "On Hold",
+  QUEUED_FOR_PAYMENT: "Queued for Payment",
+  PAID: "Paid",
+  REJECTED: "Rejected",
+  EXPIRED: "Expired",
+  APPROVED: "Approved (legacy)",
+};
+
+function presetRange(preset: PresetId): { from?: string; to?: string } {
+  const today = todayInPlatformTz();
+
+  if (preset === "all") return {};
+
+  if (preset === "this_month") {
+    const from: CalendarDate = { year: today.year, month: today.month, day: 1 };
+    return { from: toDateKey(from), to: toDateKey(today) };
+  }
+
+  if (preset === "last_month") {
+    const year = today.month === 1 ? today.year - 1 : today.year;
+    const month = today.month === 1 ? 12 : today.month - 1;
+    const from: CalendarDate = { year, month, day: 1 };
+    const to: CalendarDate = { year, month, day: daysInMonth(year, month) };
+    return { from: toDateKey(from), to: toDateKey(to) };
+  }
+
+  if (preset === "this_year") {
+    const from: CalendarDate = { year: today.year, month: 1, day: 1 };
+    return { from: toDateKey(from), to: toDateKey(today) };
+  }
+
+  // "custom" is resolved by the caller from the date inputs, not here.
+  return {};
+}
 
 /**
- * Two pie charts for Accounts (`/accounts`) and Admin (`/admin/accounts`,
- * same `AccountsDashboardShell`):
- *  - Expense Distribution — where money leaving the platform actually
- *    goes (Teacher Payouts, Referral Rewards, manual Wallet credits).
- *  - Overall Accounts (Profit & Loss) — total revenue split into
- *    Expense vs. Profit, across Tuition + Demo revenue.
+ * One selectable pie chart for Accounts (`/accounts`) and Admin
+ * (`/admin/accounts`, same `AccountsDashboardShell`), replacing the
+ * previous fixed pair of "Expense Distribution" / "Overall Accounts"
+ * charts with a single chart plus a metric dropdown (Profit & Loss,
+ * Expense Distribution, Revenue Breakdown, Teacher Payout Status) and
+ * an "Overall Performance" period picker (All Time / This Month /
+ * Last Month / This Year / a custom date range) — not just the
+ * current month.
  *
- * Both are computed server-side in `accountsAnalytics.service.ts` and
- * fetched via `useAccountsAnalytics()` — see that file's doc-comment
- * for exactly what counts as "realized" and why demo revenue is
- * booked as pure profit.
+ * All four metrics are computed together server-side for the
+ * selected range in `accountsAnalytics.service.ts` and fetched via
+ * `useAccountsAnalytics()` — see that file's doc-comment for exactly
+ * what counts as "realized" and how the Net Profit/Loss view differs
+ * from the resolved ledger Profits formula.
  */
 export default function AccountsAnalyticsPanel() {
-  const { analytics, loading, error } = useAccountsAnalytics();
+  const [metric, setMetric] = useState<MetricId>("pl");
+  const [preset, setPreset] = useState<PresetId>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-xl border shadow-sm p-10 text-center text-sm text-gray-400">
-        Loading analytics…
-      </div>
-    );
-  }
+  const range = useMemo(() => {
+    if (preset === "custom") {
+      return { from: customFrom || undefined, to: customTo || undefined };
+    }
+    return presetRange(preset);
+  }, [preset, customFrom, customTo]);
 
-  if (error || !analytics) {
-    return (
-      <div className="bg-white rounded-xl border shadow-sm p-10 text-center text-sm text-red-500">
-        {error || "Unable to load analytics."}
-      </div>
-    );
-  }
+  const { analytics, loading, error } = useAccountsAnalytics(range);
 
-  const { revenue, expense, profit } = analytics;
+  const rangeLabel = useMemo(() => {
+    if (preset !== "custom") return PRESETS.find((p) => p.id === preset)?.label ?? "";
+    if (range.from && range.to) return `${range.from} to ${range.to}`;
+    if (range.from) return `From ${range.from}`;
+    if (range.to) return `Up to ${range.to}`;
+    return "All Time";
+  }, [preset, range]);
 
-  const expenseSlices = [
-    { label: "Teacher Payouts", value: expense.teacherPayouts, color: EXPENSE_COLORS[0] },
-    { label: "Referral Rewards", value: expense.referralRewards, color: EXPENSE_COLORS[1] },
-    { label: "Wallet Credits (Refunds)", value: expense.manualWalletCredits, color: EXPENSE_COLORS[2] },
-  ];
+  const slices: PieChartSlice[] = useMemo(() => {
+    if (!analytics) return [];
 
-  const budgetSlices = [
-    { label: "Platform Profit", value: profit.platformProfit, color: BUDGET_COLORS[0] },
-    { label: "Expense (Payouts + Rewards)", value: expense.totalExpense, color: BUDGET_COLORS[1] },
-  ];
+    if (metric === "pl") {
+      return [
+        { label: "Net Profit", value: analytics.net.profit, color: PALETTE[0] },
+        { label: "Net Loss", value: analytics.net.loss, color: PALETTE[3] },
+        { label: "Expense (Payouts + Rewards)", value: analytics.expense.totalExpense, color: PALETTE[1] },
+      ];
+    }
 
-  const totalBudget = profit.platformProfit + expense.totalExpense;
+    if (metric === "expense") {
+      return [
+        { label: "Teacher Payouts", value: analytics.expense.teacherPayouts, color: PALETTE[0] },
+        { label: "Referral Rewards", value: analytics.expense.referralRewards, color: PALETTE[1] },
+        { label: "Wallet Credits (Refunds)", value: analytics.expense.manualWalletCredits, color: PALETTE[2] },
+      ];
+    }
+
+    if (metric === "revenue") {
+      return [
+        { label: "Tuition Revenue", value: analytics.revenue.tuitionRevenue, color: PALETTE[0] },
+        { label: "Demo Revenue", value: analytics.revenue.demoRevenue, color: PALETTE[1] },
+      ];
+    }
+
+    // payout_status
+    return analytics.payoutStatusBreakdown.map((row, i) => ({
+      label: `${PAYOUT_STATUS_LABELS[row.status] ?? row.status} (${row.count})`,
+      value: row.amount,
+      color: PALETTE[i % PALETTE.length],
+    }));
+  }, [analytics, metric]);
+
+  const centerTotal = useMemo(() => slices.reduce((sum, s) => sum + Math.max(0, s.value), 0), [slices]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-white rounded-xl border shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-800">Expense Distribution</h2>
-        <p className="text-xs text-gray-400 mt-1 mb-6">
-          Realized (queued-for-payment or paid) Teacher Payouts, Referral Rewards, and manual
-          Wallet credits. Wallet top-ups are excluded — that&apos;s a parent&apos;s own money, not
-          a platform expense.
-        </p>
-        <PieChart
-          slices={expenseSlices}
-          centerLabel={currency.format(expense.totalExpense)}
-          centerSubLabel="Total expense"
-        />
+    <div className="flex flex-col gap-6">
+      <div className="bg-white rounded-xl border shadow-sm p-4 flex flex-wrap items-center gap-4">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="analytics-metric" className="text-xs font-medium text-gray-500">
+            Metric
+          </label>
+          <select
+            id="analytics-metric"
+            value={metric}
+            onChange={(e) => setMetric(e.target.value as MetricId)}
+            className="border rounded-lg px-3 py-2 text-sm text-gray-700"
+          >
+            {METRICS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="analytics-period" className="text-xs font-medium text-gray-500">
+            Overall Performance — Period
+          </label>
+          <select
+            id="analytics-period"
+            value={preset}
+            onChange={(e) => setPreset(e.target.value as PresetId)}
+            className="border rounded-lg px-3 py-2 text-sm text-gray-700"
+          >
+            {PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {preset === "custom" && (
+          <>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="analytics-from" className="text-xs font-medium text-gray-500">
+                From
+              </label>
+              <input
+                id="analytics-from"
+                type="date"
+                value={customFrom}
+                max={customTo || undefined}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="border rounded-lg px-3 py-2 text-sm text-gray-700"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="analytics-to" className="text-xs font-medium text-gray-500">
+                To
+              </label>
+              <input
+                id="analytics-to"
+                type="date"
+                value={customTo}
+                min={customFrom || undefined}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="border rounded-lg px-3 py-2 text-sm text-gray-700"
+              />
+            </div>
+          </>
+        )}
       </div>
 
-      <div className="bg-white rounded-xl border shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-800">Overall Accounts — Profit &amp; Loss</h2>
-        <p className="text-xs text-gray-400 mt-1 mb-6">
-          Tuition + Demo revenue ({currency.format(revenue.totalRevenue)} total), split into what
-          the platform keeps vs. what it pays out.
-        </p>
-        <PieChart
-          slices={budgetSlices}
-          centerLabel={currency.format(totalBudget)}
-          centerSubLabel="Realized budget"
-        />
-      </div>
+      {loading && (
+        <div className="bg-white rounded-xl border shadow-sm p-10 text-center text-sm text-gray-400">
+          Loading analytics…
+        </div>
+      )}
+
+      {!loading && (error || !analytics) && (
+        <div className="bg-white rounded-xl border shadow-sm p-10 text-center text-sm text-red-500">
+          {error || "Unable to load analytics."}
+        </div>
+      )}
+
+      {!loading && analytics && (
+        <div className="bg-white rounded-xl border shadow-sm p-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
+            <h2 className="text-lg font-semibold text-gray-800">
+              {METRICS.find((m) => m.id === metric)?.label}
+            </h2>
+            <span className="text-xs font-medium text-gray-400">{rangeLabel}</span>
+          </div>
+          <p className="text-xs text-gray-400 mb-6">
+            {metric === "pl" &&
+              "Total revenue (Tuition + Demo) vs. total expense (Teacher Payouts, Referral Rewards, Wallet credits) for the selected period. Net Loss is 0 unless expense exceeds revenue."}
+            {metric === "expense" &&
+              "Realized (queued-for-payment or paid) Teacher Payouts, Referral Rewards, and manual Wallet credits. Wallet top-ups are excluded — that's a parent's own money, not a platform expense."}
+            {metric === "revenue" && "Tuition + Demo revenue for the selected period."}
+            {metric === "payout_status" &&
+              "Every Tuition Ledger row for the selected period, bucketed by its current payout status."}
+          </p>
+          <PieChart
+            slices={slices}
+            centerLabel={currency.format(centerTotal)}
+            centerSubLabel="Total"
+          />
+        </div>
+      )}
     </div>
   );
 }
