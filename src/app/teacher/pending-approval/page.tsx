@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   Clock,
-  GraduationCap,
   Loader2,
   RefreshCw,
   XCircle,
 } from "lucide-react";
 
+import BrandLogo from "@/features/shared/components/BrandLogo";
 import { useTeacherApprovalWatch } from "@/features/teacher/hooks/useTeacherApprovalWatch";
 
 function Step({
@@ -65,12 +65,7 @@ export default function TeacherPendingApproval() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="flex items-center justify-center gap-2.5 pt-12 pb-8 px-4">
-        <div className="flex items-center justify-center size-10 rounded-full bg-violet-600 text-white shadow-sm shadow-violet-600/30">
-          <GraduationCap className="size-5" />
-        </div>
-        <span className="text-2xl font-extrabold text-gray-900">
-          Learn<span className="text-violet-600">ie</span>
-        </span>
+        <BrandLogo className="h-12 w-auto" priority />
       </header>
 
       <div className="mx-auto w-full max-w-xl px-4 sm:px-6 pb-20">

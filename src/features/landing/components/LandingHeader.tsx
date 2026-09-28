@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BrandLogo from "@/features/shared/components/BrandLogo";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -76,8 +77,7 @@ export default function LandingHeader() {
     <header>
       <div className="wrap nav" ref={navRef}>
         <Link className="logo" href="/">
-          <i />
-          Learniee
+          <BrandLogo className="h-10 w-auto" priority />
         </Link>
         <nav className={open ? "links open" : "links"} id="links" aria-label="Main">
           {NAV.map((n) => {

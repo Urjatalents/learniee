@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandLogo from "@/features/shared/components/BrandLogo";
 import FooterAsk from "./FooterAsk";
 import { FOOTER_GROUPS } from "../data";
 
@@ -9,8 +10,7 @@ export default function LandingFooter() {
     <div className="wrap">
       <div className="ftop">
         <Link className="logo" href="/">
-          <i />
-          Learniee
+          <BrandLogo variant="white" className="h-10 w-auto" />
         </Link>
         <p>
           Live online tuition for ages 3 to 18, with hand-picked teachers and

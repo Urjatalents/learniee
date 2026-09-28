@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { Menu, Search, GraduationCap } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 
 import DemoCouponButton from "@/features/parent/components/layout/DemoCouponButton";
 import WalletBadge from "@/features/parent/components/layout/WalletBadge";
 import NotificationBell from "@/features/shared/components/NotificationBell";
+import BrandLogo from "@/features/shared/components/BrandLogo";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
 interface Parent {
@@ -84,12 +85,7 @@ export default function ParentNavbar({ onMenuClick }: ParentNavbarProps) {
           className="flex items-center gap-2"
           aria-label="Go to dashboard"
         >
-          <span className="w-9 h-9 rounded-2xl bg-gradient-to-br from-brand-light to-brand flex items-center justify-center text-white shadow-playful flex-shrink-0">
-            <GraduationCap size={18} />
-          </span>
-          <span className="font-heading text-lg font-bold text-gray-800 tracking-tight">
-            Learn<span className="text-brand">ie</span>
-          </span>
+          <BrandLogo className="h-9 w-auto" priority />
         </button>
       </div>
 

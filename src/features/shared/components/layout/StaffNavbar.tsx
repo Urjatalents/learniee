@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { GraduationCap } from "lucide-react";
 
+import BrandLogo from "@/features/shared/components/BrandLogo";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
 interface StaffNavbarProps {
@@ -38,12 +38,7 @@ export default function StaffNavbar({ label, homePath }: StaffNavbarProps) {
         className="flex items-center gap-2"
         aria-label={`Go to ${label} dashboard`}
       >
-        <span className="w-9 h-9 rounded-2xl bg-gradient-to-br from-brand-light to-brand flex items-center justify-center text-white shadow-playful flex-shrink-0">
-          <GraduationCap size={18} />
-        </span>
-        <span className="font-heading text-lg font-bold text-gray-800 tracking-tight">
-          Learn<span className="text-brand">ie</span>
-        </span>
+        <BrandLogo className="h-9 w-auto" priority />
         <span className="hidden sm:inline text-sm text-gray-400 font-medium ml-1">{label}</span>
       </button>
 
