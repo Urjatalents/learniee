@@ -1,18 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-const SECTIONS = [
+// `id` = section on the home page (linked as /#id so it also works from /blog);
+// `href` = a separate page.
+const NAV = [
   { id: "courses", label: "Courses" },
   { id: "mentors", label: "Teachers" },
   { id: "how", label: "How it works" },
   { id: "stories", label: "Stories" },
+  { href: "/blog", label: "Blog" },
   { id: "faq", label: "FAQ" },
   { id: "help", label: "Help" },
 ] as const;
 
+const SECTION_IDS = NAV.flatMap((n) => ("id" in n ? [n.id] : []));
+
 export default function LandingHeader() {
+  const pathname = usePathname();
+  const onHome = pathname === "/";
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<string | null>(null);
   const navRef = useRef<HTMLDivElement>(null);
@@ -31,7 +39,7 @@ export default function LandingHeader() {
 
   // Highlight the nav link of the section in the middle of the viewport.
   useEffect(() => {
-    if (!("IntersectionObserver" in window)) return;
+    if (!onHome || !("IntersectionObserver" in window)) return;
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
@@ -40,12 +48,12 @@ export default function LandingHeader() {
       },
       { rootMargin: "-45% 0px -45% 0px" },
     );
-    for (const s of SECTIONS) {
-      const el = document.getElementById(s.id);
+    for (const id of SECTION_IDS) {
+      const el = document.getElementById(id);
       if (el) io.observe(el);
     }
     return () => io.disconnect();
-  }, []);
+  }, [onHome]);
 
   // Escape or a click/tap outside the header closes the mobile menu.
   useEffect(() => {
@@ -72,16 +80,30 @@ export default function LandingHeader() {
           Learniee
         </Link>
         <nav className={open ? "links open" : "links"} id="links" aria-label="Main">
-          {SECTIONS.map((s) => (
-            <a
-              key={s.id}
-              href={`#${s.id}`}
-              aria-current={active === s.id ? "true" : undefined}
-              onClick={() => setOpen(false)}
-            >
-              {s.label}
-            </a>
-          ))}
+          {NAV.map((n) => {
+            if ("href" in n) {
+              return (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  aria-current={pathname.startsWith(n.href) ? "page" : undefined}
+                  onClick={() => setOpen(false)}
+                >
+                  {n.label}
+                </Link>
+              );
+            }
+            return (
+              <Link
+                key={n.id}
+                href={`/#${n.id}`}
+                aria-current={onHome && active === n.id ? "true" : undefined}
+                onClick={() => setOpen(false)}
+              >
+                {n.label}
+              </Link>
+            );
+          })}
           <Link className="btn ghost mob" href="/login">
             Log in
           </Link>

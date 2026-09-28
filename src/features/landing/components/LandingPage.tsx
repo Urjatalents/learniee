@@ -1,9 +1,12 @@
 import Link from "next/link";
 import CourseBrowser from "./CourseBrowser";
 import DemoForm from "./DemoForm";
-import FooterAsk from "./FooterAsk";
+import CloseCta from "./CloseCta";
+import LandingFooter from "./LandingFooter";
+import PostCard from "./PostCard";
 import LandingHeader from "./LandingHeader";
-import { COURSES_HREF, FOOTER_GROUPS } from "../data";
+import { BLOG_POSTS } from "../blogPosts";
+import { COURSES_HREF } from "../data";
 import "../styles/landing.css";
 
 /**
@@ -121,10 +124,11 @@ export default function LandingPage() {
           <h2>Brain bites</h2>
           <p className="lede">Short reads on study habits, exams and raising curious kids.</p>
           <div className="bgrid">
-            <article className="post"><div className="img" style={{ background: "var(--lav-400)" }}><svg viewBox='0 0 200 150' aria-hidden='true'><rect x='50' y='36' width='100' height='24' rx='4'/><rect x='62' y='64' width='90' height='24' rx='4'/><rect x='46' y='92' width='106' height='24' rx='4'/></svg></div><div className="b"><span className="tag">Competitive exams</span><h3>Top 10 books for JEE prep</h3><small>Sunny Dhiman · 6 Dec 2022</small></div></article>
-            <article className="post"><div className="img" style={{ background: "var(--sun)" }}><svg viewBox='0 0 200 150' aria-hidden='true'><circle cx='100' cy='68' r='28'/><path d='M88 102h24M91 112h18M100 22v-8M60 32l-6-6M140 32l6-6'/></svg></div><div className="b"><span className="tag">Critical thinking</span><h3>How to teach your child to think critically</h3><small>Chandni Gupta · 6 Dec 2022</small></div></article>
-            <article className="post"><div className="img" style={{ background: "var(--lav-200)" }}><svg viewBox='0 0 200 150' aria-hidden='true'><path d='M100 24l11 31 31 11-31 11-11 31-11-31-31-11 31-11z'/></svg></div><div className="b"><span className="tag">Self improvement</span><h3>4 daily habits to boost your memory</h3><small>Vikas Sharma · 6 Dec 2022</small></div></article>
+            {BLOG_POSTS.slice(0, 3).map((post, i) => (
+              <PostCard key={post.slug} post={post} index={i} />
+            ))}
           </div>
+          <Link className="btn solid more" href="/blog">View all posts</Link>
         </div>
       </section>
 
@@ -140,53 +144,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="close" id="help">
-        <div className="wrap">
-          <h2>Try a class before you decide</h2>
-          <p>Two free demos, no card needed.</p>
-          <Link className="btn" href="/signup">Book a free demo</Link>
-        </div>
-      </section>
+      <CloseCta />
       </main>
 
-      <footer className="site">
-        <div className="wrap">
-          <div className="ftop">
-            <Link className="logo" href="/">
-              <i />
-              Learniee
-            </Link>
-            <p>
-              Live online tuition for ages 3 to 18, with hand-picked teachers and
-              fair prices.
-            </p>
-            <FooterAsk />
-          </div>
-          {FOOTER_GROUPS.map((group) => (
-            <nav className="fmega" aria-label={group.label} key={group.label}>
-              {group.columns.map((col) => (
-                <div key={col.title}>
-                  <h4>{col.title}</h4>
-                  <ul>
-                    {col.links.map((l) => (
-                      <li key={l.href + l.label}>
-                        {/* prefetch off: ~100 links, most pages not built yet */}
-                        <Link href={l.href} prefetch={false}>
-                          {l.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </nav>
-          ))}
-          <div className="legal">
-            <span>&copy; 2026 Learniee. All rights reserved.</span>
-            <span>English · INR · India (IST)</span>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }
