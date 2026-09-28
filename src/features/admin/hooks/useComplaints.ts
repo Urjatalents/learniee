@@ -10,6 +10,7 @@ export interface AdminComplaint {
   raiserEmail: string | null;
   subject: string;
   description: string;
+  department: "ACCOUNTS" | "HR" | "IT" | null;
   status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
   adminNote: string | null;
   resolvedAt: string | null;

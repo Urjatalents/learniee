@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 }
 
 /**
- * POST { subject, description }
+ * POST { subject, description, department }
  *
  * Raises a new complaint — OPEN until Admin responds
  * (`/admin/complaints`).
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
       raiserRole: ComplainantRole.TEACHER,
       subject: body?.subject,
       description: body?.description,
+      department: body?.department,
     });
 
     return NextResponse.json({ success: true, complaint });

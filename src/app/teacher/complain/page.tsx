@@ -6,6 +6,11 @@ import { AlertCircle } from "lucide-react";
 import { useTeacherComplaints } from "@/features/teacher/hooks/useComplaints";
 import { getComplaintStatusStyle } from "@/features/shared/utils/complaintStatus";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
+import ComplaintDepartmentField from "@/features/shared/components/ComplaintDepartmentField";
+import {
+  COMPLAINT_DEPARTMENT_LABELS,
+  type ComplaintDepartmentValue,
+} from "@/features/shared/utils/complaintDepartment";
 
 /**
  * "Complain" sidebar entry (new — `TeacherSidebar.tsx`). A Teacher
@@ -34,11 +39,17 @@ export default function TeacherComplainPage() {
 
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
+  const [department, setDepartment] = useState<ComplaintDepartmentValue | "">("");
   const [formError, setFormError] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setFormError("");
+
+    if (!department) {
+      setFormError("Choose which department your issue is for.");
+      return;
+    }
 
     if (!subject.trim()) {
       setFormError("Give your issue a short subject.");
@@ -50,11 +61,16 @@ export default function TeacherComplainPage() {
       return;
     }
 
-    const ok = await submit({ subject: subject.trim(), description: description.trim() });
+    const ok = await submit({
+      subject: subject.trim(),
+      description: description.trim(),
+      department,
+    });
 
     if (ok) {
       setSubject("");
       setDescription("");
+      setDepartment("");
     }
   }
 
@@ -67,7 +83,7 @@ export default function TeacherComplainPage() {
           Complain
         </h1>
         <p className="text-gray-500 mt-1 text-sm">
-          Raise an issue and Admin will get back to you here.
+          Pick the right department, raise your issue and we will get back to you here. For anything urgent, call the number shown for that department.
         </p>
       </div>
 
@@ -77,6 +93,8 @@ export default function TeacherComplainPage() {
         className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-sm mb-8 space-y-4"
       >
         <h2 className="font-heading text-base font-bold text-gray-800">Raise a complaint</h2>
+
+        <ComplaintDepartmentField value={department} onChange={setDepartment} />
 
         <label className="block text-xs font-semibold text-gray-600">
           Subject
@@ -137,6 +155,11 @@ export default function TeacherComplainPage() {
               <div key={c.id} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
+                    {c.department && (
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-brand mb-0.5">
+                        {COMPLAINT_DEPARTMENT_LABELS[c.department]}
+                      </p>
+                    )}
                     <p className="font-heading text-sm font-bold text-gray-800">{c.subject}</p>
                     <p className="text-sm text-gray-500 mt-1">{c.description}</p>
                     <p className="text-xs text-gray-400 mt-1">Raised {formatDate(c.createdAt)}</p>

@@ -1098,6 +1098,9 @@ model Complaint {
   raiserEmail String?
   subject     String
   description String
+  /// Department the raiser chose (ACCOUNTS money, HR classes/teachers, IT technical).
+  /// Nullable: complaints raised before this field existed have none.
+  department  ComplaintDepartment?
   status      ComplaintStatus @default(OPEN)
   adminNote   String?
   resolvedAt  DateTime?
@@ -1106,6 +1109,7 @@ model Complaint {
 
   @@index([raiserId, raiserRole])
   @@index([status])
+  @@index([department])
 }
 
 /// Course/Teacher Reviews (added Sep 17, 2026) — distinct from
@@ -1516,6 +1520,12 @@ enum LeaveRequestStatus {
 enum ComplainantRole {
   PARENT
   TEACHER
+}
+
+enum ComplaintDepartment {
+  ACCOUNTS
+  HR
+  IT
 }
 
 enum ComplaintStatus {

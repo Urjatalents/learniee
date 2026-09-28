@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { ComplainantRole, ComplaintStatus } from "@prisma/client";
+import { ComplainantRole, ComplaintDepartment, ComplaintStatus } from "@prisma/client";
 import {
   notifyComplaintSubmitted,
   notifyComplaintResolved,
@@ -38,6 +38,7 @@ export interface CreateComplaintInput {
   raiserRole: ComplainantRole;
   subject: string;
   description: string;
+  department: string;
 }
 
 /**
@@ -100,6 +101,12 @@ export async function createComplaint(input: CreateComplaintInput) {
     );
   }
 
+  const department = Object.values(ComplaintDepartment).find((d) => d === input.department);
+
+  if (!department) {
+    throw new ComplaintError("Please choose which department this is for.");
+  }
+
   const identity = await resolveRaiserIdentity(input.raiserId, input.raiserRole);
 
   const created = await prisma.complaint.create({
@@ -110,6 +117,7 @@ export async function createComplaint(input: CreateComplaintInput) {
       raiserEmail: identity.email,
       subject,
       description,
+      department,
       status: ComplaintStatus.OPEN,
     },
   });
@@ -118,6 +126,7 @@ export async function createComplaint(input: CreateComplaintInput) {
     raiserRole: input.raiserRole,
     raiserName: identity.name,
     subject,
+    department,
   });
 
   return created;

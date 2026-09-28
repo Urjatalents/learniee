@@ -5,6 +5,11 @@ import { useState } from "react";
 import { useAdminComplaints } from "@/features/admin/hooks/useComplaints";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
 import { getComplaintStatusStyle } from "@/features/shared/utils/complaintStatus";
+import {
+  COMPLAINT_DEPARTMENT_LABELS,
+  COMPLAINT_DEPARTMENTS,
+  type ComplaintDepartmentValue,
+} from "@/features/shared/utils/complaintDepartment";
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("en-IN", {
@@ -93,6 +98,7 @@ function AdminNoteModal({
 export default function AdminComplaintsPage() {
   const { complaints, loading, error, markInProgress, resolve, close } = useAdminComplaints();
   const [showResolved, setShowResolved] = useState(false);
+  const [departmentFilter, setDepartmentFilter] = useState<ComplaintDepartmentValue | "ALL">("ALL");
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
 
@@ -115,9 +121,11 @@ export default function AdminComplaintsPage() {
     closeModal();
   }
 
-  const visible = showResolved
+  const byStatus = showResolved
     ? complaints
     : complaints.filter((c) => c.status === "OPEN" || c.status === "IN_PROGRESS");
+  const visible =
+    departmentFilter === "ALL" ? byStatus : byStatus.filter((c) => c.department === departmentFilter);
   const openCount = complaints.filter((c) => c.status === "OPEN").length;
 
   return (
@@ -130,6 +138,20 @@ export default function AdminComplaintsPage() {
               {openCount} open complaint{openCount === 1 ? "" : "s"} waiting on you.
             </p>
           </div>
+
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value as ComplaintDepartmentValue | "ALL")}
+            className="text-sm font-semibold text-purple-600 border border-purple-200 rounded-lg px-3 py-2 bg-white"
+            aria-label="Filter by department"
+          >
+            <option value="ALL">All departments</option>
+            {COMPLAINT_DEPARTMENTS.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </select>
 
           <button
             onClick={() => setShowResolved((v) => !v)}
@@ -159,6 +181,11 @@ export default function AdminComplaintsPage() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
                     {c.raiserRole}
+                    {c.department && (
+                      <span className="ml-2 text-purple-600">
+                        → {COMPLAINT_DEPARTMENT_LABELS[c.department]}
+                      </span>
+                    )}
                   </p>
                   <p className="text-lg font-semibold text-gray-800">
                     {c.raiserName || "Unknown"}

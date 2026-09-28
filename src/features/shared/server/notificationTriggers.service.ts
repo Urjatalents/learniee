@@ -1082,6 +1082,7 @@ export function notifyComplaintSubmitted(input: {
   raiserRole: ComplainantRole;
   raiserName: string | null;
   subject: string;
+  department?: string | null;
 }) {
   return safe("complaint submitted", async () => {
     const roleLabel = input.raiserRole === ComplainantRole.PARENT ? "A parent" : "A teacher";
@@ -1089,7 +1090,9 @@ export function notifyComplaintSubmitted(input: {
     await notifyAllAdmins({
       type: T.COMPLAINT_SUBMITTED,
       title: "New complaint",
-      message: `${input.raiserName ?? roleLabel} raised a complaint: "${input.subject}".`,
+      message: `${input.raiserName ?? roleLabel} raised a complaint${
+        input.department ? ` for ${input.department}` : ""
+      }: "${input.subject}".`,
       link: "/admin/complaints",
     });
   });

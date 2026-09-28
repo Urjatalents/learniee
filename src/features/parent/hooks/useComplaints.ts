@@ -6,6 +6,7 @@ export interface ParentComplaint {
   id: string;
   subject: string;
   description: string;
+  department: "ACCOUNTS" | "HR" | "IT" | null;
   status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
   adminNote: string | null;
   resolvedAt: string | null;
@@ -42,7 +43,7 @@ export function useParentComplaints() {
     }
   }
 
-  async function submit(input: { subject: string; description: string }) {
+  async function submit(input: { subject: string; description: string; department: string }) {
     setError("");
     setSubmitting(true);
 
