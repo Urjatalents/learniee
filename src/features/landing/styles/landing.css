@@ -403,3 +403,11 @@
 .lh .trust span{color:var(--lav-600);font:800 17px var(--head);padding-right:8px}
 .lh .trust b{background:#fff;color:var(--ink);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:6px 18px}
 .lh .trust b:hover{background:#fff;border-color:var(--ink)}
+
+/* ---- rounded sections: all four corners; footer keeps a flat bottom ---- */
+.lh main>section:not(.hero){border-radius:44px}
+.lh footer.site{border-radius:44px 44px 0 0}
+@media(max-width:920px){
+  .lh main>section:not(.hero){border-radius:28px}
+  .lh footer.site{border-radius:28px 28px 0 0}
+}
