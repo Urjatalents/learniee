@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const SECTIONS = [
   { id: "courses", label: "Courses" },
@@ -15,6 +15,7 @@ const SECTIONS = [
 export default function LandingHeader() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<string | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
 
   // Smooth anchor scrolling on this page only (restored on unmount so the
   // rest of the app is unaffected).
@@ -46,18 +47,26 @@ export default function LandingHeader() {
     return () => io.disconnect();
   }, []);
 
-  // Escape closes the mobile menu.
+  // Escape or a click/tap outside the header closes the mobile menu.
   useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    const onPointer = (e: PointerEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    window.addEventListener("pointerdown", onPointer);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
+    };
+  }, [open]);
 
   return (
     <header>
-      <div className="wrap nav">
+      <div className="wrap nav" ref={navRef}>
         <Link className="logo" href="/">
           <i />
           Learniee
@@ -89,11 +98,12 @@ export default function LandingHeader() {
         <button
           type="button"
           className="menu"
+          aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
           aria-controls="links"
           onClick={() => setOpen((o) => !o)}
         >
-          Menu
+          {open ? "Close" : "Menu"}
         </button>
       </div>
     </header>

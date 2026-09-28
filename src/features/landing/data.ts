@@ -1,3 +1,8 @@
+// Where course cards, "View all courses" and the footer search go.
+// /courses is not built yet, so they point at signup. Flip to "/courses"
+// once the public course listing exists.
+export const COURSES_HREF = "/signup";
+
 export interface CourseCard {
   title: string;
   symbol: string;

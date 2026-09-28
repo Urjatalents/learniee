@@ -3,7 +3,7 @@ import CourseBrowser from "./CourseBrowser";
 import DemoForm from "./DemoForm";
 import FooterAsk from "./FooterAsk";
 import LandingHeader from "./LandingHeader";
-import { FOOTER_GROUPS } from "../data";
+import { COURSES_HREF, FOOTER_GROUPS } from "../data";
 import "../styles/landing.css";
 
 /**
@@ -54,7 +54,7 @@ export default function LandingPage() {
           <h2>Find a class that fits your child</h2>
           <p className="lede">Pick what you&apos;re looking for, then see teachers and prices. Every class starts with a free demo.</p>
           <CourseBrowser />
-          <Link className="btn solid more" href="/courses">View all courses</Link>
+          <Link className="btn solid more" href={COURSES_HREF}>View all courses</Link>
         </div>
       </section>
 
