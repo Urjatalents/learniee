@@ -394,3 +394,12 @@
 .lh .blogindex .bgrid{margin-top:0}
 @media(max-width:920px){.lh .bgrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.lh .bgrid{grid-template-columns:1fr}.lh main>section.pagehead{padding:104px 0 32px}}
+
+/* ---- hero strip: light, on-theme (replaces the dark band) ---- */
+.lh .hero{background:radial-gradient(60% 80% at 85% 20%,var(--lav-200),transparent 70%),radial-gradient(40% 40% at 0% 70%,#FFF1C4,transparent 70%),var(--lav-100)}
+.lh main>section.hero{min-height:calc(100vh - 88px);min-height:calc(100svh - 88px)}
+.lh .trust{min-height:88px;border-top:0;color:var(--ink);background:radial-gradient(var(--lav-200) 1.6px,transparent 1.6px) 0 0/26px 26px,var(--lav-100)}
+.lh .trust .wrap{gap:12px;padding-block:18px 30px}
+.lh .trust span{color:var(--lav-600);font:800 17px var(--head);padding-right:8px}
+.lh .trust b{background:#fff;color:var(--ink);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:6px 18px}
+.lh .trust b:hover{background:#fff;border-color:var(--ink)}
