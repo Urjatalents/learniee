@@ -20,6 +20,11 @@ export default async function HrDashboardPage() {
       welcomeName={welcomeName}
       cards={[
         {
+          title: "Complaints",
+          description: "Complaints parents and teachers addressed to HR.",
+          href: "/hr/complaints",
+        },
+        {
           title: "Staff Directory",
           description: "A directory of Parent/Teacher/Admin staff accounts — coming soon.",
         },

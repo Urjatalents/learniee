@@ -20,6 +20,11 @@ export default async function ItDashboardPage() {
       welcomeName={welcomeName}
       cards={[
         {
+          title: "Complaints",
+          description: "Complaints parents and teachers addressed to IT Support.",
+          href: "/it/complaints",
+        },
+        {
           title: "Account Access",
           description: "Reset a Teacher or Parent's password, or update their email/phone.",
           href: "/it/account-access",

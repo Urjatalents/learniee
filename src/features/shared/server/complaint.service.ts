@@ -147,8 +147,22 @@ export function listComplaintsForAdmin() {
   });
 }
 
+/**
+ * Complaints addressed to one department, newest first. Department staff
+ * (Accounts/HR/IT) only ever get this list, so they can't see other
+ * departments' complaints or ones with no department (Admin only).
+ */
+export function listComplaintsForDepartment(department: ComplaintDepartment) {
+  return prisma.complaint.findMany({
+    where: { department },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export interface RespondToComplaintInput {
   complaintId: string;
+  /** When set, the complaint must belong to this department (staff scope). Omit for Admin. */
+  scopeDepartment?: ComplaintDepartment;
   status: "IN_PROGRESS" | "RESOLVED" | "CLOSED";
   adminNote?: string | null;
 }
@@ -166,7 +180,9 @@ export async function respondToComplaint(input: RespondToComplaintInput) {
     where: { id: input.complaintId },
   });
 
-  if (!complaint) {
+  // A complaint outside the caller's department is reported as not found
+  // so its existence isn't leaked to other departments.
+  if (!complaint || (input.scopeDepartment && complaint.department !== input.scopeDepartment)) {
     throw new ComplaintError("Complaint not found.", 404);
   }
 

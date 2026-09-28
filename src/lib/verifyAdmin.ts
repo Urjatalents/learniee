@@ -80,3 +80,33 @@ export async function requireIt() {
     return null;
   }
 }
+
+export type ComplaintScope = "ALL" | "ACCOUNTS" | "HR" | "IT";
+
+/**
+ * Signature-verified check for anyone allowed to work on complaints, plus
+ * WHICH complaints they may see: admin -> "ALL", accounts -> "ACCOUNTS",
+ * hr -> "HR", it -> "IT". Every other role gets null. The scope is derived
+ * from the verified token on the server, never from client input.
+ */
+export async function requireComplaintStaff() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("idToken")?.value;
+  if (!token) return null;
+
+  try {
+    const payload = await verifier.verify(token);
+    const role = payload["custom:role"];
+    const scopeByRole: Record<string, ComplaintScope> = {
+      admin: "ALL",
+      accounts: "ACCOUNTS",
+      hr: "HR",
+      it: "IT",
+    };
+    const scope = typeof role === "string" ? scopeByRole[role] : undefined;
+    if (!scope) return null;
+    return { payload, role: role as string, scope };
+  } catch {
+    return null;
+  }
+}

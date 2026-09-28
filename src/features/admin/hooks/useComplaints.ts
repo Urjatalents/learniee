@@ -17,7 +17,11 @@ export interface AdminComplaint {
   createdAt: string;
 }
 
-export function useAdminComplaints() {
+/**
+ * `apiBase` defaults to the Admin routes; department staff (Accounts/HR/IT)
+ * and the Admin board use `/api/staff/complaints`, which scopes by role.
+ */
+export function useAdminComplaints(apiBase = "/api/admin/complaints") {
   const [complaints, setComplaints] = useState<AdminComplaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -30,7 +34,7 @@ export function useAdminComplaints() {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/admin/complaints");
+      const res = await fetch(apiBase);
       const data = await res.json();
 
       if (!res.ok) {
@@ -52,7 +56,7 @@ export function useAdminComplaints() {
     adminNote?: string,
   ) {
     try {
-      const res = await fetch(`/api/admin/complaints/${complaintId}`, {
+      const res = await fetch(`${apiBase}/${complaintId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, adminNote }),

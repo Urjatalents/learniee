@@ -158,6 +158,13 @@ export default function AccountsDashboardShell({
             <p className="text-sm text-gray-500 mt-1">{subheading}</p>
           </div>
         </div>
+        <div className="flex items-center gap-3 flex-wrap">
+        <a
+          href="/accounts/complaints"
+          className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-brand border border-brand/30 px-5 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
+        >
+          Complaints
+        </a>
         <a
           href="/api/accounts/export"
           className="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
@@ -165,6 +172,7 @@ export default function AccountsDashboardShell({
           <Download size={16} />
           Download Excel (.xlsx)
         </a>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
