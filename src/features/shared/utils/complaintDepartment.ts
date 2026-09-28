@@ -42,19 +42,19 @@ export const COMPLAINT_DEPARTMENTS: ComplaintDepartmentOption[] = [
   {
     value: "ACCOUNTS",
     label: "Accounts",
-    handles: "Payments, refunds, wallet, invoices, payouts — any money-related issue",
+    handles: "Payments, refunds, wallet, invoices, payouts",
     phone: phoneFor("ACCOUNTS"),
   },
   {
     value: "HR",
     label: "HR",
-    handles: "Classes, teachers, schedules and conduct — anything about teaching",
+    handles: "Classes, teachers, schedules, conduct",
     phone: phoneFor("HR"),
   },
   {
     value: "IT",
     label: "IT Support",
-    handles: "App not working, login problems, bugs — any technical issue",
+    handles: "App not working, login problems, bugs",
     phone: phoneFor("IT"),
   },
 ];
