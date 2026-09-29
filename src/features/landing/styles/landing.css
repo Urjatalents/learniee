@@ -447,6 +447,11 @@
 
 /* Blog article body embedded inside the Parent/Teacher dashboards (transparent, no page chrome). */
 .lh.lh-embed{background:transparent}
+.lh.lh-embed .blog-prose{font-size:16.5px;line-height:1.8}
+.lh.lh-embed .blog-prose h2{font-size:22px;margin:34px 0 10px}
+.lh.lh-embed .blog-prose h3{font-size:18px;margin:26px 0 8px}
+.lh.lh-embed .blog-prose > :first-child{margin-top:0}
+.lh.lh-embed .blog-prose p,.lh.lh-embed .blog-prose ul,.lh.lh-embed .blog-prose ol,.lh.lh-embed .blog-prose blockquote{margin-bottom:18px}
 
 .lh .atags{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin-top:28px}
 .lh .atags li{background:var(--lav-100);border-radius:999px;padding:3px 12px;font-size:13px;font-weight:700;color:var(--lav-600)}

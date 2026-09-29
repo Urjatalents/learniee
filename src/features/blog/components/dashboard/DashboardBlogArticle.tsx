@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Clock } from "lucide-react";
 
 import { formatPostDate } from "@/features/landing/blogPosts";
 import "@/features/landing/styles/landing.css";
@@ -8,6 +8,8 @@ import type { PublicBlogCard, PublicBlogPost } from "../../server/blogPublic.ser
 import { blogCategoryLabel } from "../../utils/blogCategories";
 import { parseMarkdown } from "../../utils/markdown";
 import BlogContent from "../BlogContent";
+import BlogCard from "./BlogCard";
+import { blogTheme } from "./blogTheme";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -26,69 +28,87 @@ export default function DashboardBlogArticle({
   basePath: string;
 }) {
   const parsed = parseMarkdown(post.content);
+  const { gradient } = blogTheme(post.category);
+  const initial = post.author.name.trim().charAt(0).toUpperCase() || "L";
 
   return (
-    <div className="p-4 sm:p-8 max-w-3xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
       <Link
         href={basePath}
-        className="inline-flex items-center gap-1 text-sm font-semibold text-violet-700 hover:underline mb-4"
+        className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-violet-700 hover:bg-violet-50"
       >
         <ArrowLeft size={14} /> All blogs
       </Link>
 
-      <article className="bg-white border border-violet-100 rounded-3xl p-5 sm:p-8">
-        <Link
-          href={`${basePath}?category=${post.category}`}
-          className="text-xs font-bold uppercase tracking-wide text-violet-600 hover:underline"
-        >
-          {blogCategoryLabel(post.category)}
-        </Link>
-        <h1 className="font-heading text-2xl sm:text-3xl font-bold text-gray-800 mt-2 break-words">{post.title}</h1>
-        <p className="text-gray-600 mt-3">{post.excerpt}</p>
-        <p className="text-xs text-gray-400 mt-3 mb-6">
-          By {post.author.name} &middot; {formatPostDate(iso(post.publishedAt))} &middot; {post.readingMinutes} min read
-        </p>
+      {/* Hero */}
+      <header className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} p-6 sm:p-10 text-white`}>
+        <span aria-hidden="true" className="absolute -right-10 -top-10 size-44 rounded-full bg-white/15" />
+        <span aria-hidden="true" className="absolute right-20 bottom-[-2rem] size-20 rounded-full bg-brand-yellow/80" />
+        <div className="relative max-w-2xl">
+          <Link
+            href={`${basePath}?category=${post.category}`}
+            className="inline-block rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-widest hover:bg-white/30"
+          >
+            {blogCategoryLabel(post.category)}
+          </Link>
+          <h1 className="font-heading text-2xl sm:text-4xl font-bold mt-3 break-words">{post.title}</h1>
+          <p className="mt-3 text-sm sm:text-base text-white/90">{post.excerpt}</p>
 
+          <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-white/90">
+            <span className="flex size-9 items-center justify-center rounded-full bg-brand-yellow font-bold text-violet-900">
+              {initial}
+            </span>
+            <span className="font-semibold">{post.author.name}</span>
+            <span aria-hidden="true">·</span>
+            <time dateTime={iso(post.publishedAt)}>{formatPostDate(iso(post.publishedAt))}</time>
+            <span aria-hidden="true">·</span>
+            <span className="inline-flex items-center gap-1">
+              <Clock size={13} /> {post.readingMinutes} min read
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* Body */}
+      <article className="mt-6 rounded-3xl border border-violet-100 bg-white p-5 sm:p-10 shadow-sm">
         {/* Landing styles are scoped under .lh; the wrapper holds only the article body. */}
-        <div className="lh lh-embed">
+        <div className="lh lh-embed mx-auto max-w-2xl">
           <BlogContent parsed={parsed} />
         </div>
 
         {post.tags.length > 0 && (
-          <ul className="mt-6 flex flex-wrap gap-2" aria-label="Topics">
+          <ul className="mx-auto mt-8 flex max-w-2xl flex-wrap gap-2" aria-label="Topics">
             {post.tags.map((t) => (
-              <li key={t} className="rounded-full bg-violet-100 px-3 py-0.5 text-xs font-bold text-violet-700">
-                {t}
+              <li key={t} className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">
+                #{t}
               </li>
             ))}
           </ul>
         )}
 
-        <div className="mt-8 rounded-2xl bg-violet-50 p-4 text-sm">
-          <p className="font-semibold text-gray-800">{post.author.name}</p>
-          <p className="text-gray-500">Teacher at Learniee</p>
-          {post.author.bio && <p className="text-gray-600 mt-2">{post.author.bio}</p>}
-        </div>
+        <aside
+          aria-label="About the author"
+          className="mx-auto mt-8 flex max-w-2xl items-start gap-4 rounded-2xl bg-violet-50 p-5"
+        >
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-yellow text-lg font-bold text-violet-900">
+            {initial}
+          </span>
+          <div className="min-w-0">
+            <p className="font-heading font-bold text-gray-800">{post.author.name}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">Teacher at Learniee</p>
+            {post.author.bio && <p className="mt-2 text-sm text-gray-600">{post.author.bio}</p>}
+          </div>
+        </aside>
       </article>
 
       {related.length > 0 && (
-        <section className="mt-8" aria-label="Keep reading">
-          <h2 className="font-heading text-lg font-bold text-gray-800 mb-3">Keep reading</h2>
-          <ul className="space-y-3">
+        <section className="mt-10" aria-label="Keep reading">
+          <h2 className="font-heading text-xl font-bold text-gray-800 mb-4">Keep reading</h2>
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {related.map((r) => (
-              <li key={r.slug}>
-                <Link
-                  href={`${basePath}/${r.slug}`}
-                  className="block bg-white border border-violet-100 rounded-2xl p-4 hover:border-violet-300 transition"
-                >
-                  <p className="font-semibold text-gray-800 break-words">{r.title}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {blogCategoryLabel(r.category)} &middot; {r.readingMinutes} min read
-                  </p>
-                </Link>
-              </li>
+              <BlogCard key={r.slug} post={r} href={`${basePath}/${r.slug}`} />
             ))}
-          </ul>
+          </div>
         </section>
       )}
     </div>

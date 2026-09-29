@@ -18,7 +18,7 @@ export default async function TeacherBlogReaderPage({
       action={
         <Link
           href="/teacher/blogs"
-          className="inline-flex items-center gap-2 rounded-xl border border-violet-300 bg-white px-4 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-50"
+          className="inline-flex items-center gap-2 rounded-full bg-brand-yellow px-4 py-2.5 text-sm font-bold text-violet-900 shadow-sm hover:brightness-95"
         >
           <PenLine size={16} /> Your posts
         </Link>
