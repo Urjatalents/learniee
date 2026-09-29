@@ -43,7 +43,7 @@ export interface PublicBlogPost extends PublicBlogCard {
   content: string;
   tags: string[];
   updatedAt: Date;
-  author: { name: string; bio: string | null };
+  author: { id: string; name: string; bio: string | null };
 }
 
 function toCard(row: {
@@ -128,7 +128,7 @@ export async function getPublishedPost(slug: string): Promise<PublicBlogPost | n
       tags: true,
       updatedAt: true,
       teacher: {
-        select: { firstName: true, lastName: true, visibleName: true, aboutMe: true },
+        select: { id: true, firstName: true, lastName: true, visibleName: true, aboutMe: true },
       },
     },
   });
@@ -143,6 +143,7 @@ export async function getPublishedPost(slug: string): Promise<PublicBlogPost | n
     tags: row.tags,
     updatedAt: row.updatedAt,
     author: {
+      id: row.teacher.id,
       name: displayName(row.teacher),
       bio: bio ? (bio.length > 240 ? `${bio.slice(0, 237)}...` : bio) : null,
     },

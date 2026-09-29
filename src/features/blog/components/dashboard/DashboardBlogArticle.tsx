@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Clock, UserRound } from "lucide-react";
 
 import { formatPostDate } from "@/features/landing/blogPosts";
 import "@/features/landing/styles/landing.css";
@@ -22,10 +22,13 @@ export default function DashboardBlogArticle({
   post,
   related,
   basePath,
+  teacherProfileBasePath,
 }: {
   post: PublicBlogPost;
   related: PublicBlogCard[];
   basePath: string;
+  /** e.g. "/parent/teachers" — the author's profile lives at `${teacherProfileBasePath}/${author.id}`. */
+  teacherProfileBasePath: string;
 }) {
   const parsed = parseMarkdown(post.content);
   const { gradient } = blogTheme(post.category);
@@ -97,6 +100,12 @@ export default function DashboardBlogArticle({
             <p className="font-heading font-bold text-gray-800">{post.author.name}</p>
             <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">Teacher at Learniee</p>
             {post.author.bio && <p className="mt-2 text-sm text-gray-600">{post.author.bio}</p>}
+            <Link
+              href={`${teacherProfileBasePath}/${post.author.id}`}
+              className="mt-3 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+            >
+              <UserRound size={15} /> Visit teacher profile
+            </Link>
           </div>
         </aside>
       </article>

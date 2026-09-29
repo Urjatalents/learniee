@@ -15,5 +15,5 @@ export default async function TeacherBlogPostPage({
 
   const related = await listRelatedPosts(post, 3);
 
-  return <DashboardBlogArticle post={post} related={related} basePath="/teacher/blogs/read" />;
+  return <DashboardBlogArticle post={post} related={related} basePath="/teacher/blogs/read" teacherProfileBasePath="/teacher/teachers" />;
 }
