@@ -6,6 +6,8 @@ import LandingFooter from "./LandingFooter";
 import PostCard from "./PostCard";
 import LandingHeader from "./LandingHeader";
 import { BLOG_POSTS } from "../blogPosts";
+import { listLatestPublished } from "@/features/blog/server/blogPublic.service";
+import { cardToPost } from "@/features/blog/utils/cardToPost";
 import { COURSES_HREF } from "../data";
 import "../styles/landing.css";
 
@@ -14,7 +16,10 @@ import "../styles/landing.css";
  * header (mobile menu + active-section highlight), course tabs and the two
  * small forms are client components.
  */
-export default function LandingPage() {
+export default async function LandingPage() {
+  // Newest in-app posts first, topped up with the legacy external ones.
+  const homePosts = [...(await listLatestPublished(3)).map(cardToPost), ...BLOG_POSTS].slice(0, 3);
+
   return (
     <div className="lh">
       <a className="skip" href="#main">
@@ -124,7 +129,7 @@ export default function LandingPage() {
           <h2>Brain bites</h2>
           <p className="lede">Short reads on study habits, exams and raising curious kids.</p>
           <div className="bgrid">
-            {BLOG_POSTS.slice(0, 3).map((post, i) => (
+            {homePosts.map((post, i) => (
               <PostCard key={post.slug} post={post} index={i} />
             ))}
           </div>

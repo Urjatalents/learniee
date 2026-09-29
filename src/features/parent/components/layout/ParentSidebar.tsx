@@ -21,6 +21,7 @@ import {
   X,
   MessageCircle,
   ClipboardList,
+  Newspaper,
   type LucideIcon,
 } from "lucide-react";
 
@@ -54,10 +55,10 @@ interface MenuSection {
 // there if/when that's wired up.
 //
 // Note (still true): Preference, Notification, Gift, Go Live,
-// Learnie Mall, Suggestions, Transcripts, FAQs, and Blogs stay
+// Learnie Mall, Suggestions, Transcripts and FAQs stay
 // removed — none of those pages are built yet (see
 // 02-ARCHITECTURE.md's Deliberately Deferred list / 06-OPEN-DECISIONS.md
-// #6).
+// #6). "Blogs" was re-added Sep 29, 2026: it opens the public /blog site.
 const menuSections: MenuSection[] = [
   {
     label: "Main",
@@ -85,6 +86,7 @@ const menuSections: MenuSection[] = [
     items: [
       { label: "Teacher", path: "/parent/teachers", icon: GraduationCap },
       { label: "Resources", path: "/parent/resources", icon: FolderOpen },
+      { label: "Blogs", path: "/blog", icon: Newspaper },
       { label: "Reviews", path: "/parent/reviews", icon: Star },
     ],
   },

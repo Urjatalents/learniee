@@ -30,6 +30,9 @@ const ACTION_LABELS: Record<ActivityAction, string> = {
   COURSE_APPROVED: "Course approved",
   COURSE_REJECTED: "Course rejected",
   USER_DELETED: "User deleted",
+  BLOG_SUBMITTED: "Blog post submitted",
+  BLOG_PUBLISHED: "Blog post published",
+  BLOG_REJECTED: "Blog post rejected",
   GENERIC: "Other",
 };
 
@@ -60,6 +63,9 @@ const ACTION_BADGE_STYLES: Partial<Record<ActivityAction, string>> = {
   COURSE_APPROVED: "bg-purple-100 text-purple-700",
   COURSE_REJECTED: "bg-red-100 text-red-700",
   USER_DELETED: "bg-red-100 text-red-700",
+  BLOG_SUBMITTED: "bg-blue-100 text-blue-700",
+  BLOG_PUBLISHED: "bg-green-100 text-green-700",
+  BLOG_REJECTED: "bg-red-100 text-red-700",
 };
 
 function formatDateTime(value: string) {

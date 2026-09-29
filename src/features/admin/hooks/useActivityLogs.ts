@@ -20,6 +20,9 @@ export type ActivityAction =
   | "COURSE_APPROVED"
   | "COURSE_REJECTED"
   | "USER_DELETED"
+  | "BLOG_SUBMITTED"
+  | "BLOG_PUBLISHED"
+  | "BLOG_REJECTED"
   | "GENERIC";
 
 export type ActivityActorRole = "PARENT" | "TEACHER" | "ADMIN" | "ACCOUNTS" | "HR" | "SYSTEM";

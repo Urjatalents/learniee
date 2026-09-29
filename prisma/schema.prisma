@@ -148,6 +148,7 @@ model Teacher {
   strikes            TeacherStrike[]
   certificates       Certificate[]
   resources          Resource[]
+  blogPosts          BlogPost[]
 }
 
 model TeacherProfessional {
@@ -1234,6 +1235,56 @@ enum ResourceType {
   LINK
 }
 
+/// Public Blog (Sep 29, 2026) — SEO/marketing content written by an
+/// approved Teacher and published on the public `/blog` site only
+/// after an Admin approves it. `content` is Markdown-lite (headings,
+/// lists, bold/italic, links, quotes) rendered by our own safe
+/// renderer (no raw HTML is ever stored or rendered).
+///
+/// Lifecycle: DRAFT -> PENDING_REVIEW -> PUBLISHED | REJECTED.
+/// A Teacher edits only in DRAFT/REJECTED; withdrawing (PENDING_REVIEW)
+/// or unpublishing (PUBLISHED) sends it back to DRAFT. Admin can take a
+/// PUBLISHED post down (-> REJECTED, reason required).
+///
+/// `slug` is generated from the title and is FROZEN once `publishedAt`
+/// is set, so a live URL never changes (SEO). `publishedAt` is set on
+/// the first approval only and kept across unpublish/republish.
+model BlogPost {
+  id              String         @id @default(uuid())
+  teacherId       String
+  slug            String         @unique
+  title           String
+  /// Doubles as the meta description and the card excerpt.
+  excerpt         String
+  content         String
+  /// A slug from BLOG_CATEGORIES (src/features/blog/utils/blogCategories.ts).
+  category        String
+  tags            String[]       @default([])
+  readingMinutes  Int            @default(1)
+  status          BlogPostStatus @default(DRAFT)
+  submittedAt     DateTime?
+  publishedAt     DateTime?
+  reviewedAt      DateTime?
+  /// Cognito `sub` of the Admin who last approved/rejected it.
+  reviewedBySub   String?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([status, publishedAt])
+  @@index([teacherId])
+  @@index([category, status])
+}
+
+enum BlogPostStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+}
+
 /// Refer & Earn (added Sep 8, 2026) — a Parent's own shareable code
 /// (`ParentProfile.referralCode`, lazily generated the first time
 /// they open /parent/referral, same lazy-creation pattern as
@@ -1656,6 +1707,9 @@ enum NotificationType {
   /// doc-comment. Sent to the Parent when a Teacher shares a new
   /// resource on one of their enrollments.
   RESOURCE_SHARED
+  BLOG_SUBMITTED
+  BLOG_PUBLISHED
+  BLOG_REJECTED
   GENERIC
 }
 
@@ -1782,6 +1836,9 @@ enum ActivityAction {
   /// Resource Library (Sep 24, 2026) — see the Resource model's
   /// doc-comment.
   RESOURCE_SHARED
+  BLOG_SUBMITTED
+  BLOG_PUBLISHED
+  BLOG_REJECTED
   GENERIC
 }
 

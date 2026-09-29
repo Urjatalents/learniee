@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatPostDate, type BlogPost } from "../blogPosts";
 
 // Card art cycles through the three illustrations from the design.
@@ -37,24 +38,36 @@ export default function PostCard({
   showExcerpt?: boolean;
 }) {
   const art = ART[index % ART.length];
+  // In-app posts have a site-relative url; the legacy demo posts point at learniee.com.
+  const internal = post.url.startsWith("/");
+  const body = (
+    <>
+      <div className="img" style={{ background: art.bg }}>
+        <svg viewBox="0 0 200 150" aria-hidden="true">
+          {art.svg}
+        </svg>
+      </div>
+      <div className="b">
+        <span className="tag">{post.tag}</span>
+        <h3>{post.title}</h3>
+        {showExcerpt && <p>{post.excerpt}</p>}
+        <small>
+          <time dateTime={post.date}>{formatPostDate(post.date)}</time>
+          {!internal && <span className="sr-only"> (opens in a new tab)</span>}
+        </small>
+      </div>
+    </>
+  );
+
   return (
     <article className="post">
-      <a href={post.url} target="_blank" rel="noopener noreferrer">
-        <div className="img" style={{ background: art.bg }}>
-          <svg viewBox="0 0 200 150" aria-hidden="true">
-            {art.svg}
-          </svg>
-        </div>
-        <div className="b">
-          <span className="tag">{post.tag}</span>
-          <h3>{post.title}</h3>
-          {showExcerpt && <p>{post.excerpt}</p>}
-          <small>
-            <time dateTime={post.date}>{formatPostDate(post.date)}</time>
-            <span className="sr-only"> (opens in a new tab)</span>
-          </small>
-        </div>
-      </a>
+      {internal ? (
+        <Link href={post.url}>{body}</Link>
+      ) : (
+        <a href={post.url} target="_blank" rel="noopener noreferrer">
+          {body}
+        </a>
+      )}
     </article>
   );
 }

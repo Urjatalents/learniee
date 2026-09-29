@@ -5,6 +5,10 @@ import LandingPage from "@/features/landing/components/LandingPage";
 // environment to get absolute canonical / Open Graph URLs; unset = relative.
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
+// The home page shows the latest blog posts; refresh at most every 5 minutes
+// (publishing also revalidates it immediately).
+export const revalidate = 300;
+
 const TITLE = "Learniee — Expert online tuition for ages 3 to 18";
 const DESCRIPTION =
   "Live online tuition for ages 3–18. One-to-one and group classes, school subjects, hobbies and competitive exams. Book a free demo.";

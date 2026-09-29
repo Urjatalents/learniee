@@ -5,13 +5,13 @@ export interface BlogPost {
   /** ISO date (UTC), e.g. "2026-02-25". */
   date: string;
   excerpt: string;
-  /** Full article. External for now — no in-app article pages yet. */
+  /** Site-relative ("/blog/<slug>") for in-app posts, absolute for the legacy external ones. */
   url: string;
 }
 
-// DEMO DATA: the latest articles from https://learniee.com/blog/ so the blog
-// page is not empty. Replace with a CMS / database source when in-app
-// articles exist, and point `url` at the internal route.
+// LEGACY POSTS: older articles from https://learniee.com/blog/. In-app posts
+// (written by Teachers, stored in the DB) are listed first; these external
+// ones only fill the gaps until enough in-app posts exist.
 export const BLOG_POSTS: BlogPost[] = [
   {
     slug: "public-speaking-classes-for-students",

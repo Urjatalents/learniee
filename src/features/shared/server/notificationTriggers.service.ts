@@ -1425,3 +1425,46 @@ export function notifySessionOutcomeDecided(notice: SessionOutcomeDecidedNotice)
   });
 }
 
+
+/** Public Blog (Sep 29, 2026) — every Admin is told when a Teacher submits a post for review. */
+export function notifyBlogSubmitted(postId: string) {
+  return safe("blog submitted", async () => {
+    const post = await prisma.blogPost.findUnique({
+      where: { id: postId },
+      select: {
+        title: true,
+        teacher: { select: { firstName: true, lastName: true, visibleName: true } },
+      },
+    });
+    if (!post) return;
+
+    await notifyAllAdmins({
+      type: T.BLOG_SUBMITTED,
+      title: "Blog post awaiting review",
+      message: `${displayName(post.teacher)} submitted "${post.title}" for review.`,
+      link: "/admin/blogs",
+    });
+  });
+}
+
+/** Public Blog — the Teacher hears the Admin's decision (published, or rejected/taken down with the reason). */
+export function notifyBlogReviewed(postId: string, approved: boolean) {
+  return safe("blog reviewed", async () => {
+    const post = await prisma.blogPost.findUnique({
+      where: { id: postId },
+      select: { teacherId: true, title: true, rejectionReason: true },
+    });
+    if (!post) return;
+
+    await createNotification({
+      recipientId: post.teacherId,
+      recipientRole: R.TEACHER,
+      type: approved ? T.BLOG_PUBLISHED : T.BLOG_REJECTED,
+      title: approved ? "Your blog post is live" : "Your blog post needs changes",
+      message: approved
+        ? `"${post.title}" was approved and is now published on the Learniee blog.`
+        : `"${post.title}" wasn't published: ${(post.rejectionReason ?? "").slice(0, 140)}`,
+      link: "/teacher/blogs",
+    });
+  });
+}
