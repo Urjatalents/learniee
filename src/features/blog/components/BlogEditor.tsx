@@ -6,25 +6,32 @@ import { useMemo, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, Circle, Loader2 } from "lucide-react";
 
 import "@/features/landing/styles/landing.css";
+import { uploadFileToS3 } from "@/lib/uploadFileToS3";
 
 import { changeBlogStatus, saveBlogPost, useTeacherBlogPost } from "../hooks/useTeacherBlogs";
 import type { BlogPostStatus, TeacherBlogPost } from "../types";
 import { BLOG_CATEGORIES } from "../utils/blogCategories";
 import {
+  BLOG_IMAGE_MAX_BYTES,
+  BLOG_IMAGE_MIME_TYPES,
+  blogImageUrlFromKey,
+  cleanAltText,
+} from "../utils/blogImages";
+import {
   BLOG_LIMITS,
-  countWords,
+  countBlockWords,
   normalizeTags,
   validateDraft,
   validateForSubmit,
 } from "../utils/blogRules";
-import { parseMarkdown } from "../utils/markdown";
+import { countImages, countLinks, parseMarkdown } from "../utils/markdown";
 import BlogContent from "./BlogContent";
 import BlogStatusBadge from "./TeacherBlogStatusBadge";
 
 const INPUT =
   "w-full rounded-xl border border-violet-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-300 disabled:bg-gray-50";
 
-type Format = "h2" | "h3" | "bold" | "italic" | "ul" | "ol" | "quote" | "link";
+type Format = "h2" | "h3" | "bold" | "italic" | "ul" | "ol" | "quote" | "link" | "image";
 
 const TOOLBAR: { kind: Format; label: string; title: string }[] = [
   { kind: "h2", label: "H2", title: "Section heading" },
@@ -35,6 +42,7 @@ const TOOLBAR: { kind: Format; label: string; title: string }[] = [
   { kind: "ol", label: "1. List", title: "Numbered list" },
   { kind: "quote", label: "Quote", title: "Quote" },
   { kind: "link", label: "Link", title: "Insert link" },
+  { kind: "image", label: "Image", title: "Upload and insert an image (PNG or JPEG, up to 5 MB)" },
 ];
 
 /** Loads the post (edit mode) and hands it to the form. New posts render the form directly. */
@@ -68,6 +76,7 @@ export default function BlogEditor({ postId }: { postId?: string }) {
 function EditorForm({ initial }: { initial: TeacherBlogPost | null }) {
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [postId, setPostId] = useState<string | null>(initial?.id ?? null);
   const [status, setStatus] = useState<BlogPostStatus>(initial?.status ?? "DRAFT");
@@ -84,10 +93,14 @@ function EditorForm({ initial }: { initial: TeacherBlogPost | null }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   const editable = status === "DRAFT" || status === "REJECTED";
-  const words = useMemo(() => countWords(content), [content]);
   const parsed = useMemo(() => parseMarkdown(content), [content]);
+  // Everything below is counted from the parsed article, i.e. exactly what readers will see.
+  const words = useMemo(() => countBlockWords(parsed.blocks), [parsed]);
+  const links = useMemo(() => countLinks(parsed.blocks), [parsed]);
+  const imageCount = useMemo(() => countImages(parsed.blocks), [parsed]);
   const tags = normalizeTags(tagsText.split(","));
 
   const values = { title, excerpt, content, category, tags };
@@ -106,7 +119,11 @@ function EditorForm({ initial }: { initial: TeacherBlogPost | null }) {
       ok: parsed.headings.filter((h) => h.level === 2).length >= 2,
       text: "Two or more “##” section headings — they build the table of contents",
     },
-    { ok: /\]\(\/[^)]*\)/.test(content), text: "A link to a Learniee page, e.g. [free demo](/signup)" },
+    {
+      ok: links.internal >= 1,
+      text: `A link to a Learniee page, e.g. [free demo](/signup) (${links.internal} found)`,
+    },
+    { ok: imageCount >= 1, text: `An image with a short description (${imageCount} added)` },
     { ok: Boolean(category), text: "Category chosen" },
   ];
 
@@ -124,6 +141,9 @@ function EditorForm({ initial }: { initial: TeacherBlogPost | null }) {
       const inner = selected || (kind === "bold" ? "bold text" : "italic text");
       next = value.slice(0, s) + mark + inner + mark + value.slice(e);
       caret = s + mark.length + inner.length + mark.length;
+    } else if (kind === "image") {
+      fileInputRef.current?.click();
+      return;
     } else if (kind === "link") {
       const url = window.prompt("Link address (https://… or /page on Learniee):", "https://");
       if (!url) return;
@@ -142,6 +162,56 @@ function EditorForm({ initial }: { initial: TeacherBlogPost | null }) {
       ta.focus();
       ta.setSelectionRange(caret, caret);
     });
+  }
+
+  /** Uploads the chosen image to S3 and inserts `![description](url)` on its own lines at the caret. */
+  async function handleImageChosen(file: File | undefined) {
+    if (!file || !editable) return;
+
+    setError("");
+    setNotice("");
+
+    if (!(BLOG_IMAGE_MIME_TYPES as readonly string[]).includes(file.type)) {
+      setError("Images must be PNG or JPEG.");
+      return;
+    }
+    if (file.size > BLOG_IMAGE_MAX_BYTES) {
+      setError(`That image is too large. The limit is ${BLOG_IMAGE_MAX_BYTES / (1024 * 1024)} MB.`);
+      return;
+    }
+
+    const fallback = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
+    const alt = cleanAltText(
+      window.prompt("Describe the image in a few words (helps accessibility and Google):", fallback) ?? fallback,
+    );
+
+    const ta = textareaRef.current;
+    const at = ta ? ta.selectionEnd : content.length;
+
+    setUploading(true);
+
+    try {
+      // Re-wrap with a safe name so the stored extension always matches the type.
+      const safe = new File([file], file.type === "image/png" ? "image.png" : "image.jpg", { type: file.type });
+      const key = await uploadFileToS3({ file: safe, folder: "blog-images" });
+      const markdown = `![${alt}](${blogImageUrlFromKey(key)})`;
+
+      setContent((current) => {
+        const pos = Math.min(at, current.length);
+        const before = current.slice(0, pos);
+        const after = current.slice(pos);
+        const lead = before && !before.endsWith("\n\n") ? (before.endsWith("\n") ? "\n" : "\n\n") : "";
+        const tail = after.startsWith("\n\n") ? "" : after.startsWith("\n") ? "\n" : "\n\n";
+
+        return `${before}${lead}${markdown}${tail}${after}`;
+      });
+      setNotice("Image added. Save the draft to keep it.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not upload the image.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   /** Saves the draft; returns the saved id, or null after showing the error. */
@@ -263,7 +333,7 @@ function EditorForm({ initial }: { initial: TeacherBlogPost | null }) {
       {status === "PUBLISHED" && (
         <p className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800">
           This post is live. To edit it, unpublish it first — it will need approval again.{" "}
-          <Link href={`/blog/${slug}`} target="_blank" className="font-semibold underline">
+          <Link href={`/teacher/blogs/read/${slug}`} className="font-semibold underline">
             View live
           </Link>
         </p>
@@ -381,13 +451,26 @@ function EditorForm({ initial }: { initial: TeacherBlogPost | null }) {
                       type="button"
                       title={t.title}
                       onClick={() => format(t.kind)}
+                      disabled={uploading && t.kind === "image"}
                       className="rounded-lg border border-violet-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-violet-50"
                     >
                       {t.label}
                     </button>
                   ))}
+                  {uploading && (
+                    <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                      <Loader2 className="size-3.5 animate-spin" /> Uploading image…
+                    </span>
+                  )}
                 </div>
               )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={BLOG_IMAGE_MIME_TYPES.join(",")}
+                className="hidden"
+                onChange={(e) => void handleImageChosen(e.target.files?.[0])}
+              />
               <textarea
                 id="blog-content"
                 ref={textareaRef}
@@ -402,8 +485,9 @@ function EditorForm({ initial }: { initial: TeacherBlogPost | null }) {
             </>
           )}
           <p className="mt-1 text-xs text-gray-500">
-            {words} words · about {Math.max(1, Math.ceil(words / 200))} min read. Use ## for sections, **bold**, - for
-            lists.
+            {words} words · about {Math.max(1, Math.ceil(words / 200))} min read · {links.internal} internal /{" "}
+            {links.external} external links · {imageCount} {imageCount === 1 ? "image" : "images"}. Use ## for sections,
+            **bold**, - for lists.
           </p>
         </div>
 

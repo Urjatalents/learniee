@@ -10,9 +10,15 @@
  *   paragraphs        - or * bullet lists      1. numbered lists
  *   > quote           ---  horizontal rule
  *   **bold**   *italic*   `code`   [text](https://link)  [text](/internal)
+ *   ![description](/api/blog-images/…)   on its own line (uploaded images only)
  *
- * Deliberately NOT supported: raw HTML, images, tables.
+ * Links to Learniee's own domain are treated as internal links.
+ * Deliberately NOT supported: raw HTML, remote images, tables.
  */
+
+import { getSiteUrl } from "@/lib/siteUrl";
+
+import { isBlogImageUrl } from "./blogImages";
 
 export type Inline =
   | { t: "text"; v: string }
@@ -26,6 +32,7 @@ export type Block =
   | { t: "p"; c: Inline[] }
   | { t: "ul" | "ol"; items: Inline[][] }
   | { t: "quote"; c: Inline[] }
+  | { t: "img"; src: string; alt: string }
   | { t: "hr" };
 
 export interface Heading {
@@ -39,6 +46,17 @@ export interface ParsedMarkdown {
   headings: Heading[];
 }
 
+const stripWww = (host: string) => host.toLowerCase().replace(/^www\./, "");
+
+/** True when an absolute URL points at Learniee itself (www or not). */
+function isOwnSite(parsed: URL): boolean {
+  try {
+    return stripWww(parsed.host) === stripWww(new URL(getSiteUrl()).host);
+  } catch {
+    return false;
+  }
+}
+
 /** Returns a safe href + whether it leaves the site, or null if the URL is not allowed. */
 function safeLink(raw: string): { href: string; external: boolean } | null {
   const url = raw.trim();
@@ -50,6 +68,11 @@ function safeLink(raw: string): { href: string; external: boolean } | null {
   try {
     const parsed = new URL(url);
     if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      // https://learniee.com/signup is an internal link, however it was typed.
+      if (isOwnSite(parsed)) {
+        return { href: `${parsed.pathname}${parsed.search}${parsed.hash}`, external: false };
+      }
+
       return { href: parsed.toString(), external: true };
     }
   } catch {
@@ -61,7 +84,8 @@ function safeLink(raw: string): { href: string; external: boolean } | null {
 
 // Not /g on purpose: parseInline recurses, and a shared global regex would have
 // its lastIndex clobbered by the inner call. Each call builds its own copy.
-const INLINE_RE = /\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|`([^`]+)`|\*(?!\s)([^*]+?)\*/;
+const INLINE_RE =
+  /\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)\s]+)\)|`([^`]+)`|\*(?!\s)([^*]+?)\*|!\[([^\]]*)\]\(([^)\s]+)\)/;
 
 export function parseInline(text: string): Inline[] {
   const out: Inline[] = [];
@@ -85,6 +109,11 @@ export function parseInline(text: string): Inline[] {
       out.push({ t: "code", v: m[4] });
     } else if (m[5] !== undefined) {
       out.push({ t: "em", c: parseInline(m[5]) });
+    } else if (m[6] !== undefined) {
+      // An image in the middle of a sentence is not rendered (images are
+      // block-level, on their own line); keep its description as plain text
+      // so it is never parsed as a link with a stray "!".
+      if (m[6]) out.push({ t: "text", v: m[6] });
     }
 
     last = m.index + m[0].length;
@@ -114,6 +143,7 @@ function headingId(text: string, used: Map<string, number>): string {
   return n === 0 ? base : `${base}-${n + 1}`;
 }
 
+const IMG_LINE_RE = /^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$/;
 const UL_RE = /^\s*[-*]\s+(.*)$/;
 const OL_RE = /^\s*\d+[.)]\s+(.*)$/;
 
@@ -135,6 +165,15 @@ export function parseMarkdown(source: string): ParsedMarkdown {
 
     if (/^\s*(---|\*\*\*)\s*$/.test(line)) {
       blocks.push({ t: "hr" });
+      i++;
+      continue;
+    }
+
+    const image = IMG_LINE_RE.exec(line);
+    if (image) {
+      // Only images uploaded through the editor are rendered; anything else is dropped.
+      const src = image[2].trim();
+      if (isBlogImageUrl(src)) blocks.push({ t: "img", src, alt: image[1].trim() });
       i++;
       continue;
     }
@@ -185,6 +224,7 @@ export function parseMarkdown(source: string): ParsedMarkdown {
       !/^(#{1,3})\s+/.test(lines[i]) &&
       !UL_RE.test(lines[i]) &&
       !OL_RE.test(lines[i]) &&
+      !IMG_LINE_RE.test(lines[i]) &&
       !/^\s*>/.test(lines[i]) &&
       !/^\s*(---|\*\*\*)\s*$/.test(lines[i])
     ) {
@@ -195,4 +235,51 @@ export function parseMarkdown(source: string): ParsedMarkdown {
   }
 
   return { blocks, headings };
+}
+
+/** Visible text of every block (link text yes, URLs no, images no). */
+export function blocksToText(blocks: Block[]): string {
+  return blocks
+    .map((b) => {
+      switch (b.t) {
+        case "h2":
+        case "h3":
+          return b.text;
+        case "p":
+        case "quote":
+          return inlineToText(b.c);
+        case "ul":
+        case "ol":
+          return b.items.map(inlineToText).join(" ");
+        default:
+          return "";
+      }
+    })
+    .join(" ");
+}
+
+function linksIn(nodes: Inline[], acc: { internal: number; external: number }) {
+  for (const n of nodes) {
+    if (n.t === "link") {
+      if (n.external) acc.external++;
+      else acc.internal++;
+    }
+    if (n.t === "strong" || n.t === "em" || n.t === "link") linksIn(n.c, acc);
+  }
+}
+
+/** Links exactly as they render: what the reader sees is what gets counted. */
+export function countLinks(blocks: Block[]): { internal: number; external: number } {
+  const acc = { internal: 0, external: 0 };
+
+  for (const b of blocks) {
+    if (b.t === "p" || b.t === "quote" || b.t === "h2" || b.t === "h3") linksIn(b.c, acc);
+    if (b.t === "ul" || b.t === "ol") b.items.forEach((item) => linksIn(item, acc));
+  }
+
+  return acc;
+}
+
+export function countImages(blocks: Block[]): number {
+  return blocks.filter((b) => b.t === "img").length;
 }

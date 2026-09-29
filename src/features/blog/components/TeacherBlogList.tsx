@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { PenLine, ExternalLink } from "lucide-react";
+import { BookOpen, Eye, PenLine } from "lucide-react";
 
 import { deleteBlogPost, useTeacherBlogList } from "../hooks/useTeacherBlogs";
 import { blogCategoryLabel } from "../utils/blogCategories";
@@ -42,12 +42,20 @@ export default function TeacherBlogList() {
             blog under your name.
           </p>
         </div>
-        <Link
-          href="/teacher/blogs/new"
-          className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
-        >
-          <PenLine size={16} /> Write a post
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/teacher/blogs/read"
+            className="inline-flex items-center gap-2 rounded-xl border border-violet-300 bg-white px-4 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-50"
+          >
+            <BookOpen size={16} /> Read blogs
+          </Link>
+          <Link
+            href="/teacher/blogs/new"
+            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
+          >
+            <PenLine size={16} /> Write a post
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -91,11 +99,10 @@ export default function TeacherBlogList() {
                 </Link>
                 {post.status === "PUBLISHED" && (
                   <Link
-                    href={`/blog/${post.slug}`}
-                    target="_blank"
+                    href={`/teacher/blogs/read/${post.slug}`}
                     className="inline-flex items-center gap-1 text-violet-700 hover:underline"
                   >
-                    View live <ExternalLink size={13} />
+                    View live <Eye size={13} />
                   </Link>
                 )}
                 {post.status !== "PUBLISHED" && (

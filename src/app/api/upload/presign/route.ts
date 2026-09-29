@@ -7,6 +7,7 @@ import {
   createPresignedUploadUrl,
 } from "@/lib/s3";
 import { resolveUploadOwnerId } from "@/lib/uploadOwnerResolver";
+import { BLOG_IMAGE_MIME_TYPES } from "@/features/blog/utils/blogImages";
 
 const FOLDER_VALUES = Object.values(UPLOAD_FOLDERS);
 
@@ -23,6 +24,10 @@ function isUploadFolder(value: unknown): value is UploadFolder {
  *   → Requires Cognito auth. Teacher is identified from
  *     auth.payload.sub - the browser's teacherId is not trusted
  *     (see the security fix note in 07-LESSONS-LEARNED.md).
+ *
+ * blog-images
+ *   → Teacher-only (blog editor); PNG/JPEG only. Shown publicly through
+ *     /api/blog-images/..., the bucket itself stays private.
  *
  * child-photos
  *   → Uses the parent's idToken cookie.
@@ -48,6 +53,17 @@ export async function POST(req: NextRequest) {
           error:
             "Unsupported file type. Allowed types are images, PDF, video, Word/Excel/PowerPoint, plain text, zip and audio files.",
         },
+        { status: 400 },
+      );
+    }
+
+    // Blog images are shown publicly, so they are limited to plain images.
+    if (
+      folder === UPLOAD_FOLDERS.BLOG_IMAGES &&
+      !(BLOG_IMAGE_MIME_TYPES as readonly string[]).includes(contentType)
+    ) {
+      return NextResponse.json(
+        { error: "Blog images must be PNG or JPEG." },
         { status: 400 },
       );
     }

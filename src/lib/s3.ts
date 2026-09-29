@@ -35,6 +35,7 @@ export const UPLOAD_FOLDERS = {
   COURSE_MEDIA: "course-media",
   HOMEWORK: "homework",
   RESOURCES: "resources",
+  BLOG_IMAGES: "blog-images",
 } as const;
 
 export type UploadFolder =

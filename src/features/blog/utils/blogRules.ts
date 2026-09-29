@@ -3,6 +3,7 @@
  * the API/service (server) so both enforce identical limits.
  */
 import { getBlogCategory } from "./blogCategories";
+import { blocksToText, parseMarkdown, type Block } from "./markdown";
 
 export const BLOG_LIMITS = {
   titleMin: 15,
@@ -38,14 +39,16 @@ export function slugifyTitle(title: string): string {
   return RESERVED_BLOG_SLUGS.has(base) ? `${base}-post` : base;
 }
 
-/** Word count over the visible text of Markdown-lite (drops URLs and markup characters). */
-export function countWords(markdown: string): number {
-  const text = markdown
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/[#>*_`\-]+/g, " ")
-    .trim();
+/** Word count of already-parsed blocks: link text counts, URLs, image paths and markup do not. */
+export function countBlockWords(blocks: Block[]): number {
+  const text = blocksToText(blocks).trim();
 
   return text ? text.split(/\s+/).length : 0;
+}
+
+/** Word count over the visible text — counted from the parsed article, so it matches what readers see. */
+export function countWords(markdown: string): number {
+  return countBlockWords(parseMarkdown(markdown).blocks);
 }
 
 export function readingMinutes(markdown: string): number {

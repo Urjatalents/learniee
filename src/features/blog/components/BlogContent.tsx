@@ -80,6 +80,15 @@ export default function BlogContent({
             );
           case "quote":
             return <blockquote key={i}>{renderInline(b.c)}</blockquote>;
+          case "img":
+            // Plain <img>: the source is our own /api/blog-images route (private S3
+            // behind it), and the parser only lets that URL shape through.
+            return (
+              <figure key={i}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={b.src} alt={b.alt} loading="lazy" decoding="async" />
+              </figure>
+            );
           case "hr":
             return <hr key={i} />;
         }

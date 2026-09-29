@@ -23,6 +23,7 @@ type OwnerResolution = { ownerId: string } | { error: NextResponse };
  * views one — so it always resolves to the Teacher, same as
  * TEACHER_DOCUMENTS/COURSE_MEDIA; ownership of the specific
  * Enrollment is still enforced separately in resource.service.ts.
+ * BLOG_IMAGES is Teacher-only too (blog editor, Sep 29, 2026).
  */
 export async function resolveUploadOwnerId(
   folder: UploadFolder,
@@ -37,6 +38,7 @@ export async function resolveUploadOwnerId(
     folder === UPLOAD_FOLDERS.TEACHER_DOCUMENTS ||
     folder === UPLOAD_FOLDERS.COURSE_MEDIA ||
     folder === UPLOAD_FOLDERS.RESOURCES ||
+    folder === UPLOAD_FOLDERS.BLOG_IMAGES ||
     (folder === UPLOAD_FOLDERS.HOMEWORK && auth.payload["custom:role"] === "teacher");
 
   if (resolvesToTeacher) {
