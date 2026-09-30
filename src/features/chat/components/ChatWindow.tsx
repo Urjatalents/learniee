@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Flag, Send } from "lucide-react";
 
 import type { ChatMessage, ChatSenderRole } from "@/features/chat/types/chat";
 
@@ -33,6 +33,11 @@ interface ChatWindowProps {
    * no back arrow, a fixed height.
    */
   embedded?: boolean;
+  /**
+   * When given, messages from the other person get a "Report" button
+   * that sends them to Admin. Left off for Admin's read-only view.
+   */
+  onReport?: (messageId: string, reason?: string) => Promise<void>;
 }
 
 export default function ChatWindow({
@@ -48,10 +53,17 @@ export default function ChatWindow({
   onSend,
   disabledReason,
   embedded = false,
+  onReport,
 }: ChatWindowProps) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Report flow: one message at a time has its little form open.
+  const [reportingId, setReportingId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
@@ -63,6 +75,27 @@ export default function ChatWindow({
 
     setDraft("");
     await onSend(body);
+  }
+
+  function openReport(messageId: string) {
+    setReportingId(messageId);
+    setReportReason("");
+    setReportError("");
+  }
+
+  async function submitReport(messageId: string) {
+    if (!onReport || reportBusy) return;
+
+    try {
+      setReportBusy(true);
+      setReportError("");
+      await onReport(messageId, reportReason.trim() || undefined);
+      setReportingId(null);
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "Failed to report the message.");
+    } finally {
+      setReportBusy(false);
+    }
   }
 
   return (
@@ -129,6 +162,11 @@ export default function ChatWindow({
                       {message.senderRole === "PARENT" ? "Parent" : "Teacher"}
                     </p>
                   )}
+                  {isAdminView && (message.reportCount ?? 0) > 0 && (
+                    <p className="text-[10px] font-semibold text-red-600 mb-1">
+                      ⚑ Reported {message.reportCount === 1 ? "once" : `${message.reportCount} times`}
+                    </p>
+                  )}
                   {message.containsPhoneNumber && isAdminView && (
                     <p className="text-[10px] font-semibold text-amber-700 mb-1">
                       ⚠ Possible phone number — hidden from the other party
@@ -147,6 +185,52 @@ export default function ChatWindow({
                   >
                     {formatTime(message.createdAt)}
                   </p>
+                  {onReport && !isOwn && !isAdminView && (
+                    <div className="mt-1">
+                      {message.reportedByMe ? (
+                        <p className="text-[11px] text-gray-400">Reported — Admin will review it.</p>
+                      ) : reportingId === message.id ? (
+                        <div className="space-y-1.5">
+                          <input
+                            type="text"
+                            value={reportReason}
+                            onChange={(e) => setReportReason(e.target.value)}
+                            maxLength={500}
+                            placeholder="What's wrong? (optional)"
+                            className="w-full border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-purple-300"
+                          />
+                          {reportError && <p className="text-[11px] text-red-600">{reportError}</p>}
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => submitReport(message.id)}
+                              disabled={reportBusy}
+                              className="text-[11px] font-semibold text-red-600 hover:text-red-700 disabled:opacity-40"
+                            >
+                              {reportBusy ? "Reporting…" : "Send report"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setReportingId(null)}
+                              disabled={reportBusy}
+                              className="text-[11px] text-gray-500 hover:text-gray-700"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => openReport(message.id)}
+                          className="inline-flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-600"
+                        >
+                          <Flag size={11} />
+                          Report
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );

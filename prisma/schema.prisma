@@ -634,6 +634,7 @@ model ChatRoom {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   messages      ChatMessage[]
+  reports       ChatMessageReport[]
   course        Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
   enrollment    Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   parent        ParentProfile @relation(fields: [parentId], references: [id], onDelete: Cascade)
@@ -661,6 +662,7 @@ model ChatMessage {
   body       String
   createdAt  DateTime       @default(now())
   chatRoom   ChatRoom       @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  reports    ChatMessageReport[]
 
   /// Phone-number flagging (`06` #31, Sep 22, 2026). If `body` (sent
   /// to Parent/Teacher) contained anything shaped like a phone
@@ -674,6 +676,38 @@ model ChatMessage {
 
   @@index([chatRoomId, createdAt])
   @@index([chatRoomId, containsPhoneNumber])
+}
+
+enum ChatReportStatus {
+  OPEN
+  REVIEWED
+}
+
+/// Chat message reports (Sep 30, 2026). Either party in a room (Parent
+/// or Teacher) can report a message the OTHER party sent; Admin sees it
+/// in `/admin/chat-reports` and marks it reviewed. One report per
+/// (message, reporter) — reporting twice is refused. `reporterId` is the
+/// ParentProfile.id / Teacher.id, same convention as
+/// `ChatMessage.senderId` (no FK, loosely typed by `reporterRole`).
+/// `chatRoomId` is denormalized so Admin can link straight to the room.
+/// Reports vanish with their message/room (cascade).
+model ChatMessageReport {
+  id            String           @id @default(uuid())
+  chatMessageId String
+  chatRoomId    String
+  reporterRole  ChatSenderRole
+  reporterId    String
+  reason        String?
+  status        ChatReportStatus @default(OPEN)
+  reviewedAt    DateTime?
+  reviewedBySub String?
+  createdAt     DateTime         @default(now())
+  chatMessage   ChatMessage      @relation(fields: [chatMessageId], references: [id], onDelete: Cascade)
+  chatRoom      ChatRoom         @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+
+  @@unique([chatMessageId, reporterRole, reporterId])
+  @@index([status, createdAt])
+  @@index([chatRoomId])
 }
 
 /// Homework module (added Sep 4, 2026) — deliberately simple, a
@@ -1699,6 +1733,9 @@ enum NotificationType {
   /// `ChatMessage.containsPhoneNumber` doc-comment. Admin-only; never
   /// sent to the Parent/Teacher who sent or received the message.
   CHAT_PHONE_NUMBER_FLAGGED
+  /// Chat message reports (Sep 30, 2026) — Admin-only; see the
+  /// ChatMessageReport model's doc-comment.
+  CHAT_MESSAGE_REPORTED
   /// Account Access (Sep 23, 2026) — sent to a Parent/Teacher when
   /// Admin or IT resets their password or changes their email/phone.
   /// See features/shared/server/accountAccess.service.ts.
@@ -1827,6 +1864,9 @@ enum ActivityAction {
   /// Chat phone-number flagging (`06` #31, Sep 22, 2026) — see the
   /// `ChatMessage.containsPhoneNumber` doc-comment.
   CHAT_PHONE_NUMBER_FLAGGED
+  /// Chat message reports (Sep 30, 2026) — see the ChatMessageReport
+  /// model's doc-comment.
+  CHAT_MESSAGE_REPORTED
   /// Account Access (Sep 23, 2026) — Admin (any account) or IT
   /// (Teacher/Parent only) resetting a password or changing the
   /// email/phone Cognito has on file. See

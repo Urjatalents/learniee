@@ -19,7 +19,7 @@ export default function TeacherChatRoomPage({
   const { rooms } = useChatRooms("/api/teacher/chat");
   const room = rooms.find((r) => r.id === roomId);
 
-  const { messages, loading, error, sending, sendMessage } = useChatMessages(
+  const { messages, loading, error, sending, sendMessage, reportMessage } = useChatMessages(
     `/api/teacher/chat/${roomId}/messages`,
     true,
   );
@@ -42,6 +42,7 @@ export default function TeacherChatRoomPage({
       viewerSenderRole="TEACHER"
       canSend={canSend}
       onSend={sendMessage}
+      onReport={reportMessage}
       disabledReason={
         canSend
           ? undefined

@@ -964,6 +964,38 @@ export function notifyAdminChatPhoneNumberFlagged(
   });
 }
 
+/**
+ * A Parent/Teacher reported a chat message. Admin-only — the person
+ * being reported is never told. Links to the report queue.
+ */
+export function notifyAdminChatMessageReported(
+  roomId: string,
+  reporterRole: "PARENT" | "TEACHER",
+) {
+  return safe("chat message reported", async () => {
+    const room = await prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: {
+        parent: { select: { firstName: true, lastName: true, visibleName: true } },
+        teacher: { select: { firstName: true, lastName: true, visibleName: true } },
+        course: { select: { courseTitle: true } },
+      },
+    });
+    if (!room) return;
+
+    const courseTitle = room.course.courseTitle || "an enrollment";
+    const reporterName =
+      reporterRole === "PARENT" ? displayName(room.parent) : displayName(room.teacher);
+
+    await notifyAllAdmins({
+      type: T.CHAT_MESSAGE_REPORTED,
+      title: "Chat message reported",
+      message: `${reporterName} (${reporterRole.toLowerCase()}) reported a message in the chat for "${courseTitle}".`,
+      link: "/admin/chat-reports",
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Wallet
 // ---------------------------------------------------------------------------

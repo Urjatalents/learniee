@@ -26,7 +26,7 @@ export default function TeacherClassChatPanel({
 }: Props) {
   const canSend = SENDABLE_ENROLLMENT_STATUSES.has(enrollmentStatus);
 
-  const { messages, loading, error, sending, sendMessage } = useChatMessages(
+  const { messages, loading, error, sending, sendMessage, reportMessage } = useChatMessages(
     `/api/teacher/chat/${roomId}/messages`,
     canSend,
   );
@@ -43,6 +43,7 @@ export default function TeacherClassChatPanel({
       viewerSenderRole="TEACHER"
       canSend={canSend}
       onSend={sendMessage}
+      onReport={reportMessage}
       disabledReason={
         canSend
           ? undefined

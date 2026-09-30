@@ -119,5 +119,30 @@ export function useChatMessages(messagesEndpoint: string, canSend: boolean) {
     }
   }
 
-  return { messages, loading, error, sending, sendMessage };
+  /**
+   * Reports a message from the other person to Admin. Throws with the
+   * server's message on failure so the caller (ChatWindow) can show it
+   * next to the message instead of in the page-level error bar.
+   */
+  async function reportMessage(messageId: string, reason?: string) {
+    const res = await fetch(`${messagesEndpoint}/${encodeURIComponent(messageId)}/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to report the message.");
+    }
+
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === messageId ? { ...message, reportedByMe: true } : message,
+      ),
+    );
+  }
+
+  return { messages, loading, error, sending, sendMessage, reportMessage };
 }

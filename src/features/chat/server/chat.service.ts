@@ -173,12 +173,20 @@ const baseMessageSelect = {
  * real number, so the field is left off their query entirely rather
  * than fetched-then-hidden.
  */
-export function listMessages(
+export async function listMessages(
   roomId: string,
   after?: Date,
-  options: { includeOriginal?: boolean } = {},
+  options: {
+    includeOriginal?: boolean;
+    /**
+     * Parent/Teacher routes pass who is asking so each message can say
+     * whether *they* already reported it (`reportedByMe`) — the report
+     * button then shows "Reported" after a reload too.
+     */
+    viewer?: { role: ChatSenderRole; id: string };
+  } = {},
 ) {
-  return prisma.chatMessage.findMany({
+  const messages = await prisma.chatMessage.findMany({
     where: {
       chatRoomId: roomId,
       createdAt: after ? { gt: after } : undefined,
@@ -187,6 +195,32 @@ export function listMessages(
     select: options.includeOriginal
       ? { ...baseMessageSelect, originalBody: true }
       : baseMessageSelect,
+  });
+
+  if (messages.length === 0) {
+    return [];
+  }
+
+  const reports = await prisma.chatMessageReport.findMany({
+    where: { chatMessageId: { in: messages.map((message) => message.id) } },
+    select: { chatMessageId: true, reporterRole: true, reporterId: true },
+  });
+
+  const { viewer } = options;
+
+  return messages.map((message) => {
+    const forMessage = reports.filter((report) => report.chatMessageId === message.id);
+
+    return {
+      ...message,
+      reportedByMe: viewer
+        ? forMessage.some(
+            (report) => report.reporterRole === viewer.role && report.reporterId === viewer.id,
+          )
+        : false,
+      // Admin only (`includeOriginal` is the Admin route's flag).
+      ...(options.includeOriginal ? { reportCount: forMessage.length } : {}),
+    };
   });
 }
 

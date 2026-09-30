@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "lucide-react";
 
@@ -7,6 +8,26 @@ import NotificationBell from "@/features/shared/components/NotificationBell";
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const [openChatReports, setOpenChatReports] = useState<number | null>(null);
+
+  // Badge on the Reported Messages card. Best-effort: a failure just
+  // leaves the badge off, the card still opens the queue.
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/admin/chat-reports", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data && typeof data.openCount === "number") {
+          setOpenChatReports(data.openCount);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,6 +130,26 @@ export default function AdminDashboard() {
               className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
             >
               View Chats
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Reported Messages
+              {openChatReports !== null && openChatReports > 0 && (
+                <span className="ml-2 align-middle text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                  {openChatReports}
+                </span>
+              )}
+            </h3>
+            <p className="text-sm text-gray-500 mt-2">
+              Chat messages a parent or teacher reported.
+            </p>
+            <button
+              onClick={() => router.push("/admin/chat-reports")}
+              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
+            >
+              View Reports
             </button>
           </div>
 

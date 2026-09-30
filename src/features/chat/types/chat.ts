@@ -36,6 +36,10 @@ export interface ChatMessage {
    * was flagged. Parent/Teacher responses never include this field.
    */
   originalBody?: string | null;
+  /** Parent/Teacher responses: whether the viewer already reported this message. */
+  reportedByMe?: boolean;
+  /** Admin messages route only: how many reports this message has. */
+  reportCount?: number;
 }
 
 /** Renders a display name consistently across every chat surface. */

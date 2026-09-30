@@ -33,6 +33,7 @@ export async function GET(
     const messages = await listMessages(
       roomId,
       after ? new Date(after) : undefined,
+      { viewer: { role: "TEACHER", id: teacher.teacherId } },
     );
 
     return NextResponse.json({ success: true, messages });
