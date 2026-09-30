@@ -39,6 +39,11 @@ export default function LandingFooter() {
       ))}
       <div className="legal">
         <span>&copy; 2026 Learniee. All rights reserved.</span>
+        <nav className="legal-links" aria-label="Legal">
+          <Link href="/terms">Terms &amp; Conditions</Link>
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/refunds">Refund Policy</Link>
+        </nav>
         <span>English · INR · India (IST)</span>
       </div>
     </div>

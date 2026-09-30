@@ -28,13 +28,33 @@ export default function TermsCheckbox({
         />
 
         <span className="text-sm text-gray-600">
-          Accepting{" "}
+          I accept the{" "}
           <Link
             href="/terms"
+            target="_blank"
+            rel="noopener noreferrer"
             style={{ color: PRIMARY }}
             className="font-medium"
           >
             Terms & Conditions
+          </Link>,{" "}
+          <Link
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: PRIMARY }}
+            className="font-medium"
+          >
+            Privacy Policy
+          </Link> and{" "}
+          <Link
+            href="/refunds"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: PRIMARY }}
+            className="font-medium"
+          >
+            Refund Policy
           </Link>
         </span>
       </div>

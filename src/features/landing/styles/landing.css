@@ -470,3 +470,30 @@
   .lh .links{gap:16px}
   .lh .nav>.btn{padding:10px 16px;font-size:14px}
 }
+
+/* legal pages (/terms, /privacy, /refunds) and footer legal links */
+.lh .legal-links{display:flex;flex-wrap:wrap;gap:8px 20px}
+.lh .legal-links a{text-decoration:underline;text-underline-offset:3px}
+.lh .legal-links a:hover{color:var(--sun)}
+.lh .policy-updated{margin-top:10px;font-size:14px;color:var(--ink-2)}
+.lh .policy{padding:48px 0 88px}
+.lh .policy .wrap{display:grid;grid-template-columns:270px minmax(0,1fr);gap:40px;align-items:start}
+.lh .policy-toc{position:sticky;top:96px;max-height:calc(100vh - 120px);overflow-y:auto;background:#fff;border:2px solid var(--ink);border-radius:20px;padding:20px;box-shadow:var(--pop)}
+.lh .policy-toc b{display:block;font:800 17px var(--head);margin-bottom:10px}
+.lh .policy-toc ol{list-style:none;padding:0;display:grid;gap:2px;font-size:14px}
+.lh .policy-toc a{display:block;padding:5px 8px;border-radius:8px;color:var(--ink-2)}
+.lh .policy-toc a:hover{background:var(--lav-100);color:var(--ink)}
+.lh .policy-body{background:#fff;border:1px solid var(--lav-200);border-radius:24px;padding:40px}
+.lh .policy-body h2{font-size:clamp(22px,2.6vw,28px);max-width:none;margin:40px 0 14px;scroll-margin-top:96px}
+.lh .policy-body .policy-sec:first-child h2{margin-top:0}
+.lh .policy-body .clause{margin-bottom:12px}
+.lh .policy-body p{font-size:16px;color:var(--ink)}
+.lh .policy-body .num{display:inline-block;min-width:2.6em;margin-right:6px;font-weight:700;color:var(--lav-600)}
+.lh .policy-body a{color:var(--lav-600);text-decoration:underline;text-underline-offset:3px}
+.lh .policy-body ul{margin:8px 0 4px 3.2em;padding-left:18px;display:grid;gap:6px;color:var(--ink-2);font-size:15.5px}
+@media(max-width:920px){
+  .lh .policy .wrap{grid-template-columns:1fr}
+  .lh .policy-toc{position:static;max-height:none}
+  .lh .policy-body{padding:26px 20px}
+  .lh .policy-body ul{margin-left:1.4em}
+}
