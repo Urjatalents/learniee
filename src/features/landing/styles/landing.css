@@ -462,3 +462,11 @@
 .lh .acta{margin-top:28px;padding:28px;border-radius:22px;background:var(--lav-600);color:#fff;display:grid;gap:12px;justify-items:start}
 .lh .acta h2{font-size:24px;max-width:none}
 .lh .acta p{color:var(--lav-100)}
+
+/* navbar: one more link (Refer & Earn) — tighten spacing just above the
+   collapse breakpoint so the row never wraps or collides */
+@media(min-width:1181px) and (max-width:1400px){
+  .lh .nav{gap:16px}
+  .lh .links{gap:16px}
+  .lh .nav>.btn{padding:10px 16px;font-size:14px}
+}
