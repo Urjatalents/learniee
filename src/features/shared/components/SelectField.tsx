@@ -6,6 +6,7 @@ interface SelectFieldProps {
   options: readonly string[];
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   required?: boolean;
+  disabled?: boolean;
   "aria-invalid"?: boolean;
 }
 
@@ -18,6 +19,7 @@ export default function SelectField({
   options,
   onChange,
   required,
+  disabled,
   "aria-invalid": ariaInvalid,
 }: SelectFieldProps) {
   return (
@@ -27,6 +29,7 @@ export default function SelectField({
       value={value}
       onChange={onChange}
       required={required}
+      disabled={disabled}
       aria-invalid={ariaInvalid}
       className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm disabled:pointer-events-none disabled:opacity-50"
     >

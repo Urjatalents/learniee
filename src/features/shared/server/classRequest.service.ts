@@ -8,6 +8,8 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { getStandardPrice } from "@/features/courses/utils/coursePricing";
+import { formatSchedule } from "@/features/shared/utils/weekdays";
 import {
   notifyClassRequestAccepted,
   notifyClassRequestReviewed,
@@ -40,7 +42,6 @@ export class ClassRequestError extends Error {
 const MAX_TITLE = 120;
 const MAX_SUBJECT = 80;
 const MAX_DESCRIPTION = 2000;
-const MAX_SCHEDULE = 300;
 const MAX_NOTE = 500;
 /** Stops one account flooding the Admin queue. */
 const MAX_PENDING_PER_PARENT = 5;
@@ -52,10 +53,28 @@ export interface CreateClassRequestInput {
   grade?: string | null;
   board?: string | null;
   language?: string | null;
-  sessionsPerWeek?: number | string | null;
-  preferredSchedule?: string | null;
-  budgetPerSession?: number | string | null;
+  /** Weekdays, 0 = Sunday. Number of classes per week = how many are picked. */
+  preferredDays?: unknown;
+  /** "HH:mm" */
+  preferredTime?: string | null;
   description?: string;
+}
+
+/** Fixed per-class price for a grade — the same tier rate the course listing uses. */
+export function priceForGrade(grade: string | null | undefined): number | null {
+  return getStandardPrice(grade || null, false);
+}
+
+function parseDays(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+
+  const days = value.map((d) => Number(d));
+
+  if (days.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) {
+    throw new ClassRequestError("Preferred days are invalid.");
+  }
+
+  return [...new Set(days)].sort((a, b) => a - b);
 }
 
 function clean(value: unknown): string {
@@ -88,18 +107,6 @@ function requiredText(value: unknown, max: number, label: string): string {
   return text;
 }
 
-function optionalNumber(value: unknown, label: string, opts: { min: number; max: number; integer?: boolean }) {
-  if (value === null || value === undefined || value === "") return null;
-
-  const n = Number(value);
-
-  if (!Number.isFinite(n) || n < opts.min || n > opts.max || (opts.integer && !Number.isInteger(n))) {
-    throw new ClassRequestError(`${label} must be a ${opts.integer ? "whole " : ""}number between ${opts.min} and ${opts.max}.`);
-  }
-
-  return n;
-}
-
 /* ------------------------------------------------------------------ */
 /* Parent                                                              */
 /* ------------------------------------------------------------------ */
@@ -111,9 +118,22 @@ export async function createClassRequest(parentId: string, input: CreateClassReq
   const grade = optionalText(input.grade, 40, "Grade");
   const board = optionalText(input.board, 40, "Board");
   const language = optionalText(input.language, 40, "Language");
-  const preferredSchedule = optionalText(input.preferredSchedule, MAX_SCHEDULE, "Preferred schedule");
-  const sessionsPerWeek = optionalNumber(input.sessionsPerWeek, "Sessions per week", { min: 1, max: 7, integer: true });
-  const budgetPerSession = optionalNumber(input.budgetPerSession, "Budget per session", { min: 1, max: 100000 });
+
+  // The price is fixed per grade, so a grade is required to quote it.
+  if (!grade || priceForGrade(grade) == null) {
+    throw new ClassRequestError("Please select the grade — the class price is fixed by grade.");
+  }
+
+  const preferredDays = parseDays(input.preferredDays);
+  const preferredTime = clean(input.preferredTime);
+
+  if (preferredDays.length === 0) {
+    throw new ClassRequestError("Please select at least one day for the classes.");
+  }
+
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(preferredTime)) {
+    throw new ClassRequestError("Please select a valid class time.");
+  }
 
   let studentId: string | null = null;
 
@@ -151,9 +171,11 @@ export async function createClassRequest(parentId: string, input: CreateClassReq
       grade,
       board,
       language,
-      sessionsPerWeek,
-      preferredSchedule,
-      budgetPerSession,
+      sessionsPerWeek: preferredDays.length,
+      preferredDays,
+      preferredTime,
+      // Readable copy for anything that still reads the old free-text field.
+      preferredSchedule: formatSchedule(preferredDays, preferredTime),
       description,
     },
   });
@@ -176,9 +198,9 @@ export async function listClassRequestsForParent(parentId: string) {
     },
   });
 
-  return requests.map(({ responses, student, budgetPerSession, ...rest }) => ({
+  return requests.map(({ responses, student, budgetPerSession: _legacyBudget, ...rest }) => ({
     ...rest,
-    budgetPerSession: budgetPerSession ? Number(budgetPerSession) : null,
+    pricePerSession: priceForGrade(rest.grade),
     studentName: student ? student.visibleName || `${student.firstName} ${student.lastName}`.trim() : null,
     acceptedCount: responses.length,
     // Only APPROVED courses are joinable, so only those count as "live".
@@ -228,9 +250,9 @@ export async function listClassRequestsForAdmin() {
     },
   });
 
-  return requests.map(({ parent, student, budgetPerSession, ...rest }) => ({
+  return requests.map(({ parent, student, budgetPerSession: _legacyBudget, ...rest }) => ({
     ...rest,
-    budgetPerSession: budgetPerSession ? Number(budgetPerSession) : null,
+    pricePerSession: priceForGrade(rest.grade),
     parentName: parent.visibleName || `${parent.firstName} ${parent.lastName}`.trim(),
     parentEmail: parent.email,
     studentName: student ? student.visibleName || `${student.firstName} ${student.lastName}`.trim() : null,
@@ -335,13 +357,14 @@ const VACANCY_SELECT = {
   language: true,
   sessionsPerWeek: true,
   preferredSchedule: true,
-  budgetPerSession: true,
+  preferredDays: true,
+  preferredTime: true,
   description: true,
   circulatedAt: true,
 } satisfies Prisma.ClassRequestSelect;
 
-function shapeVacancy<T extends { budgetPerSession: Prisma.Decimal | null }>(row: T) {
-  return { ...row, budgetPerSession: row.budgetPerSession ? Number(row.budgetPerSession) : null };
+function shapeVacancy<T extends { grade: string | null }>(row: T) {
+  return { ...row, pricePerSession: priceForGrade(row.grade) };
 }
 
 /**
@@ -459,7 +482,7 @@ export async function getAcceptedVacancyForListing(teacherId: string, requestId:
 
 /** Throws unless this Teacher may still list a course for the vacancy. Call before creating the Course. */
 export async function assertCanListCourseForVacancy(teacherId: string, requestId: string) {
-  await getAcceptedVacancyForListing(teacherId, requestId);
+  return getAcceptedVacancyForListing(teacherId, requestId);
 }
 
 /**

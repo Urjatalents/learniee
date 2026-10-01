@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadFileToS3 } from "@/lib/uploadFileToS3";
 import { SUBJECT_OPTIONS } from "@/features/courses/constants/courseOptions";
+import { formatSchedule } from "@/features/shared/utils/weekdays";
+import { frequencyForDays, timeSlotForTime } from "@/features/shared/utils/classRequestStatus";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
 
 export function useCreateCourse() {
@@ -17,6 +19,8 @@ export function useCreateCourse() {
   // Set when arriving from an accepted vacancy (/teacher/vacancy):
   // `?classRequestId=…` links the new course to it and prefills the form.
   const [classRequestId, setClassRequestId] = useState<string | null>(null);
+  // True when the vacancy fixes the price/grade (course form then locks them).
+  const [pricingLocked, setPricingLocked] = useState(false);
   const [initialValues, setInitialValues] = useState<Partial<CourseFormData> | undefined>();
 
   useEffect(() => {
@@ -38,9 +42,13 @@ export function useCreateCourse() {
         if (cancelled) return;
 
         const v = data.vacancy;
+        const days: number[] = Array.isArray(v.preferredDays) ? v.preferredDays : [];
+        const scheduleText = days.length
+          ? formatSchedule(days, v.preferredTime)
+          : v.preferredSchedule ?? "";
         const details = [
           v.description,
-          v.preferredSchedule ? `Preferred schedule: ${v.preferredSchedule}` : "",
+          scheduleText ? `Preferred schedule (IST): ${scheduleText}` : "",
         ].filter(Boolean);
 
         setClassRequestId(requestId);
@@ -54,7 +62,15 @@ export function useCreateCourse() {
           language: v.language ?? "",
           courseTags: v.subject ?? "",
           description: details.join("\n\n"),
+          // From the parent's requested days/time.
+          frequency: frequencyForDays(days.length) ?? "",
+          timeSlot: timeSlotForTime(v.preferredTime) ?? "",
+          // A request is for one child.
+          type: "Individual",
+          // Fixed by grade for vacancy listings; the server enforces it too.
+          ...(typeof v.pricePerSession === "number" ? { price: String(v.pricePerSession) } : {}),
         });
+        setPricingLocked(typeof v.pricePerSession === "number");
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load the vacancy.");
@@ -142,5 +158,6 @@ export function useCreateCourse() {
     goToCourseManagement,
     initialValues,
     classRequestId,
+    pricingLocked,
   };
 }

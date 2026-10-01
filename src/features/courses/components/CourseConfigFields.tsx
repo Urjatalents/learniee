@@ -15,9 +15,11 @@ interface Props {
   onChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => void;
+  /** Grade is read-only (vacancy listing). */
+  gradeLocked?: boolean;
 }
 
-export default function CourseConfigFields({ formData, onChange }: Props) {
+export default function CourseConfigFields({ formData, onChange, gradeLocked }: Props) {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -56,6 +58,7 @@ export default function CourseConfigFields({ formData, onChange }: Props) {
             onChange={onChange}
             placeholder="Grade"
             options={GRADE_OPTIONS}
+            disabled={gradeLocked}
           />
 
           <SelectField

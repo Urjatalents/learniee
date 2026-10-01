@@ -17,6 +17,7 @@ export default function NewCoursePage() {
     handleSubmit,
     goToCourseManagement,
     initialValues,
+    pricingLocked,
     classRequestId,
   } = useCreateCourse();
 
@@ -70,7 +71,7 @@ export default function NewCoursePage() {
 
             <div className="bg-white border rounded-2xl p-6 sm:p-8 shadow-sm">
               <form onSubmit={handleSubmit} className="space-y-10">
-                <CreateCourseForm onChange={setFormData} initialValues={initialValues} />
+                <CreateCourseForm onChange={setFormData} initialValues={initialValues} pricingLocked={pricingLocked} />
 
                 <CourseMediaUpload
                   thumbnail={thumbnail}

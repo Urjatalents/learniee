@@ -33,7 +33,10 @@ export interface ParentClassRequest {
   language: string | null;
   sessionsPerWeek: number | null;
   preferredSchedule: string | null;
-  budgetPerSession: number | null;
+  preferredDays: number[];
+  preferredTime: string | null;
+  /** Fixed per-class price for the grade (null for old requests without a grade). */
+  pricePerSession: number | null;
   description: string;
   status: "PENDING_REVIEW" | "OPEN" | "REJECTED" | "CLOSED";
   adminNote: string | null;
@@ -50,9 +53,8 @@ export interface ClassRequestFormInput {
   grade: string;
   board: string;
   language: string;
-  sessionsPerWeek: string;
-  preferredSchedule: string;
-  budgetPerSession: string;
+  preferredDays: number[];
+  preferredTime: string;
   description: string;
 }
 
@@ -122,7 +124,10 @@ export interface TeacherVacancy {
   language: string | null;
   sessionsPerWeek: number | null;
   preferredSchedule: string | null;
-  budgetPerSession: number | null;
+  preferredDays: number[];
+  preferredTime: string | null;
+  /** Fixed per-class price for the grade (null for old requests without a grade). */
+  pricePerSession: number | null;
   description: string;
   circulatedAt: string | null;
   status: string;

@@ -30,3 +30,31 @@ export function formatClassRequestDate(value: string | null | undefined) {
     year: "numeric",
   });
 }
+
+/** Course "Frequency" option matching a number of classes per week (null if none fits). */
+export function frequencyForDays(count: number): string | null {
+  switch (count) {
+    case 1:
+      return "Weekly";
+    case 3:
+      return "3 Days a Week";
+    case 5:
+      return "5 Days a Week";
+    case 7:
+      return "Daily";
+    default:
+      return null;
+  }
+}
+
+/** Course "Time Slot" option for an "HH:mm" time (null if unreadable). */
+export function timeSlotForTime(time: string | null | undefined): string | null {
+  const hour = Number((time ?? "").split(":")[0]);
+
+  if (!time || !Number.isFinite(hour)) return null;
+
+  if (hour < 12) return "Morning";
+  if (hour < 17) return "Afternoon";
+
+  return "Evening";
+}

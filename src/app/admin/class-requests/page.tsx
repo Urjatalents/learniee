@@ -1,5 +1,6 @@
 "use client";
 
+import { formatSchedule } from "@/features/shared/utils/weekdays";
 import { useState } from "react";
 
 import { useAdminClassRequests, type AdminClassRequest } from "@/features/class-requests/hooks/useClassRequests";
@@ -115,8 +116,12 @@ export default function AdminClassRequestsPage() {
                   <p className="text-xs text-gray-500 mt-2">
                     {[
                       r.sessionsPerWeek ? `${r.sessionsPerWeek} class(es)/week` : null,
-                      r.preferredSchedule ? `Timings: ${r.preferredSchedule}` : null,
-                      r.budgetPerSession ? `Budget ₹${r.budgetPerSession}/class` : null,
+                      r.preferredDays.length > 0
+                        ? `Schedule: ${formatSchedule(r.preferredDays, r.preferredTime)} (IST)`
+                        : r.preferredSchedule
+                          ? `Timings: ${r.preferredSchedule}`
+                          : null,
+                      r.pricePerSession ? `Fixed price ₹${r.pricePerSession}/class` : null,
                     ]
                       .filter(Boolean)
                       .join(" · ")}

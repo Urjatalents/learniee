@@ -11,6 +11,11 @@ interface Props {
   onChange: (data: CourseFormData) => void;
   /** Prefill applied once when it first arrives (e.g. from an accepted class-request vacancy). */
   initialValues?: Partial<CourseFormData>;
+  /**
+   * True when listing for a class-request vacancy: grade and price are fixed by
+   * the request's grade (the server enforces this too), so both are read-only.
+   */
+  pricingLocked?: boolean;
 }
 
 /**
@@ -23,7 +28,7 @@ function withStandardPrice(data: CourseFormData): CourseFormData {
   return standard != null ? { ...data, price: String(standard) } : data;
 }
 
-export default function CreateCourseForm({ onChange, initialValues }: Props) {
+export default function CreateCourseForm({ onChange, initialValues, pricingLocked = false }: Props) {
   const [formData, setFormData] = useState<CourseFormData>(initialCourseFormData);
   // Tracks whether the teacher has deliberately typed their own price,
   // so we stop auto-prefilling once they have (and never for IITian,
@@ -34,7 +39,15 @@ export default function CreateCourseForm({ onChange, initialValues }: Props) {
   // setState) from the effect itself, never from inside an updater.
   const latestForm = useRef<CourseFormData>(formData);
 
-  function applyForm(next: CourseFormData) {
+  // A vacancy listing is never an IITian listing — its price is fixed by grade.
+  const lockedRef = useRef(pricingLocked);
+
+  useEffect(() => {
+    lockedRef.current = pricingLocked;
+  }, [pricingLocked]);
+
+  function applyForm(input: CourseFormData) {
+    const next = lockedRef.current ? { ...input, isIITian: false } : input;
     latestForm.current = next;
     setFormData(next);
     onChange(next);
@@ -92,6 +105,10 @@ export default function CreateCourseForm({ onChange, initialValues }: Props) {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) {
     const { name, value } = e.target;
+
+    // Grade and price are fixed for vacancy listings.
+    if (pricingLocked && (name === "grade" || name === "price")) return;
+
     let updatedData = { ...formData, [name]: value };
 
     if (name === "price") {
@@ -112,11 +129,12 @@ export default function CreateCourseForm({ onChange, initialValues }: Props) {
 
   return (
     <div className="space-y-6">
-      <CourseConfigFields formData={formData} onChange={handleChange} />
+      <CourseConfigFields formData={formData} onChange={handleChange} gradeLocked={pricingLocked} />
       <CourseDetailFields
         formData={formData}
         onChange={handleChange}
-        iitianEligible={teacherIITianEligible}
+        iitianEligible={teacherIITianEligible && !pricingLocked}
+        priceLocked={pricingLocked}
       />
       <CourseCertificateFields
         formData={formData}

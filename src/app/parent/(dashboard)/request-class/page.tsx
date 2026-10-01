@@ -4,6 +4,9 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { PlusCircle } from "lucide-react";
 
+import { getStandardPrice } from "@/features/courses/utils/coursePricing";
+import { WEEKDAY_LABELS, formatSchedule } from "@/features/shared/utils/weekdays";
+
 import { useParentClassRequests } from "@/features/class-requests/hooks/useClassRequests";
 import { useStudents } from "@/features/parent/hooks/useStudents";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
@@ -33,9 +36,8 @@ const emptyForm = {
   grade: "",
   board: "",
   language: "",
-  sessionsPerWeek: "",
-  preferredSchedule: "",
-  budgetPerSession: "",
+  preferredDays: [] as number[],
+  preferredTime: "",
   description: "",
 };
 
@@ -48,9 +50,20 @@ export default function ParentRequestClassPage() {
   const { students } = useStudents();
   const [form, setForm] = useState(emptyForm);
 
-  function update(name: keyof typeof emptyForm, value: string) {
+  function update(name: Exclude<keyof typeof emptyForm, "preferredDays">, value: string) {
     setForm((current) => ({ ...current, [name]: value }));
   }
+
+  function toggleDay(day: number) {
+    setForm((current) => ({
+      ...current,
+      preferredDays: current.preferredDays.includes(day)
+        ? current.preferredDays.filter((d) => d !== day)
+        : [...current.preferredDays, day].sort((a, b) => a - b),
+    }));
+  }
+
+  const fixedPrice = getStandardPrice(form.grade || null, false);
 
   function pickStudent(studentId: string) {
     const student = students.find((s) => s.id === studentId);
@@ -140,42 +153,53 @@ export default function ParentRequestClassPage() {
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <SelectField name="grade" value={form.grade} onChange={(e) => update("grade", e.target.value)} placeholder="Grade" options={GRADE_OPTIONS} />
+            <SelectField name="grade" value={form.grade} onChange={(e) => update("grade", e.target.value)} placeholder="Grade *" options={GRADE_OPTIONS} required />
             <SelectField name="board" value={form.board} onChange={(e) => update("board", e.target.value)} placeholder="Board" options={BOARD_OPTIONS} />
             <SelectField name="language" value={form.language} onChange={(e) => update("language", e.target.value)} placeholder="Language" options={LANGUAGE_OPTIONS} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-xs font-semibold text-gray-600">
-              Classes per week
-              <input
-                type="number"
-                min={1}
-                max={7}
-                value={form.sessionsPerWeek}
-                onChange={(e) => update("sessionsPerWeek", e.target.value)}
-                className={`${inputClass} mt-1`}
-              />
-            </label>
-            <label className="block text-xs font-semibold text-gray-600">
-              Budget per class (₹)
-              <input
-                type="number"
-                min={1}
-                value={form.budgetPerSession}
-                onChange={(e) => update("budgetPerSession", e.target.value)}
-                className={`${inputClass} mt-1`}
-              />
-            </label>
+          <div className="rounded-lg bg-purple-50 px-3 py-2 text-xs text-purple-700">
+            {fixedPrice != null
+              ? `Fixed price for ${form.grade}: ₹${fixedPrice} per class. It is set by grade and can't be changed.`
+              : "Select a grade to see the fixed price per class."}
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-600 mb-1">Days for the classes *</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {WEEKDAY_LABELS.map((label, day) => {
+                const active = form.preferredDays.includes(day);
+
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => toggleDay(day)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-colors ${
+                      active
+                        ? "bg-purple-600 text-white border-purple-600"
+                        : "bg-white text-gray-500 border-gray-200 hover:border-purple-300"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {form.preferredDays.length > 0 && (
+              <p className="text-xs text-gray-400 mt-1">
+                {form.preferredDays.length} class{form.preferredDays.length === 1 ? "" : "es"} per week
+              </p>
+            )}
           </div>
 
           <label className="block text-xs font-semibold text-gray-600">
-            Preferred days / timings
+            Class time (IST) *
             <input
-              value={form.preferredSchedule}
-              onChange={(e) => update("preferredSchedule", e.target.value)}
-              maxLength={300}
-              placeholder="e.g. Weekends, 5–7 PM IST"
+              type="time"
+              value={form.preferredTime}
+              onChange={(e) => update("preferredTime", e.target.value)}
+              required
               className={`${inputClass} mt-1`}
             />
           </label>
@@ -228,7 +252,15 @@ export default function ParentRequestClassPage() {
                 </div>
 
                 <p className="text-sm text-gray-600 mt-3 whitespace-pre-line">{r.description}</p>
-                <p className="text-xs text-gray-400 mt-2">Requested {formatClassRequestDate(r.createdAt)}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  {[
+                    r.preferredDays.length > 0 ? formatSchedule(r.preferredDays, r.preferredTime) : r.preferredSchedule,
+                    r.pricePerSession ? `₹${r.pricePerSession} per class` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">Requested {formatClassRequestDate(r.createdAt)}</p>
 
                 {r.adminNote && (
                   <p className="mt-3 text-sm bg-gray-50 rounded-lg p-3 text-gray-600">

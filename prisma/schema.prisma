@@ -1980,6 +1980,12 @@ model ClassRequest {
   language          String?
   sessionsPerWeek   Int?
   preferredSchedule String?
+  /// Weekdays the Parent wants classes on (0 = Sunday, same as `Enrollment.scheduleDays`).
+  preferredDays     Int[]              @default([])
+  /// "HH:mm" in the platform timezone (IST).
+  preferredTime     String?
+  /// Legacy: no longer asked or shown. The per-class price is fixed by grade
+  /// (`getStandardPrice`), so a Parent can't propose a budget.
   budgetPerSession  Decimal?           @db.Decimal(10, 2)
   description       String
   status            ClassRequestStatus @default(PENDING_REVIEW)

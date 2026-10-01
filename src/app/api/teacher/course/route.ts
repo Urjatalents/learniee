@@ -147,7 +147,15 @@ export async function POST(req: Request) {
         : null;
 
     if (classRequestId) {
-      await assertCanListCourseForVacancy(teacher.id, classRequestId);
+      const vacancy = await assertCanListCourseForVacancy(teacher.id, classRequestId);
+
+      // The parent was quoted the grade's fixed price, so the listing uses
+      // exactly that — never what the client sent, and never the IITian rate.
+      if (vacancy.pricePerSession != null) {
+        input.grade = vacancy.grade ?? input.grade;
+        input.isIITian = false;
+        input.price = String(vacancy.pricePerSession);
+      }
     }
 
     const course = await createCourse(

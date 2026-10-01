@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { useTeacherVacancies } from "@/features/class-requests/hooks/useClassRequests";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
+import { formatSchedule } from "@/features/shared/utils/weekdays";
 import { formatClassRequestDate } from "@/features/shared/utils/classRequestStatus";
 
 /**
@@ -72,8 +73,12 @@ export default function TeacherVacancyPage() {
 
                 <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
                   {v.sessionsPerWeek && <div>{v.sessionsPerWeek} class(es) / week</div>}
-                  {v.preferredSchedule && <div>Timings: {v.preferredSchedule}</div>}
-                  {v.budgetPerSession && <div>Budget: ₹{v.budgetPerSession} / class</div>}
+                  {v.preferredDays.length > 0 ? (
+                    <div>Schedule: {formatSchedule(v.preferredDays, v.preferredTime)} (IST)</div>
+                  ) : (
+                    v.preferredSchedule && <div>Timings: {v.preferredSchedule}</div>
+                  )}
+                  {v.pricePerSession && <div>Price: ₹{v.pricePerSession} / class (fixed by grade)</div>}
                   <div>Posted {formatClassRequestDate(v.circulatedAt)}</div>
                 </dl>
 

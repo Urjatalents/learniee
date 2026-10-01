@@ -25,12 +25,15 @@ interface Props {
    * regardless of this prop.
    */
   iitianEligible?: boolean;
+  /** Vacancy listing: the price is fixed by the request's grade and read-only. */
+  priceLocked?: boolean;
 }
 
 export default function CourseDetailFields({
   formData,
   onChange,
   iitianEligible,
+  priceLocked,
 }: Props) {
   const standardPrice = getStandardPrice(formData.grade || null, formData.isIITian);
   const manualPrice = formData.price ? Number(formData.price) : null;
@@ -112,11 +115,17 @@ export default function CourseDetailFields({
           placeholder="Price"
           value={formData.price}
           onChange={onChange}
-          disabled={formData.isIITian}
+          disabled={formData.isIITian || priceLocked}
         />
       </div>
 
-      {iitianEligible ? (
+      {priceLocked ? (
+        <div className="border border-gray-200 rounded-lg p-4">
+          <p className="text-xs text-gray-500">
+            {`This course is for a parent's class request, so the price is fixed by grade at ₹${standardPrice ?? formData.price}/session and can't be changed.`}
+          </p>
+        </div>
+      ) : iitianEligible ? (
         <div className="border border-gray-200 rounded-lg p-4">
           <p className="text-sm font-medium text-gray-800">IITian course</p>
           <p className="text-xs text-gray-500 mt-2">
