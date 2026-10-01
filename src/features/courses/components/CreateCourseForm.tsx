@@ -9,6 +9,8 @@ import { initialCourseFormData, type CourseFormData } from "@/features/courses/t
 
 interface Props {
   onChange: (data: CourseFormData) => void;
+  /** Prefill applied once when it first arrives (e.g. from an accepted class-request vacancy). */
+  initialValues?: Partial<CourseFormData>;
 }
 
 /**
@@ -21,7 +23,7 @@ function withStandardPrice(data: CourseFormData): CourseFormData {
   return standard != null ? { ...data, price: String(standard) } : data;
 }
 
-export default function CreateCourseForm({ onChange }: Props) {
+export default function CreateCourseForm({ onChange, initialValues }: Props) {
   const [formData, setFormData] = useState<CourseFormData>(initialCourseFormData);
   // Tracks whether the teacher has deliberately typed their own price,
   // so we stop auto-prefilling once they have (and never for IITian,
@@ -70,6 +72,19 @@ export default function CreateCourseForm({ onChange }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // One-time prefill. Price follows the standard rate for the prefilled
+  // grade unless the teacher later types their own (priceTouched).
+  useEffect(() => {
+    if (!initialValues) return;
+
+    setFormData((prev) => {
+      const merged = withStandardPrice({ ...prev, ...initialValues });
+      onChange(merged);
+      return merged;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues]);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,

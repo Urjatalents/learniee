@@ -185,6 +185,21 @@ export default function AdminDashboard() {
 
           <div className="bg-white rounded-xl border shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-800">
+              Class Requests / Vacancy
+            </h3>
+            <p className="text-sm text-gray-500 mt-2">
+              Custom classes parents asked for — review and share with teachers.
+            </p>
+            <button
+              onClick={() => router.push("/admin/class-requests")}
+              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
+            >
+              View Class Requests
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800">
               Payout Review
             </h3>
             <p className="text-sm text-gray-500 mt-2">

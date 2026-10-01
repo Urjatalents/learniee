@@ -29,6 +29,9 @@ export interface CourseFormInput {
 
   thumbnailKey?: string;
   introVideoKey?: string;
+
+  /** Set when this course is the listing for an accepted class-request vacancy. */
+  classRequestId?: string;
 }
 
 /**

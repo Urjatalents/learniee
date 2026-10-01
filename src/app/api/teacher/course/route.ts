@@ -10,6 +10,11 @@ import {
 import { getStandardPrice } from "@/features/courses/utils/coursePricing";
 
 import { prisma } from "@/lib/prisma";
+import {
+  ClassRequestError,
+  assertCanListCourseForVacancy,
+  attachCourseToVacancy,
+} from "@/features/shared/server/classRequest.service";
 
 /**
  * GET
@@ -134,10 +139,25 @@ export async function POST(req: Request) {
       );
     }
 
+    // Listing for an accepted class-request vacancy: check the Teacher
+    // really accepted it (and hasn't listed one yet) before creating.
+    const classRequestId =
+      typeof input.classRequestId === "string" && input.classRequestId
+        ? input.classRequestId
+        : null;
+
+    if (classRequestId) {
+      await assertCanListCourseForVacancy(teacher.id, classRequestId);
+    }
+
     const course = await createCourse(
       teacher.id,
       input,
     );
+
+    if (classRequestId) {
+      await attachCourseToVacancy(teacher.id, classRequestId, course.id);
+    }
 
     return NextResponse.json(
       {
@@ -147,6 +167,10 @@ export async function POST(req: Request) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof ClassRequestError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     console.error("Teacher course POST error:", error);
 
     return NextResponse.json(

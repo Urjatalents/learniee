@@ -16,6 +16,8 @@ export default function NewCoursePage() {
     error,
     handleSubmit,
     goToCourseManagement,
+    initialValues,
+    classRequestId,
   } = useCreateCourse();
 
   return (
@@ -54,13 +56,21 @@ export default function NewCoursePage() {
               </p>
             </div>
 
+            {classRequestId && (
+              <div className="mb-6 rounded-lg bg-purple-50 text-purple-800 text-sm p-4">
+                You&apos;re listing a course for a class request you accepted. The details below are
+                prefilled — adjust anything, add your media and submit. It goes through the normal
+                course approval before parents can join.
+              </div>
+            )}
+
             {error && (
               <ErrorBanner>{error}</ErrorBanner>
             )}
 
             <div className="bg-white border rounded-2xl p-6 sm:p-8 shadow-sm">
               <form onSubmit={handleSubmit} className="space-y-10">
-                <CreateCourseForm onChange={setFormData} />
+                <CreateCourseForm onChange={setFormData} initialValues={initialValues} />
 
                 <CourseMediaUpload
                   thumbnail={thumbnail}

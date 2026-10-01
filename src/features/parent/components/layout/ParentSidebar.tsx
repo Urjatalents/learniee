@@ -22,6 +22,7 @@ import {
   MessageCircle,
   ClipboardList,
   Newspaper,
+  PlusCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -66,6 +67,7 @@ const menuSections: MenuSection[] = [
       { label: "Home", path: "/parent", icon: LayoutDashboard },
       { label: "Courses", path: "/parent/courses", icon: BookOpen },
       { label: "Free Demo", path: "/parent/free-demo", icon: Video },
+      { label: "Request Class", path: "/parent/request-class", icon: PlusCircle },
       { label: "Calendar", path: "/parent/calendar", icon: Calendar },
     ],
   },

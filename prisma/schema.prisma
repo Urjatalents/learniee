@@ -59,6 +59,7 @@ model ParentProfile {
   reviews             Review[]
   certificates        Certificate[]
   resources           Resource[]
+  classRequests       ClassRequest[]
 }
 
 model Admin {
@@ -93,6 +94,7 @@ model Student {
   parent               ParentProfile  @relation(fields: [parentId], references: [id], onDelete: Cascade)
   certificates         Certificate[]
   resources            Resource[]
+  classRequests        ClassRequest[]
 
   @@index([parentId])
 }
@@ -149,6 +151,7 @@ model Teacher {
   certificates       Certificate[]
   resources          Resource[]
   blogPosts          BlogPost[]
+  classRequestResponses ClassRequestResponse[]
 }
 
 model TeacherProfessional {
@@ -271,6 +274,7 @@ model Course {
   enrollments     Enrollment[]
   reviews         Review[]
   certificates    Certificate[]
+  classRequestResponse ClassRequestResponse?
 
   @@index([teacherId])
   @@index([status])
@@ -1664,6 +1668,10 @@ enum CertificateStatus {
 }
 
 enum NotificationType {
+  CLASS_REQUEST_SUBMITTED
+  CLASS_REQUEST_REVIEWED
+  CLASS_REQUEST_VACANCY
+  CLASS_REQUEST_ACCEPTED
   ENROLLMENT_CREATED
   ENROLLMENT_TEACHER_APPROVED
   ENROLLMENT_REVISION_PROPOSED
@@ -1816,6 +1824,8 @@ enum ActivityActorRole {
 /// rather than reusing GENERIC when a new "major thing" needs
 /// tracking; GENERIC is a last-resort catch-all only.
 enum ActivityAction {
+  CLASS_REQUEST_REVIEWED
+  CLASS_REQUEST_CLOSED
   AUTH_LOGIN
   AUTH_LOGOUT
   CLASS_SESSION_COMPLETED
@@ -1951,4 +1961,71 @@ enum InvoiceType {
 /// Always PARENT today — see the `Invoice` model's doc-comment.
 enum InvoicePayerRole {
   PARENT
+}
+
+/// Custom class requests (Oct 2026). A Parent asks for a class that isn't in
+/// the course catalogue; Admin vets it (PENDING_REVIEW -> OPEN or REJECTED) and
+/// circulating it makes it a "vacancy" every approved Teacher can see. Teachers
+/// answer through `ClassRequestResponse`; an accepting Teacher then lists a
+/// normal Course (which still goes through the usual course approval).
+/// Teachers never see the Parent's identity, only the learner's grade.
+model ClassRequest {
+  id                String             @id @default(uuid())
+  parentId          String
+  studentId         String?
+  title             String
+  subject           String
+  grade             String?
+  board             String?
+  language          String?
+  sessionsPerWeek   Int?
+  preferredSchedule String?
+  budgetPerSession  Decimal?           @db.Decimal(10, 2)
+  description       String
+  status            ClassRequestStatus @default(PENDING_REVIEW)
+  adminNote         String?
+  reviewedBySub     String?
+  reviewedAt        DateTime?
+  circulatedAt      DateTime?
+  closedAt          DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  parent            ParentProfile      @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student           Student?           @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  responses         ClassRequestResponse[]
+
+  @@index([parentId])
+  @@index([status, createdAt])
+}
+
+/// One Teacher's answer to one vacancy. Final (no switching accept/decline).
+/// `courseId` is set when the accepting Teacher lists the course for it.
+model ClassRequestResponse {
+  id             String                     @id @default(uuid())
+  classRequestId String
+  teacherId      String
+  status         ClassRequestResponseStatus
+  note           String?
+  courseId       String?                    @unique
+  respondedAt    DateTime                   @default(now())
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+  classRequest   ClassRequest               @relation(fields: [classRequestId], references: [id], onDelete: Cascade)
+  teacher        Teacher                    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  course         Course?                    @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@unique([classRequestId, teacherId])
+  @@index([teacherId])
+}
+
+enum ClassRequestStatus {
+  PENDING_REVIEW
+  OPEN
+  REJECTED
+  CLOSED
+}
+
+enum ClassRequestResponseStatus {
+  ACCEPTED
+  DECLINED
 }
