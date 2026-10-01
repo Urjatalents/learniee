@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import CourseConfigFields from "@/features/courses/components/CourseConfigFields";
-import CourseDetailFields from "@/features/courses/components/CourseDetailFields";
+import CourseBasicsFields from "@/features/courses/components/CourseBasicsFields";
+import CourseFormatFields from "@/features/courses/components/CourseFormatFields";
+import CoursePricingFields from "@/features/courses/components/CoursePricingFields";
+import CourseSection from "@/features/courses/components/CourseSection";
 import CourseCertificateFields from "@/features/courses/components/CourseCertificateFields";
 import { formatGradeRange, getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
 import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
@@ -161,21 +164,40 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
   }
 
   return (
-    <div className="space-y-6">
-      <CourseConfigFields formData={formData} onChange={handleChange} gradeLocked={pricingLocked}
-        onGradeModeChange={handleGradeModeChange}
-      />
-      <CourseDetailFields
-        formData={formData}
-        onChange={handleChange}
-        iitianEligible={teacherIITianEligible && !pricingLocked}
-        priceLocked={pricingLocked}
-      />
-      <CourseCertificateFields
-        formData={formData}
-        onChange={handleChange}
-        onToggle={handleCertificateToggle}
-      />
-    </div>
+    <>
+      <CourseSection id="basics">
+        <CourseBasicsFields formData={formData} onChange={handleChange} />
+      </CourseSection>
+
+      <CourseSection id="audience">
+        <CourseConfigFields
+          formData={formData}
+          onChange={handleChange}
+          gradeLocked={pricingLocked}
+          onGradeModeChange={handleGradeModeChange}
+        />
+      </CourseSection>
+
+      <CourseSection id="format">
+        <CourseFormatFields formData={formData} onChange={handleChange} />
+      </CourseSection>
+
+      <CourseSection id="pricing">
+        <CoursePricingFields
+          formData={formData}
+          onChange={handleChange}
+          iitianEligible={teacherIITianEligible && !pricingLocked}
+          priceLocked={pricingLocked}
+        />
+      </CourseSection>
+
+      <CourseSection id="certificate">
+        <CourseCertificateFields
+          formData={formData}
+          onChange={handleChange}
+          onToggle={handleCertificateToggle}
+        />
+      </CourseSection>
+    </>
   );
 }

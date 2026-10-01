@@ -1,3 +1,5 @@
+import { Input } from "@/components/ui/input";
+import FormField, { controlClass } from "@/features/courses/components/FormField";
 import type { CourseFormData } from "@/features/courses/types/course";
 
 interface Props {
@@ -19,28 +21,44 @@ interface Props {
  */
 export default function CourseCertificateFields({ formData, onChange, onToggle }: Props) {
   return (
-    <div className="border border-gray-200 rounded-lg p-4">
-      <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
-        <input
-          type="checkbox"
-          checked={formData.certificateEnabled}
-          onChange={(e) => onToggle(e.target.checked)}
-          className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-        />
-        Issue a certificate on completion
-      </label>
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-gray-800">Issue a certificate on completion</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            When enabled, a certificate becomes available for you to allot once a student completes the
+            chosen number of sessions in this course.
+          </p>
+        </div>
 
-      <p className="text-xs text-gray-500 mt-1 mb-3">
-        When enabled, a certificate becomes available for you to allot once a
-        student completes the chosen number of sessions in this course.
-      </p>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={formData.certificateEnabled}
+          aria-label="Issue a certificate on completion"
+          onClick={() => onToggle(!formData.certificateEnabled)}
+          className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500 ${
+            formData.certificateEnabled ? "bg-violet-600" : "bg-gray-300"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform ${
+              formData.certificateEnabled ? "translate-x-5" : ""
+            }`}
+          />
+        </button>
+      </div>
 
       {formData.certificateEnabled && (
-        <div className="max-w-xs">
-          <label className="text-xs text-gray-500 block mb-1">
-            Sessions required for certificate
-          </label>
-          <input
+        <FormField
+          label="Sessions required for certificate"
+          htmlFor="field-certificateSessionThreshold"
+          required
+          hint="Set once when you create the course — it can't be changed later."
+          className="max-w-xs"
+        >
+          <Input
+            id="field-certificateSessionThreshold"
             type="number"
             name="certificateSessionThreshold"
             min={1}
@@ -48,10 +66,10 @@ export default function CourseCertificateFields({ formData, onChange, onToggle }
             value={formData.certificateSessionThreshold}
             onChange={onChange}
             placeholder="e.g. 12"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            className={controlClass}
           />
-        </div>
+        </FormField>
       )}
-    </div>
+    </>
   );
 }
