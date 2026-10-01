@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CourseConfigFields from "@/features/courses/components/CourseConfigFields";
 import CourseDetailFields from "@/features/courses/components/CourseDetailFields";
 import CourseCertificateFields from "@/features/courses/components/CourseCertificateFields";
@@ -29,6 +29,16 @@ export default function CreateCourseForm({ onChange, initialValues }: Props) {
   // so we stop auto-prefilling once they have (and never for IITian,
   // whose price is always fixed).
   const [priceTouched, setPriceTouched] = useState(false);
+  // Latest form state for the async effects below, so they can compute the
+  // next value outside a setState updater and call onChange (a parent
+  // setState) from the effect itself, never from inside an updater.
+  const latestForm = useRef<CourseFormData>(formData);
+
+  function applyForm(next: CourseFormData) {
+    latestForm.current = next;
+    setFormData(next);
+    onChange(next);
+  }
   // Whether the logged-in teacher is eligible for an IITian listing:
   // self-declared IITian at onboarding Step 1 AND Admin-approved
   // ("verified"). Only then is the course forced to the IITian
@@ -54,11 +64,7 @@ export default function CreateCourseForm({ onChange, initialValues }: Props) {
         if (cancelled || !eligible) return;
 
         setTeacherIITianEligible(true);
-        setFormData((prev) => {
-          const updated = withStandardPrice({ ...prev, isIITian: true });
-          onChange(updated);
-          return updated;
-        });
+        applyForm(withStandardPrice({ ...latestForm.current, isIITian: true }));
       } catch {
         // Non-fatal — worst case the teacher doesn't see the IITian
         // lock; the price/flag are still enforced server-side on submit.
@@ -78,11 +84,7 @@ export default function CreateCourseForm({ onChange, initialValues }: Props) {
   useEffect(() => {
     if (!initialValues) return;
 
-    setFormData((prev) => {
-      const merged = withStandardPrice({ ...prev, ...initialValues });
-      onChange(merged);
-      return merged;
-    });
+    applyForm(withStandardPrice({ ...latestForm.current, ...initialValues }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
 
@@ -101,15 +103,11 @@ export default function CreateCourseForm({ onChange, initialValues }: Props) {
       updatedData = withStandardPrice(updatedData);
     }
 
-    setFormData(updatedData);
-    onChange(updatedData);
+    applyForm(updatedData);
   }
 
   function handleCertificateToggle(checked: boolean) {
-    const updatedData = { ...formData, certificateEnabled: checked };
-
-    setFormData(updatedData);
-    onChange(updatedData);
+    applyForm({ ...formData, certificateEnabled: checked });
   }
 
   return (
