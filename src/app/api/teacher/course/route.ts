@@ -7,7 +7,9 @@ import {
   getTeacherCourses,
   type CourseFormInput,
 } from "@/features/courses/server/course.service";
-import { getStandardPrice } from "@/features/courses/utils/coursePricing";
+import { getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
+import { normalizeCourseChoices } from "@/features/courses/utils/courseInput";
+import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -111,6 +113,19 @@ export async function POST(req: Request) {
       );
     }
 
+    // Resolve "Other" subject / "Custom" frequency & modules / grade range
+    // into the plain stored strings (and reject anything malformed).
+    const choices = normalizeCourseChoices(input);
+
+    if (!choices.ok) {
+      return NextResponse.json({ error: choices.error }, { status: 400 });
+    }
+
+    input.subject = choices.subject;
+    input.grade = choices.grade;
+    input.frequency = choices.frequency;
+    input.modules = choices.modules;
+
     if (input.certificateEnabled) {
       const threshold = Number(input.certificateSessionThreshold);
 
@@ -127,7 +142,11 @@ export async function POST(req: Request) {
     // fall back to — i.e. a recognised grade, or the IITian flag.
     const hasManualPrice = Boolean(input.price) && Number.isFinite(Number(input.price));
     const hasStandardPrice =
-      getStandardPrice(input.grade || null, Boolean(input.isIITian)) != null;
+      getStandardSessionPrice(
+        input.grade || null,
+        Boolean(input.isIITian),
+        sessionLengthForCourse(input.duration),
+      ) != null;
 
     if (!hasManualPrice && !hasStandardPrice) {
       return NextResponse.json(
@@ -149,12 +168,15 @@ export async function POST(req: Request) {
     if (classRequestId) {
       const vacancy = await assertCanListCourseForVacancy(teacher.id, classRequestId);
 
-      // The parent was quoted the grade's fixed price, so the listing uses
-      // exactly that — never what the client sent, and never the IITian rate.
+      // The parent was quoted the grade's fixed hourly rate, so the listing
+      // uses exactly that, scaled by the lecture duration — never what the
+      // client sent, and never the IITian rate.
       if (vacancy.pricePerSession != null) {
         input.grade = vacancy.grade ?? input.grade;
         input.isIITian = false;
-        input.price = String(vacancy.pricePerSession);
+        input.price = String(
+          getStandardSessionPrice(input.grade, false, sessionLengthForCourse(input.duration)),
+        );
       }
     }
 

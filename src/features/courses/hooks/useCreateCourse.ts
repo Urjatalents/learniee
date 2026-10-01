@@ -56,7 +56,12 @@ export function useCreateCourse() {
           courseTitle: v.title,
           // The form's Subject/Grade/Board are fixed lists, so a custom
           // subject is carried in the title/tags instead of a blank select.
-          subject: SUBJECT_OPTIONS.includes(v.subject) ? v.subject : "",
+          // A custom subject goes in via "Other" + the written name.
+          ...((SUBJECT_OPTIONS as readonly string[]).includes(v.subject)
+            ? { subject: v.subject }
+            : { subject: "Other", subjectOther: v.subject ?? "" }),
+          gradeMode: "single",
+          gradeFrom: v.grade ?? "",
           grade: v.grade ?? "",
           board: v.board ?? "",
           language: v.language ?? "",

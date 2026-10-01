@@ -1,11 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { getStandardPrice } from "@/features/courses/utils/coursePricing";
+import { getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
+import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 
 export interface CourseFormInput {
   category: string;
   timeSlot: string;
 
   subject: string;
+  /** Typed subject name when `subject` is "Other" (resolved by the route). */
+  subjectOther?: string;
   grade: string;
   board: string;
   experience: string;
@@ -14,12 +17,14 @@ export interface CourseFormInput {
   type: string;
   language: string;
   frequency: string;
+  frequencyCustom?: string;
 
   courseTitle: string;
   objective: string;
   description: string;
 
   modules: string;
+  moduleCustom?: string;
   courseTags: string;
   price: string;
   isIITian?: boolean;
@@ -35,7 +40,7 @@ export interface CourseFormInput {
 }
 
 /**
- * Standard pricing (Sep 2026). Authoritative — never trust a
+ * Standard pricing (Sep 2026; per-hour rate scaled by duration since Oct 2026). Authoritative — never trust a
  * client-computed price/flag, same principle as enrollment pricing
  * (see priceCycleEnrollment in enrollment.service.ts). `standardPrice`
  * is the tier rate for the chosen grade / IITian flag (null if
@@ -43,14 +48,19 @@ export interface CourseFormInput {
  * rate, so a manual price that differs from it sets
  * `isPriceCustomized` for the Admin review screen.
  *
- * IITian-listed courses are always the fixed ₹700 rate — any
+ * IITian-listed courses are always the fixed ₹700/hour rate — any
  * client-submitted `price` is ignored for them, same as any other
  * server-authoritative price. There is nothing to "customize" for an
  * IITian listing, so `isPriceCustomized` is always false for one.
  */
 function priceCourse(input: CourseFormInput) {
   const isIITian = Boolean(input.isIITian);
-  const standardPrice = getStandardPrice(input.grade || null, isIITian);
+  // Standard rates are per hour; the session price scales with the lecture length.
+  const standardPrice = getStandardSessionPrice(
+    input.grade || null,
+    isIITian,
+    sessionLengthForCourse(input.duration),
+  );
 
   if (isIITian) {
     return { isIITian, standardPrice, price: standardPrice, isPriceCustomized: false };

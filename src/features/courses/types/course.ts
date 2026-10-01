@@ -3,7 +3,13 @@ export interface CourseFormData {
   timeSlot: string;
 
   subject: string;
+  /** Final stored value, derived from gradeMode/gradeFrom/gradeTo by the form. */
   grade: string;
+  gradeMode: "single" | "range";
+  gradeFrom: string;
+  gradeTo: string;
+  /** Free text, used when `subject` is "Other". */
+  subjectOther: string;
   board: string;
   experience: string;
 
@@ -11,12 +17,16 @@ export interface CourseFormData {
   type: string;
   language: string;
   frequency: string;
+  /** Used when `frequency` is "Custom". */
+  frequencyCustom: string;
 
   courseTitle: string;
   objective: string;
   description: string;
 
   modules: string;
+  /** Number of modules, used when `modules` is "Custom". */
+  moduleCustom: string;
   courseTags: string;
   price: string;
   isIITian: boolean;
@@ -31,6 +41,10 @@ export const initialCourseFormData: CourseFormData = {
 
   subject: "",
   grade: "",
+  gradeMode: "single",
+  gradeFrom: "",
+  gradeTo: "",
+  subjectOther: "",
   board: "",
   experience: "",
 
@@ -38,12 +52,14 @@ export const initialCourseFormData: CourseFormData = {
   type: "",
   language: "",
   frequency: "",
+  frequencyCustom: "",
 
   courseTitle: "",
   objective: "",
   description: "",
 
   modules: "",
+  moduleCustom: "",
   courseTags: "",
   price: "",
   isIITian: false,

@@ -121,7 +121,7 @@ export default function AdminClassRequestsPage() {
                         : r.preferredSchedule
                           ? `Timings: ${r.preferredSchedule}`
                           : null,
-                      r.pricePerSession ? `Fixed price ₹${r.pricePerSession}/class` : null,
+                      r.pricePerSession ? `Fixed price ₹${r.pricePerSession}/hour` : null,
                     ]
                       .filter(Boolean)
                       .join(" · ")}

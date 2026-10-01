@@ -9,6 +9,7 @@ export const SUBJECT_OPTIONS = [
   "Mathematics",
   "Biology",
   "English",
+  "Other",
 ] as const;
 
 export const GRADE_OPTIONS = [
@@ -64,6 +65,7 @@ export const FREQUENCY_OPTIONS = [
   "3 Days a Week",
   "5 Days a Week",
   "Weekly",
+  "Custom",
 ] as const;
 
 export const MODULE_OPTIONS = [
@@ -72,6 +74,13 @@ export const MODULE_OPTIONS = [
   "3 Modules",
   "4 Modules",
   "5 Modules",
+  "All",
+  "Custom",
 ] as const;
 
 
+
+/** Value of the Subject / Frequency / Modules selects that reveals a free-entry field. */
+export const OTHER_SUBJECT = "Other";
+export const CUSTOM_OPTION = "Custom";
+export const ALL_MODULES = "All";

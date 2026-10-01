@@ -6,8 +6,10 @@ import {
   LANGUAGE_OPTIONS,
   FREQUENCY_OPTIONS,
   MODULE_OPTIONS,
+  CUSTOM_OPTION,
 } from "@/features/courses/constants/courseOptions";
-import { getStandardPrice } from "@/features/courses/utils/coursePricing";
+import { getStandardPrice, getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
+import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import type { CourseFormData } from "@/features/courses/types/course";
 
 interface Props {
@@ -35,7 +37,14 @@ export default function CourseDetailFields({
   iitianEligible,
   priceLocked,
 }: Props) {
-  const standardPrice = getStandardPrice(formData.grade || null, formData.isIITian);
+  // Standard rates are per hour; the per-session price scales with the lecture length.
+  const lectureMinutes = sessionLengthForCourse(formData.duration);
+  const hourlyRate = getStandardPrice(formData.grade || null, formData.isIITian);
+  const standardPrice = getStandardSessionPrice(
+    formData.grade || null,
+    formData.isIITian,
+    lectureMinutes,
+  );
   const manualPrice = formData.price ? Number(formData.price) : null;
   const isPriceCustomized =
     standardPrice != null && manualPrice != null && manualPrice !== standardPrice;
@@ -64,13 +73,24 @@ export default function CourseDetailFields({
           placeholder="Language"
           options={LANGUAGE_OPTIONS}
         />
-        <SelectField
-          name="frequency"
-          value={formData.frequency}
-          onChange={onChange}
-          placeholder="Frequency"
-          options={FREQUENCY_OPTIONS}
-        />
+        <div className="space-y-2">
+          <SelectField
+            name="frequency"
+            value={formData.frequency}
+            onChange={onChange}
+            placeholder="Frequency"
+            options={FREQUENCY_OPTIONS}
+          />
+          {formData.frequency === CUSTOM_OPTION && (
+            <Input
+              name="frequencyCustom"
+              placeholder="e.g. 2 days a week"
+              value={formData.frequencyCustom}
+              onChange={onChange}
+              maxLength={60}
+            />
+          )}
+        </div>
       </div>
 
       <Input
@@ -97,13 +117,26 @@ export default function CourseDetailFields({
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <SelectField
-          name="modules"
-          value={formData.modules}
-          onChange={onChange}
-          placeholder="Modules"
-          options={MODULE_OPTIONS}
-        />
+        <div className="space-y-2">
+          <SelectField
+            name="modules"
+            value={formData.modules}
+            onChange={onChange}
+            placeholder="Modules"
+            options={MODULE_OPTIONS}
+          />
+          {formData.modules === CUSTOM_OPTION && (
+            <Input
+              name="moduleCustom"
+              type="number"
+              min={1}
+              max={50}
+              placeholder="Number of modules"
+              value={formData.moduleCustom}
+              onChange={onChange}
+            />
+          )}
+        </div>
         <Input
           name="courseTags"
           placeholder="Course Tags"
@@ -112,7 +145,7 @@ export default function CourseDetailFields({
         />
         <Input
           name="price"
-          placeholder="Price"
+          placeholder="Price per session"
           value={formData.price}
           onChange={onChange}
           disabled={formData.isIITian || priceLocked}
@@ -122,21 +155,21 @@ export default function CourseDetailFields({
       {priceLocked ? (
         <div className="border border-gray-200 rounded-lg p-4">
           <p className="text-xs text-gray-500">
-            {`This course is for a parent's class request, so the price is fixed by grade at ₹${standardPrice ?? formData.price}/session and can't be changed.`}
+            {`This course is for a parent's class request, so the price is fixed by grade at ₹${hourlyRate ?? "-"}/hour — ₹${standardPrice ?? formData.price}/session for a ${lectureMinutes}-minute lecture. It can't be changed.`}
           </p>
         </div>
       ) : iitianEligible ? (
         <div className="border border-gray-200 rounded-lg p-4">
           <p className="text-sm font-medium text-gray-800">IITian course</p>
           <p className="text-xs text-gray-500 mt-2">
-            {`Your profile is marked as an IITian, so this course is always listed as an IITian course, fixed at ₹${getStandardPrice(null, true)}/session.`}
+            {`Your profile is marked as an IITian, so this course is always listed as an IITian course, fixed at ₹${getStandardPrice(null, true)}/hour — ₹${standardPrice ?? "-"}/session for a ${lectureMinutes}-minute lecture.`}
           </p>
         </div>
       ) : (
         <div className="border border-gray-200 rounded-lg p-4">
           <p className="text-xs text-gray-500">
             {standardPrice != null
-              ? `Price is prefilled with the standard rate for Grade ${formData.grade.replace(/\D/g, "") || "-"} (₹${standardPrice}/session). You can change it, but a different price will need Admin approval.`
+              ? `Price is the standard rate for ${formData.grade} (₹${hourlyRate}/hour), scaled to your ${lectureMinutes}-minute lecture: ₹${standardPrice}/session. You can change it, but a different price will need Admin approval.`
               : "Select a grade to prefill the standard price, or enter your own."}
           </p>
 

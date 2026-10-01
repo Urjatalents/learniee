@@ -160,8 +160,8 @@ export default function ParentRequestClassPage() {
 
           <div className="rounded-lg bg-purple-50 px-3 py-2 text-xs text-purple-700">
             {fixedPrice != null
-              ? `Fixed price for ${form.grade}: ₹${fixedPrice} per class. It is set by grade and can't be changed.`
-              : "Select a grade to see the fixed price per class."}
+              ? `Fixed price for ${form.grade}: ₹${fixedPrice} per hour (scaled if the lecture is shorter or longer). It is set by grade and can't be changed.`
+              : "Select a grade to see the fixed hourly price."}
           </div>
 
           <div>
@@ -255,7 +255,7 @@ export default function ParentRequestClassPage() {
                 <p className="text-xs text-gray-500 mt-2">
                   {[
                     r.preferredDays.length > 0 ? formatSchedule(r.preferredDays, r.preferredTime) : r.preferredSchedule,
-                    r.pricePerSession ? `₹${r.pricePerSession} per class` : null,
+                    r.pricePerSession ? `₹${r.pricePerSession} per hour` : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}

@@ -78,7 +78,7 @@ export default function TeacherVacancyPage() {
                   ) : (
                     v.preferredSchedule && <div>Timings: {v.preferredSchedule}</div>
                   )}
-                  {v.pricePerSession && <div>Price: ₹{v.pricePerSession} / class (fixed by grade)</div>}
+                  {v.pricePerSession && <div>Price: ₹{v.pricePerSession} / hour (fixed by grade, scaled by lecture length)</div>}
                   <div>Posted {formatClassRequestDate(v.circulatedAt)}</div>
                 </dl>
 

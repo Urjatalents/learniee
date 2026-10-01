@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import CourseConfigFields from "@/features/courses/components/CourseConfigFields";
 import CourseDetailFields from "@/features/courses/components/CourseDetailFields";
 import CourseCertificateFields from "@/features/courses/components/CourseCertificateFields";
-import { getStandardPrice } from "@/features/courses/utils/coursePricing";
+import { formatGradeRange, getStandardSessionPrice } from "@/features/courses/utils/coursePricing";
+import { sessionLengthForCourse } from "@/features/shared/utils/sessionLength";
 import { initialCourseFormData, type CourseFormData } from "@/features/courses/types/course";
 
 interface Props {
@@ -19,13 +20,30 @@ interface Props {
 }
 
 /**
- * Sets Price to the standard rate for the given grade/IITian
- * combination. No-op (keeps whatever Price already holds) when
- * neither the grade nor the IITian flag resolves to a standard rate.
+ * Sets Price to the standard per-session rate for the given
+ * grade/IITian combination and lecture duration (hourly rate scaled by
+ * length). No-op (keeps whatever Price already holds) when neither the
+ * grade nor the IITian flag resolves to a standard rate.
  */
 function withStandardPrice(data: CourseFormData): CourseFormData {
-  const standard = getStandardPrice(data.grade || null, data.isIITian);
+  const standard = getStandardSessionPrice(
+    data.grade || null,
+    data.isIITian,
+    sessionLengthForCourse(data.duration),
+  );
   return standard != null ? { ...data, price: String(standard) } : data;
+}
+
+/** Derives the single stored `grade` ("Grade 8" / "Grade 6-8") from the grade controls. */
+function withDerivedGrade(data: CourseFormData): CourseFormData {
+  const from = Number(data.gradeFrom.replace(/\D/g, ""));
+  const to = Number(data.gradeTo.replace(/\D/g, ""));
+
+  if (!from) return { ...data, grade: "" };
+
+  if (data.gradeMode === "single") return { ...data, grade: data.gradeFrom };
+
+  return { ...data, grade: to ? formatGradeRange(from, to) ?? "" : "" };
 }
 
 export default function CreateCourseForm({ onChange, initialValues, pricingLocked = false }: Props) {
@@ -47,7 +65,8 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
   }, [pricingLocked]);
 
   function applyForm(input: CourseFormData) {
-    const next = lockedRef.current ? { ...input, isIITian: false } : input;
+    const base = lockedRef.current ? { ...input, isIITian: false } : input;
+    const next = withDerivedGrade(base);
     latestForm.current = next;
     setFormData(next);
     onChange(next);
@@ -97,7 +116,7 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
   useEffect(() => {
     if (!initialValues) return;
 
-    applyForm(withStandardPrice({ ...latestForm.current, ...initialValues }));
+    applyForm(withStandardPrice(withDerivedGrade({ ...latestForm.current, ...initialValues })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
 
@@ -107,20 +126,34 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
     const { name, value } = e.target;
 
     // Grade and price are fixed for vacancy listings.
-    if (pricingLocked && (name === "grade" || name === "price")) return;
+    if (pricingLocked && (name === "gradeFrom" || name === "gradeTo" || name === "price")) return;
 
-    let updatedData = { ...formData, [name]: value };
+    let updatedData = withDerivedGrade({ ...formData, [name]: value });
 
     if (name === "price") {
       // Manual edit — stop auto-prefilling for the rest of this form.
       setPriceTouched(true);
-    } else if (name === "grade" && !priceTouched && !formData.isIITian) {
-      // Grade just changed and the teacher hasn't touched Price yet —
-      // keep it prefilled with the new standard rate.
+    } else if (
+      (name === "gradeFrom" || name === "gradeTo" || name === "duration") &&
+      // IITian / vacancy prices always follow the rate; otherwise only until
+      // the teacher has typed their own.
+      (formData.isIITian || pricingLocked || !priceTouched)
+    ) {
+      // Grade or lecture length changed — keep Price at the standard rate.
       updatedData = withStandardPrice(updatedData);
     }
 
     applyForm(updatedData);
+  }
+
+  function handleGradeModeChange(mode: "single" | "range") {
+    if (pricingLocked) return;
+
+    // Switching to a single grade drops the upper end of the range.
+    let next: CourseFormData = { ...formData, gradeMode: mode, gradeTo: mode === "single" ? "" : formData.gradeTo };
+    next = withDerivedGrade(next);
+
+    applyForm(!priceTouched && !formData.isIITian ? withStandardPrice(next) : next);
   }
 
   function handleCertificateToggle(checked: boolean) {
@@ -129,7 +162,9 @@ export default function CreateCourseForm({ onChange, initialValues, pricingLocke
 
   return (
     <div className="space-y-6">
-      <CourseConfigFields formData={formData} onChange={handleChange} gradeLocked={pricingLocked} />
+      <CourseConfigFields formData={formData} onChange={handleChange} gradeLocked={pricingLocked}
+        onGradeModeChange={handleGradeModeChange}
+      />
       <CourseDetailFields
         formData={formData}
         onChange={handleChange}
