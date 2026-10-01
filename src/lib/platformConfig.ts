@@ -37,6 +37,8 @@ export const SESSION_POLICY = {
   completionWindowDays: 45,
   /** Minimum sessions a cycle must contain to be bookable. */
   minSessionsPerCycle: 4,
+  /** Weekly plan: a 7-day cycle only needs one class. */
+  minSessionsPerWeeklyCycle: 1,
   /**
    * Part 2B: a cycle-model Enrollment's Renew action opens this many
    * days before the current cycle's `endDate` (inclusive) and stays

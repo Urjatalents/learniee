@@ -441,6 +441,9 @@ model Enrollment {
   /// record and all sessions created up front at activation. The
   /// migration flags every pre-existing row TRUE.
   isLegacy                   Boolean              @default(false)
+  /// MONTHLY (default) or WEEKLY — see `EnrollmentPlanType`. Every
+  /// existing row is MONTHLY.
+  planType                   EnrollmentPlanType   @default(MONTHLY)
   /// Length of every session in minutes, taken from Course.duration
   /// and locked at booking. Null on legacy rows.
   sessionLengthMinutes       Int?
@@ -963,6 +966,15 @@ model EnrollmentCycle {
 
   @@unique([enrollmentId, cycleNumber])
   @@index([enrollmentId])
+}
+
+/// How an enrollment's cycles are bought (Oct 2026). MONTHLY = one
+/// month of classes planned and paid up front (the original cycle
+/// model). WEEKLY = a 7-day cycle that repeats: classes for one week
+/// are paid, then the parent renews week by week.
+enum EnrollmentPlanType {
+  MONTHLY
+  WEEKLY
 }
 
 enum CycleStatus {

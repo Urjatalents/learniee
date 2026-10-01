@@ -83,6 +83,7 @@ export default function EnrollmentApprovalCard({
     ? buildCyclePlan(
         enrollment.cycleStartDate.slice(0, 10),
         enrollment.scheduleDays ?? [],
+        enrollment.planType ?? "MONTHLY",
       )
     : null;
   const startPassed = cyclePlan

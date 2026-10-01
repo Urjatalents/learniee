@@ -21,7 +21,24 @@ import {
  * never trusted for anything.
  */
 
+export type PlanType = "MONTHLY" | "WEEKLY";
+
+export function parsePlanType(value: unknown): PlanType {
+  return value === "WEEKLY" ? "WEEKLY" : "MONTHLY";
+}
+
+export function minSessionsForPlan(planType: PlanType): number {
+  return planType === "WEEKLY"
+    ? SESSION_POLICY.minSessionsPerWeeklyCycle
+    : SESSION_POLICY.minSessionsPerCycle;
+}
+
+export function cycleLabel(planType: PlanType): string {
+  return planType === "WEEKLY" ? "week" : "month";
+}
+
 export interface CyclePlan {
+  planType: PlanType;
   startDate: CalendarDate;
   /** Last day of the cycle (inclusive). */
   endDate: CalendarDate;
@@ -37,12 +54,16 @@ export interface CyclePlan {
 export function buildCyclePlan(
   startDateKey: string,
   scheduleDays: number[],
+  planType: PlanType = "MONTHLY",
 ): CyclePlan | null {
   const startDate = parseDateKey(startDateKey);
 
   if (!startDate) return null;
 
-  const nextCycleStart = addOneMonthClamped(startDate);
+  // WEEKLY: 7 days, start date to start + 6. MONTHLY: same date next
+  // month minus one day.
+  const nextCycleStart =
+    planType === "WEEKLY" ? addDays(startDate, 7) : addOneMonthClamped(startDate);
   const endDate = addDays(nextCycleStart, -1);
   const cycleLengthDays = daysBetween(startDate, endDate) + 1;
   const daySet = new Set(scheduleDays);
@@ -58,6 +79,7 @@ export function buildCyclePlan(
   }
 
   return {
+    planType,
     startDate,
     endDate,
     nextCycleStart,
@@ -69,12 +91,12 @@ export function buildCyclePlan(
 
 /** Null if the plan is bookable, otherwise a message explaining why not. */
 export function getCyclePlanProblem(plan: CyclePlan): string | null {
-  const min = SESSION_POLICY.minSessionsPerCycle;
+  const min = minSessionsForPlan(plan.planType);
 
   if (plan.sessionCount < min) {
     return `Your schedule only has ${plan.sessionCount} session${
       plan.sessionCount === 1 ? "" : "s"
-    } between ${formatCycleRange(plan)} — a cycle needs at least ${min}. Pick more class days or a different start date.`;
+    } between ${formatCycleRange(plan)} — a ${cycleLabel(plan.planType)} needs at least ${min}. Pick more class days or a different start date.`;
   }
 
   if (plan.sessionCount > plan.cycleLengthDays) {

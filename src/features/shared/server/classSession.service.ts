@@ -283,6 +283,7 @@ export async function createCycleSessions(
   const plan = buildCyclePlan(
     toDateKey(dateToCalendarDate(cycle.startDate)),
     enrollment.scheduleDays,
+    enrollment.planType,
   );
 
   if (

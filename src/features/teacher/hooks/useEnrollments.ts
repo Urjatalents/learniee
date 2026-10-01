@@ -19,6 +19,7 @@ export interface TeacherEnrollment {
   pricingChangedAfterPayment: boolean;
   /** True for enrollments created before the cycle model (old months x sessions pricing, editable schedule). */
   isLegacy: boolean;
+  planType?: "MONTHLY" | "WEEKLY";
   sessionsCompletedInCycle: number;
   cyclesCompleted: number;
   cyclePayoutStatus: string;

@@ -194,10 +194,11 @@ async function buildRenewalPlan(
   const plan = buildCyclePlan(
     toDateKey(addDays(dateToCalendarDate(latestCycle.endDate), 1)),
     scheduleDays,
+    enrollment.planType,
   );
 
   if (!plan) {
-    throw new RenewalError("Couldn't work out next month's dates — try again.");
+    throw new RenewalError("Couldn't work out the next cycle's dates — try again.");
   }
 
   const planProblem = getCyclePlanProblem(plan);
@@ -388,7 +389,11 @@ export async function verifyRenewalPayment(
   }
 
   const startDate = new Date(String(notes.cycleStartDate));
-  const plan = buildCyclePlan(String(notes.cycleStartDate), scheduleDays);
+  const plan = buildCyclePlan(
+    String(notes.cycleStartDate),
+    scheduleDays,
+    enrollment.planType,
+  );
 
   if (!plan) {
     throw new RenewalError("Couldn't rebuild this renewal's cycle — contact support.", 500);

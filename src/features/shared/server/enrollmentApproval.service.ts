@@ -390,7 +390,7 @@ async function reviseCycleEnrollment(
     );
   }
 
-  const plan = buildCyclePlan(startKey, scheduleDays);
+  const plan = buildCyclePlan(startKey, scheduleDays, enrollment.planType);
 
   if (!plan) {
     throw new EnrollmentApprovalError("That doesn't look like a valid date.");

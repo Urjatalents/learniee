@@ -17,6 +17,7 @@ import {
   formatCycleSummary,
   getCyclePlanProblem,
   priceForSessions,
+  type PlanType,
 } from "@/features/shared/utils/cyclePlan";
 import { toDateKey, todayInPlatformTz } from "@/lib/platformTime";
 
@@ -138,6 +139,9 @@ export default function BookingPanel({
   );
   // Recurring weekly schedule — required before enrolling so the
   // teacher/parent calendar can actually show something real.
+  // MONTHLY = plan the whole month ahead; WEEKLY = one week at a
+  // time, renewed every week.
+  const [planType, setPlanType] = useState<PlanType>("MONTHLY");
   const [scheduleDays, setScheduleDays] = useState<number[]>([]);
   const [scheduleTime, setScheduleTime] = useState("");
   const [enrolling, setEnrolling] = useState(false);
@@ -167,9 +171,9 @@ export default function BookingPanel({
   const cyclePlan = useMemo(
     () =>
       startDate && scheduleDays.length > 0
-        ? buildCyclePlan(startDate, scheduleDays)
+        ? buildCyclePlan(startDate, scheduleDays, planType)
         : null,
-    [startDate, scheduleDays],
+    [startDate, scheduleDays, planType],
   );
   const planProblem = cyclePlan ? getCyclePlanProblem(cyclePlan) : null;
 
@@ -330,6 +334,7 @@ export default function BookingPanel({
         teacherId,
         courseId,
         subject,
+        planType,
         cycleStartDate: startDate,
         scheduleDays,
         scheduleTime,
@@ -519,6 +524,38 @@ export default function BookingPanel({
         <h3 className="font-heading text-sm font-bold text-gray-800 mb-3">
           Enroll in this course
         </h3>
+
+        <div className="mb-3">
+          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+            Plan
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { value: "WEEKLY", title: "Classes weekly", hint: "Pay week by week; classes repeat every week" },
+                { value: "MONTHLY", title: "Complete month plan", hint: "Plan and pay for the whole month ahead" },
+              ] as const
+            ).map((option) => {
+              const active = planType === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setPlanType(option.value)}
+                  aria-pressed={active}
+                  className={`text-left rounded-xl border px-3 py-2 transition-colors ${
+                    active
+                      ? "bg-violet-50 border-brand text-brand-dark"
+                      : "bg-white border-violet-100 text-gray-600 hover:border-brand/40"
+                  }`}
+                >
+                  <span className="block text-xs font-bold">{option.title}</span>
+                  <span className="block text-[11px] text-gray-500 mt-0.5">{option.hint}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="mb-3">
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">

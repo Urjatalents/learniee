@@ -20,6 +20,8 @@ import { generateInvoiceForPayment } from "@/features/shared/server/invoice.serv
 import {
   buildCyclePlan,
   getCyclePlanProblem,
+  parsePlanType,
+  type PlanType,
   isStartDateInPast,
   priceForSessions,
 } from "@/features/shared/utils/cyclePlan";
@@ -93,6 +95,8 @@ export interface CreateEnrollmentInput {
    * created.
    */
   cycleStartDate?: string;
+  /** MONTHLY (default) = one month planned and paid up front; WEEKLY = a 7-day cycle the parent renews each week. */
+  planType?: PlanType;
   /** Weekly recurring class days — 0=Sunday..6=Saturday, at least one required. */
   scheduleDays: number[];
   /** Weekly recurring class time, 24-hour "HH:mm". */
@@ -118,6 +122,7 @@ interface PricedEnrollment {
   dueDate: Date;
   scheduleDays: number[];
   scheduleTime: string;
+  planType: PlanType;
   model: PricingModel;
   /** Cycle model only: "YYYY-MM-DD" of the cycle start. */
   cycleStartKey: string | null;
@@ -282,6 +287,7 @@ async function priceLegacyEnrollment(
     dueDate,
     scheduleDays,
     scheduleTime: input.scheduleTime,
+    planType: "MONTHLY",
     model: "LEGACY",
     cycleStartKey: null,
     cycleEndDate: null,
@@ -326,7 +332,8 @@ async function priceCycleEnrollment(
 
   const today = todayInPlatformTz();
   const startKey = input.cycleStartDate?.trim() || toDateKey(today);
-  const plan = buildCyclePlan(startKey, scheduleDays);
+  const planType = parsePlanType(input.planType);
+  const plan = buildCyclePlan(startKey, scheduleDays, planType);
 
   if (!plan) {
     throw new EnrollmentError(
@@ -408,6 +415,7 @@ async function priceCycleEnrollment(
     dueDate: calendarDateToDate(plan.nextCycleStart),
     scheduleDays,
     scheduleTime: input.scheduleTime,
+    planType,
     model: "CYCLE_V1",
     cycleStartKey: toDateKey(plan.startDate),
     cycleEndDate: calendarDateToDate(plan.endDate),
@@ -460,6 +468,7 @@ function buildEnrollmentCreateData(args: {
     scheduleDays: priced.scheduleDays,
     scheduleTime: priced.scheduleTime,
     isLegacy: !isCycleModel,
+    planType: priced.planType,
     sessionLengthMinutes: priced.sessionLengthMinutes,
     // Payment already succeeded by this point — go straight into
     // the Teacher's review queue (resolves #2's sequential flow).
@@ -526,6 +535,8 @@ function parseInputFromNotes(
       }
     })(),
     scheduleTime: String(notes.scheduleTime ?? ""),
+    // Orders created before weekly plans existed have no planType.
+    planType: parsePlanType(notes.planType),
   };
 }
 
@@ -588,6 +599,7 @@ export async function createEnrollmentOrder(
       courseId: input.courseId,
       subject: priced.subject ?? "",
       model: CYCLE_MODEL_TAG,
+      planType: priced.planType,
       // "YYYY-MM-DD" in the platform timezone; the session count is
       // re-derived from it + scheduleDays, never trusted from here.
       cycleStartDate: priced.cycleStartKey ?? "",

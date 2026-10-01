@@ -8,7 +8,6 @@ import {
   Video,
   BookOpen,
   Calendar,
-  Heart,
   RefreshCw,
   CreditCard,
   FolderOpen,
@@ -48,12 +47,9 @@ interface MenuSection {
 // classes, homework and chat live on one page. The old routes stay
 // as redirects/legacy views so no existing link breaks.
 //
-// Re-added (per request): standalone "Homework" and "Chat" sidebar
-// items, since parents wanted direct one-tap access instead of going
-// through My Classes first. They link to the existing legacy routes
-// (/parent/homework-tests, /parent/chat), which currently redirect to
-// My Classes — swap them to deep-link into a specific course's tab
-// there if/when that's wired up.
+// Standalone "Homework" and "Chat" items open their own pages
+// (/parent/homework-tests, /parent/chat) — course list -> homework /
+// conversation. "Favorites" was removed (no page ever existed).
 //
 // Note (still true): Preference, Notification, Gift, Go Live,
 // Learnie Mall, Suggestions, Transcripts and FAQs stay
@@ -80,7 +76,6 @@ const menuSections: MenuSection[] = [
       { label: "Reschedule", path: "/parent/reschedule", icon: RefreshCw },
       { label: "Payments", path: "/parent/payments", icon: CreditCard },
       { label: "Wallet", path: "/parent/wallet", icon: WalletIcon },
-      { label: "Favorites", path: "/parent/favorites", icon: Heart },
     ],
   },
   {
