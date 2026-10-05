@@ -175,14 +175,16 @@ export interface MeetSpace {
 }
 
 /**
- * Creates a Meet space owned by the organizer: anyone with the link
- * can join (parents need no Google account) and the meeting is
- * recorded automatically to the organizer's Drive.
+ * Creates a Meet space owned by the organizer. Access is TRUSTED: people
+ * invited as members (the teacher, as co-host) join directly, everyone
+ * else must knock and be admitted by the teacher — so Meet no longer
+ * shows "This call is open to anyone". The meeting is recorded
+ * automatically to the organizer's Drive.
  */
 export async function createMeetSpace(): Promise<MeetSpace> {
   const space = await meetRequest<{ name?: string; meetingUri?: string }>(`${MEET_V2}/spaces`, {
     config: {
-      accessType: "OPEN",
+      accessType: "TRUSTED",
       artifactConfig: {
         recordingConfig: { autoRecordingGeneration: "ON" },
       },

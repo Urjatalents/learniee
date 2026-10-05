@@ -95,7 +95,7 @@ export function useSessionFlow(role: SessionFlowRole, sessionId: string) {
     };
   }, [shouldPoll, refresh]);
 
-  const act = useCallback(
+  const perform = useCallback(
     async (action: SessionFlowAction, body?: Record<string, unknown>) => {
       try {
         setBusy(true);
@@ -113,10 +113,10 @@ export function useSessionFlow(role: SessionFlowRole, sessionId: string) {
         }
 
         apply(data.session);
-        return true;
+        return data.session as SessionFlowState;
       } catch (err) {
         setError(err instanceof Error ? err.message : "That didn't work. Please try again.");
-        return false;
+        return null;
       } finally {
         setBusy(false);
       }
@@ -124,8 +124,52 @@ export function useSessionFlow(role: SessionFlowRole, sessionId: string) {
     [base, apply],
   );
 
+  const act = useCallback(
+    async (action: SessionFlowAction, body?: Record<string, unknown>) =>
+      (await perform(action, body)) !== null,
+    [perform],
+  );
+
+  /**
+   * Start (teacher) / Join (parent) and go straight into Google Meet.
+   * A tab is opened synchronously inside the click (so the browser's
+   * popup blocker allows it) and pointed at the Meet link once the
+   * server has recorded the event. If Meet is off or the room isn't
+   * ready, the tab is closed again and the page's own state shows why.
+   * `copyText` (the student's name) is put on the clipboard at click
+   * time, for the "enter your name" box Meet shows to signed-out guests.
+   */
+  const enterMeeting = useCallback(
+    async (action: "start" | "join", copyText?: string | null) => {
+      const meetingOn = state?.meetingEnabled === true;
+      const tab = meetingOn ? window.open("about:blank", "_blank") : null;
+
+      if (tab) tab.opener = null;
+
+      if (meetingOn && copyText) {
+        navigator.clipboard?.writeText(copyText).catch(() => {});
+      }
+
+      const session = await perform(action);
+      const uri = session?.meetingUri ?? null;
+
+      if (uri) {
+        if (tab) {
+          tab.location.href = uri;
+        } else {
+          window.location.assign(uri);
+        }
+      } else {
+        tab?.close();
+      }
+
+      return session !== null;
+    },
+    [state?.meetingEnabled, perform],
+  );
+
   // Server-corrected "now" as of the last clock tick.
   const now = new Date(tick + skewMs);
 
-  return { state, loading, error, busy, now, act };
+  return { state, loading, error, busy, now, act, enterMeeting };
 }

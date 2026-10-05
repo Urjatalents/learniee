@@ -68,5 +68,12 @@ export interface SessionFlowState {
    * including when the room couldn't be created yet.
    */
   meetingUri: string | null;
+  /**
+   * Teacher only: the Google account that must be used in Meet (their
+   * login email) — recording only starts when they join with it.
+   */
+  meetingAccountEmail: string | null;
+  /** Parent only: the student's name, to type in Meet if asked for a name. */
+  studentName: string | null;
   serverNow: string;
 }

@@ -4,7 +4,9 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { CalendarClock, CheckCircle2, Clock, Loader2, Video } from "lucide-react";
 
-import MeetingLink from "@/features/shared/components/session-flow/MeetingLink";
+import MeetingLink, {
+  MeetingNotice,
+} from "@/features/shared/components/session-flow/MeetingLink";
 import { useSessionFlow } from "@/features/shared/hooks/useSessionFlow";
 import {
   describeSession,
@@ -36,7 +38,7 @@ interface Props {
  * records the time and, with Google Meet on, shows the class link.
  */
 export default function NextSessionCard({ sessionId, label, onChanged }: Props) {
-  const { state, loading, error, busy, now, act } = useSessionFlow("parent", sessionId);
+  const { state, loading, error, busy, now, enterMeeting } = useSessionFlow("parent", sessionId);
   const status = state?.status;
 
   // The class ended (or was cancelled) while the page was open: the
@@ -128,19 +130,26 @@ export default function NextSessionCard({ sessionId, label, onChanged }: Props) 
               uri={state.meetingUri}
               present={joined}
               busy={busy}
-              onRetry={() => act("join")}
+              onRetry={() => enterMeeting("join", state.studentName)}
             />
           </div>
         ) : (
           <>
+            <div className="mb-3">
+              <MeetingNotice
+                enabled={state.meetingEnabled}
+                accountEmail={null}
+                studentName={state.studentName}
+              />
+            </div>
             <button
               type="button"
               disabled={!actions.canJoin || busy}
-              onClick={() => act("join")}
+              onClick={() => enterMeeting("join", state.studentName)}
               className="w-full sm:w-auto flex items-center justify-center gap-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-full transition-colors"
             >
               <Video size={16} />
-              {busy ? "Joining…" : "Join class"}
+              {busy ? "Joining…" : state.meetingEnabled ? "Join & open Meet" : "Join class"}
             </button>
 
             {beforeOpen && opensAt && (

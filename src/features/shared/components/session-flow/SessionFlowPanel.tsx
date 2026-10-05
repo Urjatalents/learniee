@@ -17,7 +17,9 @@ import {
 } from "lucide-react";
 
 import { useSessionFlow } from "@/features/shared/hooks/useSessionFlow";
-import MeetingLink from "@/features/shared/components/session-flow/MeetingLink";
+import MeetingLink, {
+  MeetingNotice,
+} from "@/features/shared/components/session-flow/MeetingLink";
 import CancelSessionControl from "@/features/shared/components/session-flow/CancelSessionControl";
 import SessionAfterClass from "@/features/shared/components/session-flow/SessionAfterClass";
 import {
@@ -92,7 +94,10 @@ interface TimelineStep {
  */
 export default function SessionFlowPanel({ role, sessionId, homeHref, renderLegacy }: Props) {
   const router = useRouter();
-  const { state, loading, error, busy, now, act } = useSessionFlow(role, sessionId);
+  const { state, loading, error, busy, now, act, enterMeeting } = useSessionFlow(
+    role,
+    sessionId,
+  );
   const actorRole = role === "teacher" ? "TEACHER" : "PARENT";
   const isTeacher = role === "teacher";
 
@@ -281,12 +286,22 @@ export default function SessionFlowPanel({ role, sessionId, homeHref, renderLega
 
           <div className="mt-5 space-y-3">
             {!isFinal && (
+              <MeetingNotice
+                enabled={state.meetingEnabled}
+                accountEmail={state.meetingAccountEmail}
+                studentName={state.studentName}
+              />
+            )}
+
+            {!isFinal && (
               <MeetingLink
                 enabled={state.meetingEnabled}
                 uri={state.meetingUri}
                 present={isTeacher ? state.teacherStartedAt !== null : state.studentJoinedAt !== null}
                 busy={busy}
-                onRetry={() => act(isTeacher ? "start" : "join")}
+                onRetry={() =>
+                  isTeacher ? enterMeeting("start") : enterMeeting("join", state.studentName)
+                }
               />
             )}
 
@@ -294,11 +309,11 @@ export default function SessionFlowPanel({ role, sessionId, homeHref, renderLega
               <button
                 type="button"
                 disabled={!actions.canStart || busy}
-                onClick={() => act("start")}
+                onClick={() => enterMeeting("start")}
                 className={GREEN_BUTTON}
               >
                 <PlayCircle size={18} />
-                {busy ? "Starting…" : "Start session"}
+                {busy ? "Starting…" : state.meetingEnabled ? "Start & open Meet" : "Start session"}
               </button>
             )}
 
@@ -321,11 +336,11 @@ export default function SessionFlowPanel({ role, sessionId, homeHref, renderLega
               <button
                 type="button"
                 disabled={!actions.canJoin || busy}
-                onClick={() => act("join")}
+                onClick={() => enterMeeting("join", state.studentName)}
                 className={GREEN_BUTTON}
               >
                 <Video size={18} />
-                {busy ? "Joining…" : "Join session"}
+                {busy ? "Joining…" : state.meetingEnabled ? "Join & open Meet" : "Join session"}
               </button>
             )}
           </div>

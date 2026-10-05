@@ -79,7 +79,7 @@ export interface SessionActor {
 
 const flowInclude = {
   student: { select: { firstName: true, visibleName: true } },
-  teacher: { select: { firstName: true, lastName: true, visibleName: true } },
+  teacher: { select: { firstName: true, lastName: true, visibleName: true, email: true } },
   enrollment: {
     select: { subject: true, course: { select: { courseTitle: true } } },
   },
@@ -219,6 +219,8 @@ function toState(session: FlowSession, role: SessionActorRole, now: Date): Sessi
       confirmation: null,
       meetingEnabled: false,
       meetingUri: null,
+      meetingAccountEmail: null,
+      studentName: null,
       serverNow: now.toISOString(),
     };
   }
@@ -227,12 +229,19 @@ function toState(session: FlowSession, role: SessionActorRole, now: Date): Sessi
   // (teacher) or joined (parent), and only while the class is live.
   const viewerPresent =
     role === "TEACHER" ? session.teacherStartedAt !== null : session.studentJoinedAt !== null;
-  const meetingUri =
+  const rawMeetingUri =
     viewerPresent &&
     session.status === ClassSessionStatus.SCHEDULED &&
     session.teacherEndedAt === null
       ? session.meetingUri
       : null;
+  // Teacher: pin the link to their login email so Meet opens with the
+  // right Google account (recording needs the co-host account).
+  const teacherEmail = session.teacher.email?.trim() || null;
+  const meetingUri =
+    rawMeetingUri && role === "TEACHER" && teacherEmail
+      ? `${rawMeetingUri}${rawMeetingUri.includes("?") ? "&" : "?"}authuser=${encodeURIComponent(teacherEmail)}`
+      : rawMeetingUri;
 
   const times = { startsAt: session.startsAt, endsAt: session.endsAt };
   const confirmation = getConfirmationState(toConfirmationInput(session), now);
@@ -273,6 +282,8 @@ function toState(session: FlowSession, role: SessionActorRole, now: Date): Sessi
     },
     meetingEnabled: isGoogleMeetEnabled(),
     meetingUri,
+    meetingAccountEmail: role === "TEACHER" ? teacherEmail : null,
+    studentName: role === "PARENT" ? displayName(session.student) : null,
     serverNow: now.toISOString(),
   };
 }
