@@ -60,5 +60,13 @@ export interface SessionFlowState {
   summaryUpdatedAt: string | null;
   /** Null on legacy sessions. */
   confirmation: SessionConfirmationView | null;
+  /** Google Meet is switched on for the platform (false on legacy sessions). */
+  meetingEnabled: boolean;
+  /**
+   * The Meet link — only for the viewer who has started (teacher) or
+   * joined (parent) and only while the class is live; null otherwise,
+   * including when the room couldn't be created yet.
+   */
+  meetingUri: string | null;
   serverNow: string;
 }

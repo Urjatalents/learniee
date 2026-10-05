@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { useSessionFlow } from "@/features/shared/hooks/useSessionFlow";
+import MeetingLink from "@/features/shared/components/session-flow/MeetingLink";
 import CancelSessionControl from "@/features/shared/components/session-flow/CancelSessionControl";
 import SessionAfterClass from "@/features/shared/components/session-flow/SessionAfterClass";
 import {
@@ -76,8 +77,9 @@ interface TimelineStep {
  * The Start / End (teacher) and Join (parent) page for a cycle-model
  * session (Part 1B) — sits on the existing
  * `/teacher/classes/[id]/start` and `/parent/classes/[id]/join`
- * pages. No video room yet (Jitsi is out of scope), so "in the
- * session" just means the event is recorded. Legacy sessions are
+ * pages. When Google Meet is enabled the room link appears once the
+ * viewer has started / joined (`MeetingLink`); Start / Join / End
+ * themselves only record the event. Legacy sessions are
  * handed to `renderLegacy` and behave exactly as before.
  *
  * Layout: a header with who / what / when, then the live status and
@@ -278,6 +280,16 @@ export default function SessionFlowPanel({ role, sessionId, homeHref, renderLega
           )}
 
           <div className="mt-5 space-y-3">
+            {!isFinal && (
+              <MeetingLink
+                enabled={state.meetingEnabled}
+                uri={state.meetingUri}
+                present={isTeacher ? state.teacherStartedAt !== null : state.studentJoinedAt !== null}
+                busy={busy}
+                onRetry={() => act(isTeacher ? "start" : "join")}
+              />
+            )}
+
             {isTeacher && !isFinal && !state.teacherStartedAt && (
               <button
                 type="button"

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { CalendarClock, CheckCircle2, Clock, Loader2, Video } from "lucide-react";
 
+import MeetingLink from "@/features/shared/components/session-flow/MeetingLink";
 import { useSessionFlow } from "@/features/shared/hooks/useSessionFlow";
 import {
   describeSession,
@@ -31,8 +32,8 @@ interface Props {
  * stays open until the scheduled end. The button state comes from
  * `getSessionActions` — the rule the server enforces — driven by the
  * server-corrected clock in `useSessionFlow`, so it unlocks at the
- * right moment even on a device with a wrong clock. There is no
- * video room yet (Jitsi is out of scope): joining records the time.
+ * right moment even on a device with a wrong clock. Joining
+ * records the time and, with Google Meet on, shows the class link.
  */
 export default function NextSessionCard({ sessionId, label, onChanged }: Props) {
   const { state, loading, error, busy, now, act } = useSessionFlow("parent", sessionId);
@@ -117,10 +118,19 @@ export default function NextSessionCard({ sessionId, label, onChanged }: Props) 
 
       <div className="mt-4">
         {joined ? (
-          <p className="flex items-center gap-2 text-sm font-semibold text-green-700">
-            <CheckCircle2 size={16} />
-            You&apos;ve joined this class
-          </p>
+          <div className="space-y-3">
+            <p className="flex items-center gap-2 text-sm font-semibold text-green-700">
+              <CheckCircle2 size={16} />
+              You&apos;ve joined this class
+            </p>
+            <MeetingLink
+              enabled={state.meetingEnabled}
+              uri={state.meetingUri}
+              present={joined}
+              busy={busy}
+              onRetry={() => act("join")}
+            />
+          </div>
         ) : (
           <>
             <button

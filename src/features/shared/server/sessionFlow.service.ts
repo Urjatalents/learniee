@@ -40,6 +40,8 @@ import { acceptExpiredConfirmationsQuietly } from "@/features/shared/server/sess
 import { releaseClosedCyclePayout } from "@/features/shared/server/cycleClose.service";
 import { notifySessionOutcomeReported } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
+import { ensureSessionMeeting } from "@/features/shared/server/sessionMeeting.service";
+import { isGoogleMeetEnabled } from "@/lib/googleMeet";
 
 /**
  * The live side of a cycle-model session (Part 1B): the teacher taps
@@ -215,9 +217,22 @@ function toState(session: FlowSession, role: SessionActorRole, now: Date): Sessi
       summary: null,
       summaryUpdatedAt: null,
       confirmation: null,
+      meetingEnabled: false,
+      meetingUri: null,
       serverNow: now.toISOString(),
     };
   }
+
+  // The Meet link goes only to the viewer who has already started
+  // (teacher) or joined (parent), and only while the class is live.
+  const viewerPresent =
+    role === "TEACHER" ? session.teacherStartedAt !== null : session.studentJoinedAt !== null;
+  const meetingUri =
+    viewerPresent &&
+    session.status === ClassSessionStatus.SCHEDULED &&
+    session.teacherEndedAt === null
+      ? session.meetingUri
+      : null;
 
   const times = { startsAt: session.startsAt, endsAt: session.endsAt };
   const confirmation = getConfirmationState(toConfirmationInput(session), now);
@@ -256,6 +271,8 @@ function toState(session: FlowSession, role: SessionActorRole, now: Date): Sessi
       reportedAt: role === "PARENT" ? iso(session.reportedAt) : null,
       canEditSummary: role === "TEACHER" && canAddSummary(session),
     },
+    meetingEnabled: isGoogleMeetEnabled(),
+    meetingUri,
     serverNow: now.toISOString(),
   };
 }
@@ -300,6 +317,12 @@ export async function startSession(
   }
 
   if (session.teacherStartedAt) {
+    // Already started: only (re)try the Meet room if it's missing.
+    if (isGoogleMeetEnabled() && !session.meetingUri) {
+      await ensureSessionMeeting(session.id);
+      return reload(sessionId, actor, now);
+    }
+
     return toState(session, "TEACHER", now);
   }
 
@@ -321,6 +344,9 @@ export async function startSession(
     },
     data: { teacherStartedAt: now },
   });
+
+  // Meet only supplies the room; a failure here never blocks the Start.
+  await ensureSessionMeeting(session.id);
 
   return reload(sessionId, actor, now);
 }
@@ -346,6 +372,12 @@ export async function joinSession(
   }
 
   if (session.studentJoinedAt) {
+    // Already joined: only (re)try the Meet room if it's missing.
+    if (isGoogleMeetEnabled() && !session.meetingUri) {
+      await ensureSessionMeeting(session.id);
+      return reload(sessionId, actor, now);
+    }
+
     return toState(session, "PARENT", now);
   }
 
@@ -371,6 +403,9 @@ export async function joinSession(
     },
     data: { studentJoinedAt: now },
   });
+
+  // Meet only supplies the room; a failure here never blocks the Join.
+  await ensureSessionMeeting(session.id);
 
   return reload(sessionId, actor, now);
 }

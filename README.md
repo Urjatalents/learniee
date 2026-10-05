@@ -21,8 +21,9 @@ running locally.
   browser-to-S3 direct upload, files never pass through the server)
 - **Hosting / CI-CD:** Vercel, auto-deploy on push to `master`
 - **Payments:** Razorpay (decided, not yet integrated)
-- **Video meetings:** Jitsi (decided, deployment mode - self-hosted
-  vs. JaaS - still open, not yet integrated)
+- **Video meetings:** Google Meet (Workspace organizer account via a
+  service account with domain-wide delegation, auto-recorded; enabled
+  with `GOOGLE_MEET_ENABLED`, see `src/lib/googleMeet.ts`)
 - **SMS / OTP:** Fast2SMS (decided, not yet wired; Cognito's email
   OTP is what signup confirmation and password reset actually use
   today)

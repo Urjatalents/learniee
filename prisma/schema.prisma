@@ -896,6 +896,12 @@ model ClassSession {
   /// review, or not final). Written once per settlement, and again
   /// only by an Admin override.
   settledAt          DateTime?
+  /// Google Meet room (Oct 5, 2026). Created lazily on the first
+  /// Start/Join of a cycle session (sessionMeeting.service.ts) when
+  /// GOOGLE_MEET_ENABLED=true; null otherwise. `meetSpaceName` is the
+  /// Meet API id ("spaces/abc…"), `meetingUri` the join link.
+  meetSpaceName      String?
+  meetingUri         String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   makeupFor          ClassSession?       @relation("SessionMakeup", fields: [makeupForSessionId], references: [id], onDelete: SetNull)
