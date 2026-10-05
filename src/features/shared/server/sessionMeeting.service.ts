@@ -49,9 +49,10 @@ export async function ensureSessionMeeting(sessionId: string): Promise<string | 
     if (teacherEmail) {
       try {
         await addMeetCoHost(space.name, teacherEmail);
+        console.info(`Meet co-host added for session ${session.id}: ${teacherEmail}`);
       } catch (err) {
         console.warn(
-          `Meet co-host not added for session ${session.id}:`,
+          `Meet co-host NOT added for session ${session.id} (${teacherEmail}):`,
           err instanceof Error ? err.message : err,
         );
       }
