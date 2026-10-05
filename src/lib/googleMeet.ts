@@ -21,8 +21,6 @@ import { createSign } from "node:crypto";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const MEET_V2 = "https://meet.googleapis.com/v2";
-// `spaces.members` is only served from v2beta at the time of writing.
-const MEET_V2_BETA = "https://meet.googleapis.com/v2beta";
 const SCOPE = "https://www.googleapis.com/auth/meetings.space.created";
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -185,6 +183,10 @@ export async function createMeetSpace(): Promise<MeetSpace> {
   const space = await meetRequest<{ name?: string; meetingUri?: string }>(`${MEET_V2}/spaces`, {
     config: {
       accessType: "TRUSTED",
+      // Co-host roles only take effect when moderation is on; without
+      // it the teacher joins as a plain participant (no host controls,
+      // and auto-recording never finds anyone allowed to start it).
+      moderation: "ON",
       artifactConfig: {
         recordingConfig: { autoRecordingGeneration: "ON" },
       },
@@ -204,7 +206,7 @@ export async function createMeetSpace(): Promise<MeetSpace> {
  * teacher can still join through the link as a normal participant).
  */
 export async function addMeetCoHost(spaceName: string, email: string): Promise<void> {
-  await meetRequest(`${MEET_V2_BETA}/${spaceName}/members`, {
+  await meetRequest(`${MEET_V2}/${spaceName}/members`, {
     email,
     role: "COHOST",
   });
