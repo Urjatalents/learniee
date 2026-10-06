@@ -33,6 +33,7 @@ import {
   SESSION_SUMMARY_MAX_LENGTH,
   type ConfirmationInput,
 } from "@/features/shared/utils/outcomeConfirmation";
+import { buildTeacherLaunchUrl } from "@/features/shared/utils/meetLaunch";
 import type { SessionFlowState } from "@/features/shared/types/sessionFlow";
 import { resolveSession } from "@/features/shared/server/sessionResolve.service";
 import { runSessionFollowUps } from "@/features/shared/server/sessionFollowUp.service";
@@ -239,12 +240,14 @@ function toState(session: FlowSession, role: SessionActorRole, now: Date): Sessi
     session.teacherEndedAt === null
       ? session.meetingUri
       : null;
-  // Teacher: pin the link to their login email so Meet opens with the
-  // right Google account (recording needs the co-host account).
+  // Teacher: open Meet through Google's account chooser with their login
+  // email pre-selected, so a browser with several Google accounts uses the
+  // co-host account (recording and host controls need it). Parents keep
+  // the plain link.
   const teacherEmail = session.teacher.email?.trim() || null;
   const meetingUri =
-    rawMeetingUri && role === "TEACHER" && teacherEmail
-      ? `${rawMeetingUri}${rawMeetingUri.includes("?") ? "&" : "?"}authuser=${encodeURIComponent(teacherEmail)}`
+    rawMeetingUri && role === "TEACHER"
+      ? buildTeacherLaunchUrl(rawMeetingUri, teacherEmail)
       : rawMeetingUri;
 
   const times = { startsAt: session.startsAt, endsAt: session.endsAt };
