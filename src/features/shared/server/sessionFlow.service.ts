@@ -40,7 +40,10 @@ import { acceptExpiredConfirmationsQuietly } from "@/features/shared/server/sess
 import { releaseClosedCyclePayout } from "@/features/shared/server/cycleClose.service";
 import { notifySessionOutcomeReported } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity } from "@/features/shared/server/activityLog.service";
-import { ensureSessionMeeting } from "@/features/shared/server/sessionMeeting.service";
+import {
+  ensureSessionMeeting,
+  isCohostConfirmed,
+} from "@/features/shared/server/sessionMeeting.service";
 import { isGoogleMeetEnabled } from "@/lib/googleMeet";
 
 /**
@@ -220,6 +223,7 @@ function toState(session: FlowSession, role: SessionActorRole, now: Date): Sessi
       meetingEnabled: false,
       meetingUri: null,
       meetingAccountEmail: null,
+      meetingCohost: null,
       studentName: null,
       serverNow: now.toISOString(),
     };
@@ -283,6 +287,14 @@ function toState(session: FlowSession, role: SessionActorRole, now: Date): Sessi
     meetingEnabled: isGoogleMeetEnabled(),
     meetingUri,
     meetingAccountEmail: role === "TEACHER" ? teacherEmail : null,
+    // Teacher only. Null until a room exists; then CONFIRMED (Meet shows
+    // them as co-host) or PENDING (not confirmed — the page offers a retry).
+    meetingCohost:
+      role === "TEACHER" && isGoogleMeetEnabled() && session.meetingUri
+        ? isCohostConfirmed(session)
+          ? "CONFIRMED"
+          : "PENDING"
+        : null,
     studentName: role === "PARENT" ? displayName(session.student) : null,
     serverNow: now.toISOString(),
   };
@@ -328,8 +340,10 @@ export async function startSession(
   }
 
   if (session.teacherStartedAt) {
-    // Already started: only (re)try the Meet room if it's missing.
-    if (isGoogleMeetEnabled() && !session.meetingUri) {
+    // Already started: (re)try the Meet room if it's missing, and
+    // re-check the co-host if Meet hasn't confirmed it yet. This is
+    // also what the teacher's "Retry" button calls.
+    if (isGoogleMeetEnabled() && (!session.meetingUri || !isCohostConfirmed(session))) {
       await ensureSessionMeeting(session.id);
       return reload(sessionId, actor, now);
     }
@@ -357,7 +371,9 @@ export async function startSession(
   });
 
   // Meet only supplies the room; a failure here never blocks the Start.
-  await ensureSessionMeeting(session.id);
+  // The co-host is re-verified with Google on every first Start, even if
+  // the room was already created by an earlier Join.
+  await ensureSessionMeeting(session.id, { force: true });
 
   return reload(sessionId, actor, now);
 }

@@ -140,16 +140,20 @@ async function getAccessToken(): Promise<string> {
   return cachedToken.value;
 }
 
-async function meetRequest<T>(url: string, body: unknown): Promise<T> {
+async function meetRequest<T>(
+  url: string,
+  body?: unknown,
+  method: "GET" | "POST" | "DELETE" = "POST",
+): Promise<T> {
   const token = await getAccessToken();
 
   const res = await fetch(url, {
-    method: "POST",
+    method,
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
     },
-    body: JSON.stringify(body),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
@@ -162,7 +166,8 @@ async function meetRequest<T>(url: string, body: unknown): Promise<T> {
     throw new GoogleMeetError(`Google Meet API ${res.status}: ${text}`, res.status);
   }
 
-  return (await res.json()) as T;
+  // DELETE answers with an empty body.
+  return (await res.json().catch(() => ({}))) as T;
 }
 
 export interface MeetSpace {
@@ -200,14 +205,139 @@ export async function createMeetSpace(): Promise<MeetSpace> {
   return { name: space.name, meetingUri: space.meetingUri };
 }
 
+interface MeetMember {
+  /** "spaces/abc/members/xyz" — needed to delete a member. */
+  name: string;
+  email?: string;
+  role?: string;
+}
+
+function normaliseEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Network errors, timeouts, rate limits and Google 5xx are worth another try. */
+function isRetryable(err: unknown): boolean {
+  if (err instanceof GoogleMeetError) {
+    return err.status === 429 || err.status >= 500 || err.status === 401;
+  }
+
+  return true; // fetch/abort errors
+}
+
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastError: unknown;
+
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+
+      if (i === attempts - 1 || !isRetryable(err)) break;
+
+      await sleep(400 * (i + 1));
+    }
+  }
+
+  throw lastError;
+}
+
+/** Every member of a space (follows pagination). */
+export async function listMeetMembers(spaceName: string): Promise<MeetMember[]> {
+  const members: MeetMember[] = [];
+  let pageToken = "";
+
+  // 50 pages is far beyond any class; the cap only guards a runaway loop.
+  for (let page = 0; page < 50; page++) {
+    const query = new URLSearchParams({ pageSize: "100" });
+
+    if (pageToken) query.set("pageToken", pageToken);
+
+    const data = await meetRequest<{ members?: MeetMember[]; nextPageToken?: string }>(
+      `${MEET_V2}/${spaceName}/members?${query.toString()}`,
+      undefined,
+      "GET",
+    );
+
+    members.push(...(data.members ?? []));
+
+    if (!data.nextPageToken) break;
+
+    pageToken = data.nextPageToken;
+  }
+
+  return members;
+}
+
+export interface CoHostResult {
+  confirmed: boolean;
+  /** Short, log-safe reason when `confirmed` is false. */
+  error: string | null;
+}
+
 /**
- * Adds a person as co-host of a space. Only works if the email is a
- * Google account — callers should treat a failure as non-fatal (the
- * teacher can still join through the link as a normal participant).
+ * Makes `email` a co-host of the space and CHECKS that it stuck.
+ * Safe to call any number of times (idempotent):
+ *  - already a co-host            -> confirmed, nothing written
+ *  - listed with another role     -> removed and re-added as co-host
+ *  - not listed                   -> added, then read back to verify
+ * Transient Google errors are retried; a permanent one (for example the
+ * email isn't a Google account) returns `confirmed: false` with the reason.
+ * Never throws.
  */
-export async function addMeetCoHost(spaceName: string, email: string): Promise<void> {
-  await meetRequest(`${MEET_V2}/${spaceName}/members`, {
-    email,
-    role: "COHOST",
-  });
+export async function ensureMeetCoHost(spaceName: string, email: string): Promise<CoHostResult> {
+  const wanted = normaliseEmail(email);
+  const findMine = (members: MeetMember[]) =>
+    members.find((m) => m.email && normaliseEmail(m.email) === wanted);
+
+  try {
+    let existing: MeetMember | undefined;
+    let canList = true;
+
+    try {
+      existing = findMine(await withRetry(() => listMeetMembers(spaceName)));
+    } catch {
+      // Listing is only for verification; fall back to trusting `create`.
+      canList = false;
+    }
+
+    if (existing?.role === "COHOST") return { confirmed: true, error: null };
+
+    // The Members API has no "update", so a wrong role is replaced.
+    if (existing) {
+      await withRetry(() => meetRequest(`${MEET_V2}/${existing.name}`, undefined, "DELETE"));
+    }
+
+    try {
+      await withRetry(() =>
+        meetRequest(`${MEET_V2}/${spaceName}/members`, { email: wanted, role: "COHOST" }),
+      );
+    } catch (err) {
+      // 409 = already a member; the read-back below decides if it is a co-host.
+      if (!(err instanceof GoogleMeetError && err.status === 409)) throw err;
+    }
+
+    if (!canList) return { confirmed: true, error: null };
+
+    // Read back (Google can lag a moment behind a write).
+    for (let i = 0; i < 3; i++) {
+      const mine = findMine(await withRetry(() => listMeetMembers(spaceName)));
+
+      if (mine?.role === "COHOST") return { confirmed: true, error: null };
+
+      await sleep(500 * (i + 1));
+    }
+
+    return { confirmed: false, error: "Added, but Google Meet did not show the teacher as co-host." };
+  } catch (err) {
+    return {
+      confirmed: false,
+      error: (err instanceof Error ? err.message : String(err)).slice(0, 300),
+    };
+  }
 }

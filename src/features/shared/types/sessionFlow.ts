@@ -73,6 +73,12 @@ export interface SessionFlowState {
    * login email) — recording only starts when they join with it.
    */
   meetingAccountEmail: string | null;
+  /**
+   * Teacher only: whether Google Meet has confirmed them as co-host of
+   * this class. `PENDING` = not confirmed (yet) — retry from the page.
+   * Null when there is no room, Meet is off, or the viewer is a parent.
+   */
+  meetingCohost: "CONFIRMED" | "PENDING" | null;
   /** Parent only: the student's name, to type in Meet if asked for a name. */
   studentName: string | null;
   serverNow: string;

@@ -297,6 +297,7 @@ export default function SessionFlowPanel({ role, sessionId, homeHref, renderLega
               <MeetingLink
                 enabled={state.meetingEnabled}
                 uri={state.meetingUri}
+                cohost={state.meetingCohost}
                 present={isTeacher ? state.teacherStartedAt !== null : state.studentJoinedAt !== null}
                 busy={busy}
                 onRetry={() =>

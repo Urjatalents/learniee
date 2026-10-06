@@ -42,6 +42,8 @@ interface Props {
   enabled: boolean;
   /** The class's Meet link, once it exists. */
   uri: string | null;
+  /** Teacher only: Meet's confirmation that they are co-host (null for parents). */
+  cohost: "CONFIRMED" | "PENDING" | null;
   /** True once this viewer has started (teacher) / joined (parent). */
   present: boolean;
   busy: boolean;
@@ -54,8 +56,42 @@ interface Props {
  * dropped connection). Start / Join themselves go straight into Meet.
  * If the room couldn't be created, offers a retry.
  */
-export default function MeetingLink({ enabled, uri, present, busy, onRetry }: Props) {
+export default function MeetingLink({ enabled, uri, cohost, present, busy, onRetry }: Props) {
   if (!enabled || !present) return null;
+
+  if (uri && cohost === "PENDING") {
+    return (
+      <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3">
+        <p className="text-sm font-semibold text-amber-800">
+          Your host controls aren&apos;t confirmed yet.
+        </p>
+        <p className="mt-1 text-xs text-amber-700">
+          Retry so Meet makes you co-host before you enter. If it keeps failing, check that you
+          are using the Google account shown above.
+        </p>
+        <div className="mt-2 flex items-center gap-4">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onRetry}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 hover:underline disabled:opacity-50"
+          >
+            {busy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            Retry host setup
+          </button>
+          <a
+            href={uri}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:underline"
+          >
+            Join anyway
+            <ExternalLink size={12} />
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (uri) {
     return (

@@ -902,6 +902,15 @@ model ClassSession {
   /// Meet API id ("spaces/abc…"), `meetingUri` the join link.
   meetSpaceName      String?
   meetingUri         String?
+  /// Co-host tracking (Oct 6, 2026). `meetCohostEmail` is the address
+  /// Google Meet CONFIRMED as co-host (read back from the Members API);
+  /// null = not confirmed yet. Compared with the teacher's current
+  /// email, so a changed email is re-verified automatically.
+  meetCohostEmail        String?
+  meetCohostConfirmedAt  DateTime?
+  meetCohostCheckedAt    DateTime?
+  meetCohostAttempts     Int       @default(0)
+  meetCohostError        String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   makeupFor          ClassSession?       @relation("SessionMakeup", fields: [makeupForSessionId], references: [id], onDelete: SetNull)

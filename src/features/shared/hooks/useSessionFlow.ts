@@ -134,8 +134,9 @@ export function useSessionFlow(role: SessionFlowRole, sessionId: string) {
    * Start (teacher) / Join (parent) and go straight into Google Meet.
    * A tab is opened synchronously inside the click (so the browser's
    * popup blocker allows it) and pointed at the Meet link once the
-   * server has recorded the event. If Meet is off or the room isn't
-   * ready, the tab is closed again and the page's own state shows why.
+   * server has recorded the event. If Meet is off, the room isn't
+   * ready, or the teacher isn't confirmed as co-host yet, the tab is
+   * closed again and the page's own state shows why.
    * `copyText` (the student's name) is put on the clipboard at click
    * time, for the "enter your name" box Meet shows to signed-out guests.
    */
@@ -152,8 +153,12 @@ export function useSessionFlow(role: SessionFlowRole, sessionId: string) {
 
       const session = await perform(action);
       const uri = session?.meetingUri ?? null;
+      // Teacher whose co-host isn't confirmed by Meet yet: don't drop
+      // them into the room as a plain participant. The page shows a
+      // warning with "Retry" and "Join anyway" instead.
+      const hostPending = action === "start" && session?.meetingCohost === "PENDING";
 
-      if (uri) {
+      if (uri && !hostPending) {
         if (tab) {
           tab.location.href = uri;
         } else {
