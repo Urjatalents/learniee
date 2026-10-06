@@ -911,6 +911,13 @@ model ClassSession {
   meetCohostCheckedAt    DateTime?
   meetCohostAttempts     Int       @default(0)
   meetCohostError        String?
+  /// Which Workspace organizer account owns this room (Oct 6, 2026,
+  /// organizer pool). Null on rooms created before the pool existed:
+  /// those belong to the first/default organizer. `meetOrganizerAssignedAt`
+  /// is when the room was allocated; the newest value per organizer is
+  /// its "last used" time for least-recently-used allocation.
+  meetOrganizerEmail       String?
+  meetOrganizerAssignedAt  DateTime?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   makeupFor          ClassSession?       @relation("SessionMakeup", fields: [makeupForSessionId], references: [id], onDelete: SetNull)
@@ -934,6 +941,7 @@ model ClassSession {
   @@index([enrollmentId, status])
   @@index([cycleId])
   @@index([status, endsAt])
+  @@index([meetOrganizerEmail, meetOrganizerAssignedAt])
   @@index([cycleId, settledAt])
   @@index([confirmation])
 }

@@ -1,9 +1,15 @@
 import "server-only";
 
-import { ClassSessionStatus } from "@prisma/client";
+import { ClassSessionStatus, type Prisma } from "@prisma/client";
 
+import { rankOrganizers } from "@/features/shared/utils/meetOrganizerPool";
 import { prisma } from "@/lib/prisma";
-import { createMeetSpace, ensureMeetCoHost, isGoogleMeetEnabled } from "@/lib/googleMeet";
+import {
+  createMeetSpace,
+  ensureMeetCoHost,
+  getMeetOrganizers,
+  isGoogleMeetEnabled,
+} from "@/lib/googleMeet";
 
 /**
  * The Google Meet room of a cycle-model session. Meet only supplies
@@ -22,6 +28,15 @@ import { createMeetSpace, ensureMeetCoHost, isGoogleMeetEnabled } from "@/lib/go
  * confirmed email on the session. It runs whenever a room is created
  * and whenever the teacher taps Start / Rejoin while the session is not
  * yet confirmed (or the teacher's email changed). Idempotent.
+ *
+ * Organizer pool (Oct 6, 2026): rooms are spread over several Workspace
+ * accounts. A new room goes to a FREE account (none owns a room whose
+ * class overlaps this one); if all are busy, to the least recently used.
+ * If Google refuses the chosen account, the next one is tried. The owner
+ * is stored on the session (`meetOrganizerEmail`) because every later
+ * call about the room (co-host, members) must be made as its owner.
+ * Rooms from before the pool have no owner stored: they belong to the
+ * first/default organizer.
  */
 
 export interface CohostSyncOptions {
@@ -32,8 +47,14 @@ export interface CohostSyncOptions {
 interface CohostSession {
   id: string;
   meetSpaceName: string | null;
+  meetOrganizerEmail: string | null;
   meetCohostEmail: string | null;
   teacher: { email: string | null };
+}
+
+/** The account that owns this session's room. */
+function organizerOf(session: { meetOrganizerEmail: string | null }): string | null {
+  return session.meetOrganizerEmail ?? getMeetOrganizers()[0] ?? null;
 }
 
 function sameEmail(a: string | null, b: string | null): boolean {
@@ -57,6 +78,10 @@ async function syncTeacherCohost(
 
   if (!options.force && isCohostConfirmed(session)) return true;
 
+  const organizer = organizerOf(session);
+
+  if (!organizer) return false;
+
   const teacherEmail = session.teacher.email?.trim() || null;
   const now = new Date();
 
@@ -74,7 +99,7 @@ async function syncTeacherCohost(
       return false;
     }
 
-    const result = await ensureMeetCoHost(session.meetSpaceName, teacherEmail);
+    const result = await ensureMeetCoHost(session.meetSpaceName, teacherEmail, organizer);
 
     await prisma.classSession.update({
       where: { id: session.id },
@@ -119,11 +144,86 @@ const sessionSelect = {
   id: true,
   status: true,
   cycleId: true,
+  startsAt: true,
+  endsAt: true,
   meetSpaceName: true,
   meetingUri: true,
+  meetOrganizerEmail: true,
   meetCohostEmail: true,
   teacher: { select: { email: true } },
 } as const;
+
+/**
+ * Chooses the organizer for a new room and notes the choice on the
+ * session. Returns the full preference list (best first) so the caller
+ * can fall over to the next account. With one account there is nothing
+ * to decide. The decision runs under a database-wide advisory lock so
+ * two classes starting in the same moment don't both pick the same
+ * "free" account.
+ */
+async function chooseOrganizers(session: {
+  id: string;
+  startsAt: Date | null;
+  endsAt: Date | null;
+}): Promise<string[]> {
+  const organizers = getMeetOrganizers();
+
+  if (organizers.length <= 1) return organizers;
+
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('learniee-meet-organizer-allocation'))`;
+
+    // Accounts that already own a room for an overlapping class.
+    const overlapping =
+      session.startsAt && session.endsAt
+        ? await tx.classSession.findMany({
+            where: {
+              id: { not: session.id },
+              status: ClassSessionStatus.SCHEDULED,
+              meetingUri: { not: null },
+              startsAt: { lt: session.endsAt },
+              endsAt: { gt: session.startsAt },
+            },
+            select: { meetOrganizerEmail: true },
+          })
+        : [];
+
+    const busy = new Set<string>(
+      overlapping.map((row: { meetOrganizerEmail: string | null }) =>
+        (row.meetOrganizerEmail ?? organizers[0]).toLowerCase(),
+      ),
+    );
+
+    // When each account was last given a room.
+    const usage = await tx.classSession.groupBy({
+      by: ["meetOrganizerEmail"],
+      where: { meetOrganizerEmail: { in: organizers } },
+      _max: { meetOrganizerAssignedAt: true },
+    });
+
+    const lastUsedMs = new Map<string, number>();
+
+    for (const row of usage as Array<{
+      meetOrganizerEmail: string | null;
+      _max: { meetOrganizerAssignedAt: Date | null };
+    }>) {
+      if (row.meetOrganizerEmail && row._max.meetOrganizerAssignedAt) {
+        lastUsedMs.set(row.meetOrganizerEmail, row._max.meetOrganizerAssignedAt.getTime());
+      }
+    }
+
+    const order = rankOrganizers({ organizers, busy, lastUsedMs });
+
+    // Note the pick straight away (inside the lock) so the next
+    // allocation sees this account as the most recently used.
+    await tx.classSession.update({
+      where: { id: session.id },
+      data: { meetOrganizerEmail: order[0], meetOrganizerAssignedAt: new Date() },
+    });
+
+    return order;
+  });
+}
 
 /**
  * Returns the session's Meet link, creating the room if it doesn't
@@ -157,13 +257,46 @@ export async function ensureSessionMeeting(
 
     if (session.status !== ClassSessionStatus.SCHEDULED) return null;
 
-    const space = await createMeetSpace();
+    const candidates = await chooseOrganizers(session);
+
+    if (candidates.length === 0) {
+      console.error("Google Meet is enabled but no organizer account is configured.");
+
+      return null;
+    }
+
+    // Try the preferred account first; if Google refuses it (rate limit,
+    // an account that isn't authorised yet, ...) fall over to the next.
+    let space: Awaited<ReturnType<typeof createMeetSpace>> | null = null;
+    let organizer = candidates[0];
+    let lastError: unknown = null;
+
+    for (const candidate of candidates) {
+      try {
+        space = await createMeetSpace(candidate);
+        organizer = candidate;
+        break;
+      } catch (err) {
+        lastError = err;
+        console.warn(
+          `Meet room creation failed with organizer ${candidate} for session ${session.id}:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+
+    if (!space) throw lastError ?? new Error("No Meet organizer could create a room.");
 
     // Conditional write: if Start and Join raced, the first one wins
     // and the other adopts its link (the extra empty space is harmless).
     const claimed = await prisma.classSession.updateMany({
       where: { id: session.id, meetingUri: null },
-      data: { meetSpaceName: space.name, meetingUri: space.meetingUri },
+      data: {
+        meetSpaceName: space.name,
+        meetingUri: space.meetingUri,
+        meetOrganizerEmail: organizer,
+        meetOrganizerAssignedAt: new Date(),
+      },
     });
 
     // Whoever won, co-host is applied to the room that was kept.
