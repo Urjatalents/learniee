@@ -16,7 +16,7 @@
 //   const r = await c.query(
 //     `SELECT id, "meetOrganizerEmail", "meetCohostEmail", "meetCohostError", "meetingUri"
 // FROM "ClassSession" WHERE "meetingUri" IS NOT NULL
-// ORDER BY "meetOrganizerAssignedAt" DESC NULLS LAST LIMIT 4`
+// ORDER BY "meetOrganizerAssignedAt" DESC NULLS LAST LIMIT 10`
 //   );
 //   console.table(r.rows);
 //   await c.end();

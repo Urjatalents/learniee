@@ -91,6 +91,16 @@ export default function TeacherApplicationsTable({ teachers, dateLabel }: Props)
 
                 <td className="px-4 py-3">
                   <TeacherStatusBadge status={teacher.approvalStatus} />
+                  {teacher.approvalStatus === "PENDING" && teacher.interviewScheduledAt && (
+                    <p className="mt-1 text-[11px] font-medium text-purple-700">
+                      Interview {formatDate(teacher.interviewScheduledAt)}
+                    </p>
+                  )}
+                  {teacher.appealCount > 0 && (
+                    <p className="mt-1 text-[11px] text-amber-700">
+                      Appeal #{teacher.appealCount}
+                    </p>
+                  )}
                 </td>
 
                 <td className="px-4 py-3 text-right">

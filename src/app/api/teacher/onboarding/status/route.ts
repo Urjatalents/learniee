@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireCognitoAuth } from "@/lib/api-auth";
+import { isAppealOpen } from "@/features/teacher/utils/teacherAppeal";
 
 export async function GET(req: Request) {
   try {
@@ -20,6 +21,9 @@ export async function GET(req: Request) {
         currentStep: true,
         onboardingStatus: true,
         approvalStatus: true,
+        interviewScheduledAt: true,
+        interviewDetails: true,
+        reapplyAvailableAt: true,
         // Bank Account Approval (Sep 10, 2026) — the login flow uses
         // this to send a newly-approved Teacher to fill in payout
         // details as their first required step (see useLogin.ts).
@@ -55,6 +59,14 @@ export async function GET(req: Request) {
 
       // "MISSING" (never submitted) / "PENDING" / "APPROVED" / "REJECTED"
       bankAccountStatus: teacher.bankAccount?.status ?? "MISSING",
+
+      // Interview + appeal (Oct 7, 2026)
+      interviewScheduledAt: teacher.interviewScheduledAt,
+      interviewDetails: teacher.interviewDetails,
+      reapplyAvailableAt: teacher.reapplyAvailableAt,
+      canAppeal:
+        teacher.approvalStatus === "REJECTED" &&
+        isAppealOpen(teacher.reapplyAvailableAt),
     });
 
   } catch (error) {

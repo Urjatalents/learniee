@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import {
+  CalendarClock,
   CheckCircle2,
   Clock,
   Loader2,
@@ -59,8 +60,24 @@ function Step({
  */
 export default function TeacherPendingApproval() {
   const router = useRouter();
-  const { state, checking, lastChecked, check, logout } =
-    useTeacherApprovalWatch();
+  const {
+    state,
+    access,
+    checking,
+    lastChecked,
+    check,
+    logout,
+    appeal,
+    appealing,
+    appealError,
+  } = useTeacherApprovalWatch();
+
+  const interviewAt = access?.interviewScheduledAt
+    ? new Date(access.interviewScheduledAt)
+    : null;
+  const reapplyAt = access?.reapplyAvailableAt
+    ? new Date(access.reapplyAvailableAt)
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -107,6 +124,28 @@ export default function TeacherPendingApproval() {
                 reviewing your profile and documents. You can&apos;t access your
                 teacher dashboard until you&apos;re approved.
               </p>
+
+              {interviewAt && (
+                <div className="mx-auto mt-6 max-w-sm rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-left">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-violet-800">
+                    <CalendarClock className="size-4" />
+                    Interview scheduled
+                  </p>
+                  <p className="mt-1 text-sm text-gray-700">
+                    {interviewAt.toLocaleString("en-IN", {
+                      timeZone: "Asia/Kolkata",
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}{" "}
+                    (IST)
+                  </p>
+                  {access?.interviewDetails && (
+                    <p className="mt-1 whitespace-pre-line text-xs text-gray-500">
+                      {access.interviewDetails}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <ol className="mx-auto mt-8 max-w-xs space-y-5 text-left">
                 <Step
@@ -162,10 +201,44 @@ export default function TeacherPendingApproval() {
                 Application not approved
               </h1>
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                Unfortunately our admin team couldn&apos;t approve your teacher
-                application. If you think this is a mistake, please contact
-                Learnie support.
+                Unfortunately you weren&apos;t selected this time. You can&apos;t
+                access the teacher dashboard, but you can appeal again after a
+                waiting period.
               </p>
+
+              {access?.canAppeal ? (
+                <>
+                  <p className="mt-4 text-sm text-gray-600">
+                    Your waiting period is over. You can appeal now.
+                  </p>
+                  <button
+                    onClick={appeal}
+                    disabled={appealing}
+                    className="mt-4 rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+                  >
+                    {appealing ? "Submitting..." : "Appeal again"}
+                  </button>
+                </>
+              ) : (
+                reapplyAt && (
+                  <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    You can appeal on{" "}
+                    <span className="font-semibold">
+                      {reapplyAt.toLocaleDateString("en-IN", {
+                        timeZone: "Asia/Kolkata",
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                    .
+                  </div>
+                )
+              )}
+
+              {appealError && (
+                <p className="mt-3 text-sm text-red-600">{appealError}</p>
+              )}
             </>
           )}
 

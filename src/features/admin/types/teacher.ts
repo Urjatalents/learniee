@@ -18,6 +18,9 @@ export interface AdminTeacherSummary {
   /** Types of the files uploaded so far (e.g. "DOB_PROOF") — used for the completeness check. */
   fileTypes: string[];
   hasPan: boolean;
+  /** ISO string while an interview is scheduled, else null. */
+  interviewScheduledAt: string | null;
+  appealCount: number;
 }
 
 export type TeacherApprovalCounts = Record<TeacherApprovalState, number>;
@@ -48,6 +51,10 @@ export interface AdminTeacher {
   onboardingStatus: string;
   onboardingComplete: boolean;
   approvalStatus: string;
+  interviewScheduledAt: string | null;
+  interviewDetails: string | null;
+  reapplyAvailableAt: string | null;
+  appealCount: number;
   createdAt: string;
   updatedAt: string;
 

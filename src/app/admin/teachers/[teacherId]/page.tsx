@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { useTeacherApplication } from "@/features/admin/hooks/useTeacherApplication";
 import TeacherStatusBadge from "@/features/admin/components/TeacherStatusBadge";
 import TeacherCompletenessPanel from "@/features/admin/components/TeacherCompletenessPanel";
+import TeacherInterviewPanel from "@/features/admin/components/TeacherInterviewPanel";
 import TeacherDecisionBar from "@/features/admin/components/TeacherDecisionBar";
 import TeacherPersonalSection from "@/features/admin/components/TeacherPersonalSection";
 import TeacherProfessionalSection from "@/features/admin/components/TeacherProfessionalSection";
@@ -15,8 +16,17 @@ import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 export default function AdminTeacherApplicationPage() {
   const { teacherId } = useParams<{ teacherId: string }>();
-  const { teacher, loading, error, notice, deciding, decide } =
-    useTeacherApplication(teacherId);
+  const {
+    teacher,
+    loading,
+    error,
+    notice,
+    deciding,
+    decide,
+    schedulingInterview,
+    scheduleInterview,
+    cancelInterview,
+  } = useTeacherApplication(teacherId);
 
   return (
     <div className="min-h-screen bg-gray-50 px-8 pt-8">
@@ -62,6 +72,37 @@ export default function AdminTeacherApplicationPage() {
                   status={teacher.approvalStatus as "PENDING" | "APPROVED" | "REJECTED"}
                 />
               </div>
+
+              {teacher.approvalStatus === "PENDING" && (
+                <div className="mt-6">
+                  <TeacherInterviewPanel
+                    interviewScheduledAt={teacher.interviewScheduledAt}
+                    interviewDetails={teacher.interviewDetails}
+                    busy={schedulingInterview}
+                    onSchedule={scheduleInterview}
+                    onCancel={cancelInterview}
+                  />
+                </div>
+              )}
+
+              {teacher.approvalStatus === "REJECTED" && teacher.reapplyAvailableAt && (
+                <p className="mt-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Can appeal after{" "}
+                  {new Date(teacher.reapplyAvailableAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                  .
+                </p>
+              )}
+
+              {teacher.appealCount > 0 && (
+                <p className="mt-3 text-xs text-gray-500">
+                  This teacher has appealed {teacher.appealCount} time
+                  {teacher.appealCount === 1 ? "" : "s"}.
+                </p>
+              )}
 
               <div className="mt-6">
                 <TeacherCompletenessPanel teacher={teacher} />

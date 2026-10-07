@@ -10,6 +10,7 @@ export function useTeacherApplication(teacherId: string) {
   const [error, setError] = useState("");
   const [deciding, setDeciding] = useState(false);
   const [notice, setNotice] = useState("");
+  const [schedulingInterview, setSchedulingInterview] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -42,6 +43,71 @@ export function useTeacherApplication(teacherId: string) {
     load();
   }, [load]);
 
+  async function scheduleInterview(scheduledAtIso: string, details: string) {
+    try {
+      setSchedulingInterview(true);
+      setError("");
+      setNotice("");
+
+      const res = await fetch(`/api/admin/teachers/${teacherId}/interview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt: scheduledAtIso, details }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to schedule interview.");
+      }
+
+      setTeacher((current) =>
+        current
+          ? {
+              ...current,
+              interviewScheduledAt: data.interviewScheduledAt,
+              interviewDetails: data.interviewDetails,
+            }
+          : current,
+      );
+      setNotice("Interview scheduled. The teacher has been notified.");
+      return true;
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to schedule interview.");
+      return false;
+    } finally {
+      setSchedulingInterview(false);
+    }
+  }
+
+  async function cancelInterview() {
+    try {
+      setSchedulingInterview(true);
+      setError("");
+      setNotice("");
+
+      const res = await fetch(`/api/admin/teachers/${teacherId}/interview`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to cancel interview.");
+      }
+
+      setTeacher((current) =>
+        current ? { ...current, interviewScheduledAt: null, interviewDetails: null } : current,
+      );
+      setNotice("Interview cancelled.");
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to cancel interview.");
+    } finally {
+      setSchedulingInterview(false);
+    }
+  }
+
   async function decide(status: Exclude<TeacherApprovalState, "PENDING">) {
     try {
       setDeciding(true);
@@ -61,12 +127,18 @@ export function useTeacherApplication(teacherId: string) {
       }
 
       setTeacher((current) =>
-        current ? { ...current, approvalStatus: status } : current,
+        current
+          ? {
+              ...current,
+              approvalStatus: status,
+              reapplyAvailableAt: data.teacher?.reapplyAvailableAt ?? null,
+            }
+          : current,
       );
       setNotice(
         status === "APPROVED"
           ? "Teacher approved. They can now open their dashboard."
-          : "Teacher rejected. They will not be able to access the dashboard.",
+          : "Teacher rejected. They cannot open the dashboard and can appeal after the waiting period.",
       );
     } catch (err) {
       console.error(err);
@@ -76,5 +148,15 @@ export function useTeacherApplication(teacherId: string) {
     }
   }
 
-  return { teacher, loading, error, notice, deciding, decide };
+  return {
+    teacher,
+    loading,
+    error,
+    notice,
+    deciding,
+    decide,
+    schedulingInterview,
+    scheduleInterview,
+    cancelInterview,
+  };
 }

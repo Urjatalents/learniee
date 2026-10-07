@@ -8,6 +8,7 @@ import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 import {
   fetchTeacherAccess,
   postApprovalPath,
+  type TeacherAccess,
 } from "@/features/teacher/utils/teacherAccess";
 
 export type ApprovalWatchState = "loading" | "PENDING" | "REJECTED" | "error";
@@ -25,6 +26,9 @@ export function useTeacherApprovalWatch() {
   const [state, setState] = useState<ApprovalWatchState>("loading");
   const [checking, setChecking] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [access, setAccess] = useState<TeacherAccess | null>(null);
+  const [appealing, setAppealing] = useState(false);
+  const [appealError, setAppealError] = useState("");
 
   const check = useCallback(async () => {
     setChecking(true);
@@ -42,6 +46,7 @@ export function useTeacherApprovalWatch() {
         return;
       }
 
+      setAccess(access);
       setState(access.approvalStatus === "REJECTED" ? "REJECTED" : "PENDING");
       setLastChecked(new Date());
     } catch (error) {
@@ -72,6 +77,27 @@ export function useTeacherApprovalWatch() {
     };
   }, [check]);
 
+  async function appeal() {
+    try {
+      setAppealing(true);
+      setAppealError("");
+
+      const res = await fetch("/api/teacher/appeal", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to submit your appeal.");
+      }
+
+      await check();
+    } catch (error) {
+      console.error("Teacher appeal failed:", error);
+      setAppealError(error instanceof Error ? error.message : "Failed to submit your appeal.");
+    } finally {
+      setAppealing(false);
+    }
+  }
+
   async function logout() {
     // Log before removing the cookie — the endpoint needs it to identify the user.
     await logClientActivity("LOGOUT");
@@ -82,5 +108,5 @@ export function useTeacherApprovalWatch() {
     router.push("/login");
   }
 
-  return { state, checking, lastChecked, check, logout };
+  return { state, access, checking, lastChecked, check, logout, appeal, appealing, appealError };
 }

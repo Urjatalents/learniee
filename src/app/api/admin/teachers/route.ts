@@ -42,6 +42,8 @@ export async function GET(req: Request) {
           createdAt: true,
           updatedAt: true,
           panCardNumber: true,
+          interviewScheduledAt: true,
+          appealCount: true,
           professionalInfo: {
             select: { qualifications: true, overallExperience: true },
           },
@@ -84,6 +86,8 @@ export async function GET(req: Request) {
         updatedAt: teacher.updatedAt,
         fileTypes: teacher.files.map((file) => file.type),
         hasPan: Boolean(teacher.panCardNumber?.trim()),
+        interviewScheduledAt: teacher.interviewScheduledAt,
+        appealCount: teacher.appealCount,
       })),
     });
   } catch (error) {

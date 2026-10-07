@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminAuth } from "@/lib/api-auth";
 import { TeacherApprovalStatus } from "@prisma/client";
 import { notifyTeacherApprovalStatus } from "@/features/shared/server/notificationTriggers.service";
+import { computeReapplyAvailableAt } from "@/features/teacher/utils/teacherAppeal";
 import { logActivity, actorFromTokenPayload } from "@/features/shared/server/activityLog.service";
 
 export async function PATCH(
@@ -70,6 +71,13 @@ export async function PATCH(
     // -----------------------------------------
     // Update approval status
     // -----------------------------------------
+    const approved = status === TeacherApprovalStatus.APPROVED;
+    const now = new Date();
+
+    // Selected (approved): clear any cooldown. Not selected (rejected): start
+    // the cooldown — the Teacher can appeal only after `reapplyAvailableAt`.
+    const reapplyAvailableAt = approved ? null : computeReapplyAvailableAt(now);
+
     const updatedTeacher = await prisma.teacher.update({
       where: {
         id: teacherId,
@@ -77,12 +85,12 @@ export async function PATCH(
 
       data: {
         approvalStatus: status,
+        rejectedAt: approved ? null : now,
+        reapplyAvailableAt,
       },
     });
 
-    await notifyTeacherApprovalStatus(teacherId, status === TeacherApprovalStatus.APPROVED);
-
-    const approved = status === TeacherApprovalStatus.APPROVED;
+    await notifyTeacherApprovalStatus(teacherId, approved, reapplyAvailableAt);
 
     await logActivity({
       action: approved ? "TEACHER_APPROVED" : "TEACHER_REJECTED",

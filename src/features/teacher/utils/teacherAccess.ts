@@ -10,6 +10,11 @@ export interface TeacherAccess {
   onboardingComplete: boolean;
   approvalStatus: TeacherApprovalState;
   bankAccountStatus: string;
+  /** ISO strings, or null. */
+  interviewScheduledAt: string | null;
+  interviewDetails: string | null;
+  reapplyAvailableAt: string | null;
+  canAppeal: boolean;
 }
 
 export async function fetchTeacherAccess(): Promise<TeacherAccess> {
@@ -27,6 +32,10 @@ export async function fetchTeacherAccess(): Promise<TeacherAccess> {
     onboardingComplete: Boolean(data.onboardingComplete),
     approvalStatus: data.approvalStatus ?? null,
     bankAccountStatus: data.bankAccountStatus ?? "MISSING",
+    interviewScheduledAt: data.interviewScheduledAt ?? null,
+    interviewDetails: data.interviewDetails ?? null,
+    reapplyAvailableAt: data.reapplyAvailableAt ?? null,
+    canAppeal: Boolean(data.canAppeal),
   };
 }
 

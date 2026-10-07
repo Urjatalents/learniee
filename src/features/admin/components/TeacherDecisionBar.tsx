@@ -79,7 +79,7 @@ export default function TeacherDecisionBar({ teacherName, status, deciding, onDe
             <p className="mt-2 text-sm text-gray-500">
               {confirming === "APPROVED"
                 ? `${teacherName} will be notified and can open their teacher dashboard.`
-                : `${teacherName} will be notified and will not be able to open the teacher dashboard.`}
+                : `${teacherName} will be notified, will not be able to open the teacher dashboard, and can appeal only after a waiting period (30 days by default).`}
             </p>
 
             <div className="mt-6 flex justify-end gap-3">

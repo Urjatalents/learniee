@@ -871,17 +871,60 @@ async function notifyInterestedParentsOfNewCourse(courseId: string) {
   );
 }
 
-export function notifyTeacherApprovalStatus(teacherId: string, approved: boolean) {
+export function notifyTeacherApprovalStatus(
+  teacherId: string,
+  approved: boolean,
+  reapplyAvailableAt?: Date | null,
+) {
   return safe("teacher approval status", async () => {
+    const reapplyText = reapplyAvailableAt
+      ? ` You can appeal after ${reapplyAvailableAt.toLocaleDateString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })}.`
+      : "";
+
     await createNotification({
       recipientId: teacherId,
       recipientRole: R.TEACHER,
       type: approved ? T.TEACHER_APPROVED : T.TEACHER_REJECTED,
-      title: approved ? "You're approved!" : "Application rejected",
+      title: approved ? "You're approved!" : "Application not approved",
       message: approved
         ? "Your teacher application was approved — you can now create courses."
-        : "Your teacher application was rejected.",
+        : `Your teacher application was not approved.${reapplyText}`,
       link: approved ? "/teacher/course-management" : "/teacher/pending-approval",
+    });
+  });
+}
+
+export function notifyTeacherInterviewScheduled(
+  teacherId: string,
+  scheduledAt: Date,
+  details: string | null,
+) {
+  return safe("teacher interview scheduled", async () => {
+    await createNotification({
+      recipientId: teacherId,
+      recipientRole: R.TEACHER,
+      type: T.TEACHER_INTERVIEW_SCHEDULED,
+      title: "Interview scheduled",
+      message: `Your interview is on ${formatPlatformTime(scheduledAt, true)} (IST).${
+        details ? ` ${details}` : ""
+      }`,
+      link: "/teacher/pending-approval",
+    });
+  });
+}
+
+export function notifyAdminsTeacherAppealed(teacherName: string, teacherId: string) {
+  return safe("teacher appealed", async () => {
+    await notifyAllAdmins({
+      type: T.TEACHER_APPEALED,
+      title: "Teacher appeal received",
+      message: `${teacherName} has appealed and is waiting for review.`,
+      link: `/admin/teachers/${teacherId}`,
     });
   });
 }

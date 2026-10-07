@@ -134,6 +134,15 @@ model Teacher {
   /// ₹700 rate server-side (see createCourse in course.service.ts),
   /// regardless of what the create-course form submits.
   isIITian           Boolean               @default(false)
+  /// Teacher interview + appeal (Oct 7, 2026). Interview is optional and only
+  /// meaningful while `approvalStatus = PENDING`. A rejection starts a cooldown
+  /// (`reapplyAvailableAt`); after it the Teacher can appeal, which puts the
+  /// application back to PENDING and increments `appealCount`.
+  interviewScheduledAt DateTime?
+  interviewDetails     String?
+  rejectedAt           DateTime?
+  reapplyAvailableAt   DateTime?
+  appealCount          Int                   @default(0)
   chatRooms          ChatRoom[]
   classSessions      ClassSession[]
   courses            Course[]
@@ -1734,6 +1743,8 @@ enum NotificationType {
   WALLET_CREDITED
   TEACHER_APPROVED
   TEACHER_REJECTED
+  TEACHER_INTERVIEW_SCHEDULED
+  TEACHER_APPEALED
   /// Teacher Payouts (Sep 9, 2026) — see LedgerPayoutStatus's doc-comment.
   PAYOUT_ON_HOLD
   PAYOUT_REJECTED
@@ -1876,6 +1887,8 @@ enum ActivityAction {
   ENROLLMENT_REJECTED
   TEACHER_APPROVED
   TEACHER_REJECTED
+  TEACHER_INTERVIEW_SCHEDULED
+  TEACHER_APPEALED
   COURSE_APPROVED
   COURSE_REJECTED
   USER_DELETED
