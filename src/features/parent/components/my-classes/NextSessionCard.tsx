@@ -128,6 +128,7 @@ export default function NextSessionCard({ sessionId, label, onChanged }: Props) 
             <MeetingLink
               enabled={state.meetingEnabled}
               uri={state.meetingUri}
+              cohost={null}
               present={joined}
               busy={busy}
               onRetry={() => enterMeeting("join", state.studentName)}
