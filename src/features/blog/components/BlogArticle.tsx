@@ -12,8 +12,8 @@ import { blogCategoryLabel } from "../utils/blogCategories";
 import { cardToPost } from "../utils/cardToPost";
 import { parseMarkdown } from "../utils/markdown";
 import BlogContent from "./BlogContent";
+import { iso } from "@/features/blog/utils/isoDate";
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export default function BlogArticle({
   post,

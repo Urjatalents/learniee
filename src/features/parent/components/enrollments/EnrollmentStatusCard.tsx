@@ -11,15 +11,12 @@ import {
 import { formatSchedule } from "@/features/shared/utils/weekdays";
 import CycleProgressRing from "@/features/shared/components/CycleProgressRing";
 import RenewalPanel from "@/features/parent/components/enrollments/RenewalPanel";
+import { displayName } from "@/features/shared/utils/displayName";
 
 interface Props {
   enrollment: ParentEnrollment;
   onConfirmRevision: (id: string) => void;
   onDeclineRevision: (id: string) => void;
-}
-
-function displayName(p: { firstName: string; lastName: string; visibleName: string | null }) {
-  return p.visibleName?.trim() || `${p.firstName} ${p.lastName}`.trim();
 }
 
 export default function EnrollmentStatusCard({

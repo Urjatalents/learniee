@@ -6,6 +6,7 @@ import { MessageCircle, Search, BookOpen, Users } from "lucide-react";
 
 import type { TeacherEnrollment } from "@/features/teacher/hooks/useEnrollments";
 import { getEnrollmentStatusLabel, getEnrollmentStatusStyle } from "@/features/shared/utils/enrollmentStatus";
+import { displayName } from "@/features/shared/utils/displayName";
 
 interface Props {
   enrollments: TeacherEnrollment[];
@@ -33,10 +34,6 @@ const STATUS_RANK: Record<string, number> = {
   PENDING_ADMIN_APPROVAL: 1,
   COMPLETED: 2,
 };
-
-function displayName(p: { firstName: string; lastName: string; visibleName?: string | null }) {
-  return p.visibleName?.trim() || `${p.firstName} ${p.lastName}`.trim();
-}
 
 function buildRoster(enrollments: TeacherEnrollment[]): StudentRow[] {
   const byStudent = new Map<string, TeacherEnrollment[]>();

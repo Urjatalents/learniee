@@ -76,3 +76,10 @@ export function colorForKey(key: string, keys: string[]) {
   const index = keys.indexOf(key);
   return CALENDAR_COLORS[index % CALENDAR_COLORS.length];
 }
+
+/** Adds the weekday if absent, removes it if present; result is sorted ascending (0 = Sunday). */
+export function toggleWeekday(days: number[], day: number): number[] {
+  return days.includes(day)
+    ? days.filter((d) => d !== day)
+    : [...days, day].sort((a, b) => a - b);
+}

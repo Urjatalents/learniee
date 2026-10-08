@@ -10,8 +10,8 @@ import { parseMarkdown } from "../../utils/markdown";
 import BlogContent from "../BlogContent";
 import BlogCard from "./BlogCard";
 import { blogTheme } from "./blogTheme";
+import { iso } from "@/features/blog/utils/isoDate";
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 /**
  * One article INSIDE the Parent / Teacher dashboard. Same content renderer as

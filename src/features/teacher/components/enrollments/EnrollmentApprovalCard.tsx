@@ -1,20 +1,22 @@
 "use client";
 
+import { BookOpen, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { MessageCircle, BookOpen } from "lucide-react";
 
-import type { TeacherEnrollment } from "@/features/teacher/hooks/useEnrollments";
-import { getEnrollmentStatusLabel, getEnrollmentStatusStyle } from "@/features/shared/utils/enrollmentStatus";
-import { WEEKDAY_LABELS, formatSchedule } from "@/features/shared/utils/weekdays";
 import CycleProgressRing from "@/features/shared/components/CycleProgressRing";
-import SessionsList from "@/features/teacher/components/enrollments/SessionsList";
 import {
-  buildCyclePlan,
-  formatCycleRange,
-  isStartDateInPast,
+    buildCyclePlan,
+    formatCycleRange,
+    isStartDateInPast,
 } from "@/features/shared/utils/cyclePlan";
+import { getEnrollmentStatusLabel, getEnrollmentStatusStyle } from "@/features/shared/utils/enrollmentStatus";
+import { formatSchedule } from "@/features/shared/utils/weekdays";
+import SessionsList from "@/features/teacher/components/enrollments/SessionsList";
+import type { TeacherEnrollment } from "@/features/teacher/hooks/useEnrollments";
 import { toDateKey, todayInPlatformTz } from "@/lib/platformTime";
+import RevisionForm from "./RevisionForm";
+import ScheduleEditor from "./ScheduleEditor";
 
 interface Props {
   enrollment: TeacherEnrollment;
@@ -53,19 +55,7 @@ export default function EnrollmentApprovalCard({
   const router = useRouter();
   const [revising, setRevising] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
-  const [note, setNote] = useState("");
-  const [newDate, setNewDate] = useState("");
-  const [newSessions, setNewSessions] = useState("");
-  const [newScheduleDays, setNewScheduleDays] = useState<number[]>([]);
-  const [newScheduleTime, setNewScheduleTime] = useState("");
-
   const [editingSchedule, setEditingSchedule] = useState(false);
-  const [scheduleDaysDraft, setScheduleDaysDraft] = useState<number[]>(
-    enrollment.scheduleDays ?? [],
-  );
-  const [scheduleTimeDraft, setScheduleTimeDraft] = useState(
-    enrollment.scheduleTime ?? "",
-  );
 
   const label = getEnrollmentStatusLabel(enrollment.status, "teacher");
   const style = getEnrollmentStatusStyle(enrollment.status);
@@ -93,52 +83,6 @@ export default function EnrollmentApprovalCard({
     startPassed && enrollment.status === "PENDING_ADMIN_APPROVAL";
   const canRevise = actionable || needsNewStart;
   const minStartDate = toDateKey(todayInPlatformTz());
-
-  function toggleScheduleDraftDay(day: number) {
-    setScheduleDaysDraft((current) =>
-      current.includes(day)
-        ? current.filter((d) => d !== day)
-        : [...current, day].sort((a, b) => a - b),
-    );
-  }
-
-  function submitSchedule() {
-    if (scheduleDaysDraft.length === 0 || !scheduleTimeDraft) return;
-
-    onSetSchedule(enrollment.id, {
-      scheduleDays: scheduleDaysDraft,
-      scheduleTime: scheduleTimeDraft,
-    });
-    setEditingSchedule(false);
-  }
-
-  function toggleNewScheduleDay(day: number) {
-    setNewScheduleDays((current) =>
-      current.includes(day)
-        ? current.filter((d) => d !== day)
-        : [...current, day].sort((a, b) => a - b),
-    );
-  }
-
-  function submitRevision() {
-    if (!note.trim()) return;
-
-    onRevise(enrollment.id, {
-      note,
-      cycleStartDate: newDate || undefined,
-      sessionsPerMonth:
-        enrollment.isLegacy && newSessions ? Number(newSessions) : undefined,
-      scheduleDays: newScheduleDays.length ? newScheduleDays : undefined,
-      scheduleTime: newScheduleTime || undefined,
-    });
-
-    setRevising(false);
-    setNote("");
-    setNewDate("");
-    setNewSessions("");
-    setNewScheduleDays([]);
-    setNewScheduleTime("");
-  }
 
   return (
     <div
@@ -208,11 +152,7 @@ export default function EnrollmentApprovalCard({
           {isActive && enrollment.isLegacy && !editingSchedule && (
             <button
               type="button"
-              onClick={() => {
-                setScheduleDaysDraft(enrollment.scheduleDays ?? []);
-                setScheduleTimeDraft(enrollment.scheduleTime ?? "");
-                setEditingSchedule(true);
-              }}
+              onClick={() => setEditingSchedule(true)}
               className="text-[10px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-full"
             >
               {hasSchedule ? "Edit" : "Set schedule"}
@@ -222,56 +162,16 @@ export default function EnrollmentApprovalCard({
       </div>
 
       {isActive && enrollment.isLegacy && editingSchedule && (
-        <div className="mt-3 bg-purple-50 border border-purple-100 rounded-xl p-3 space-y-2">
-          {!hasSchedule && (
-            <p className="text-[11px] text-purple-700">
-              This enrollment has no schedule yet, so it won&apos;t show on the
-              calendar until one is set.
-            </p>
-          )}
-          <div className="flex gap-1 flex-wrap">
-            {WEEKDAY_LABELS.map((label, day) => {
-              const active = scheduleDaysDraft.includes(day);
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => toggleScheduleDraftDay(day)}
-                  className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
-                    active
-                      ? "bg-purple-600 text-white border-purple-600"
-                      : "bg-white text-gray-500 border-purple-200"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-            <input
-              type="time"
-              value={scheduleTimeDraft}
-              onChange={(e) => setScheduleTimeDraft(e.target.value)}
-              className="text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={submitSchedule}
-              disabled={scheduleDaysDraft.length === 0 || !scheduleTimeDraft}
-              className="text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-40 px-3 py-1.5 rounded-full"
-            >
-              Save schedule
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditingSchedule(false)}
-              className="text-xs font-bold text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-full"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <ScheduleEditor
+          hasSchedule={hasSchedule}
+          initialDays={enrollment.scheduleDays ?? []}
+          initialTime={enrollment.scheduleTime ?? ""}
+          onSave={(input) => {
+            onSetSchedule(enrollment.id, input);
+            setEditingSchedule(false);
+          }}
+          onCancel={() => setEditingSchedule(false)}
+        />
       )}
 
       {startPassed &&
@@ -364,86 +264,15 @@ export default function EnrollmentApprovalCard({
       )}
 
       {canRevise && revising && (
-        <div className="mt-4 bg-purple-50 border border-purple-100 rounded-xl p-3 space-y-2">
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Explain the change to the parent (required) — full discussion happens in chat"
-            className="w-full text-xs border border-purple-200 rounded-lg px-2 py-1.5 bg-white"
-            rows={2}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="date"
-              min={enrollment.isLegacy ? undefined : minStartDate}
-              value={newDate}
-              onChange={(e) => setNewDate(e.target.value)}
-              className="text-xs border border-purple-200 rounded-lg px-2 py-1.5 bg-white"
-            />
-            {enrollment.isLegacy && (
-              <input
-                type="number"
-                min={4}
-                max={31}
-                value={newSessions}
-                onChange={(e) => setNewSessions(e.target.value)}
-                placeholder="New sessions/month"
-                className="text-xs border border-purple-200 rounded-lg px-2 py-1.5 bg-white"
-              />
-            )}
-          </div>
-          {!enrollment.isLegacy && (
-            <p className="text-[11px] text-purple-700">
-              Propose a different start date and/or weekly schedule — the
-              session count and price are recalculated from it (minimum 4
-              sessions in the cycle). Times are in IST.
-            </p>
-          )}
-
-          <div className="flex gap-1 flex-wrap">
-            {WEEKDAY_LABELS.map((label, day) => {
-              const active = newScheduleDays.includes(day);
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => toggleNewScheduleDay(day)}
-                  className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
-                    active
-                      ? "bg-purple-600 text-white border-purple-600"
-                      : "bg-white text-gray-500 border-purple-200"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-            <input
-              type="time"
-              value={newScheduleTime}
-              onChange={(e) => setNewScheduleTime(e.target.value)}
-              className="text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={submitRevision}
-              disabled={!note.trim()}
-              className="text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-40 px-3 py-1.5 rounded-full"
-            >
-              Send to parent
-            </button>
-            <button
-              type="button"
-              onClick={() => setRevising(false)}
-              className="text-xs font-bold text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-full"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <RevisionForm
+          isLegacy={enrollment.isLegacy}
+          minStartDate={minStartDate}
+          onSubmit={(input) => {
+            onRevise(enrollment.id, input);
+            setRevising(false);
+          }}
+          onCancel={() => setRevising(false)}
+        />
       )}
     </div>
   );

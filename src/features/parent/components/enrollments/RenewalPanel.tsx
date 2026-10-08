@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 import { useRenewal } from "@/features/parent/hooks/useRenewal";
-import { WEEKDAY_LABELS, formatScheduleTime } from "@/features/shared/utils/weekdays";
+import { WEEKDAY_LABELS, formatScheduleTime, toggleWeekday } from "@/features/shared/utils/weekdays";
 
 interface Props {
   enrollmentId: string;
@@ -39,9 +39,7 @@ export default function RenewalPanel({ enrollmentId, onRenewed }: Props) {
   }
 
   function toggleDay(day: number) {
-    setScheduleDays((current) =>
-      current.includes(day) ? current.filter((d) => d !== day) : [...current, day].sort(),
-    );
+    setScheduleDays((current) => toggleWeekday(current, day));
   }
 
   async function handleRenew() {

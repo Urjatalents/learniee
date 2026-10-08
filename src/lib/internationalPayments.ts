@@ -1,4 +1,5 @@
 import "server-only";
+import { round2 } from '@/lib/money';
 
 /**
  * International-payment surcharge (added Sep 8, 2026, per direct
@@ -70,10 +71,6 @@ export function isInternationalParent(parent: {
 }
 
 /** Rounds to 2 decimal places — matches the `Decimal(10,2)` precision of every money field. */
-function round2(amount: number): number {
-  return Math.round(amount * 100) / 100;
-}
-
 /**
  * Applies the international surcharge (if applicable) to a base
  * rupee amount. Call this AFTER computing the normal price

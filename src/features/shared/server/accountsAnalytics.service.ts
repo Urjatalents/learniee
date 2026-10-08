@@ -3,6 +3,7 @@ import "server-only";
 import { LedgerPayoutStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { round2 } from '@/lib/money';
 
 /**
  * Pie-chart-ready aggregates for the Accounts/Admin "Analytics" tab
@@ -79,9 +80,6 @@ export interface AccountsAnalytics {
   payoutStatusBreakdown: PayoutStatusSlice[];
 }
 
-function round2(n: number) {
-  return Math.round(n * 100) / 100;
-}
 
 /** `{ gte, lte }` filter object for a range field, or undefined if the range is fully open. */
 function dateFilter(range?: AccountsAnalyticsRange) {

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { TeacherApprovalStatus } from "@prisma/client";
 import { getTeacherRatingsByIds } from "@/features/shared/server/review.service";
+import { displayName } from "@/features/shared/utils/displayName";
 
 /**
  * Admin "Teacher Directory" / "Parent Directory" — read-only summary
@@ -13,10 +14,6 @@ import { getTeacherRatingsByIds } from "@/features/shared/server/review.service"
  * query per list, no N+1) rather than looping and issuing a query per
  * row.
  */
-
-function displayName(p: { firstName: string; lastName: string; visibleName?: string | null }) {
-  return p.visibleName?.trim() || `${p.firstName} ${p.lastName}`.trim();
-}
 
 // ---------------------------------------------------------------------------
 // Teacher directory
