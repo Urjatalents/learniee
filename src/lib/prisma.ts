@@ -3,19 +3,24 @@ import path from "path";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const caCert = readFileSync(
-  path.join(process.cwd(), "certs/rds-global-bundle.pem"),
-).toString();
+// SSL is on by default (needed for RDS). Set DATABASE_SSL=false in .env
+// when using a Postgres without SSL, such as the Docker one for the test run.
+const useSsl = process.env.DATABASE_SSL !== "false";
+
+const ssl = useSsl
+  ? {
+      ca: readFileSync(
+        path.join(process.cwd(), "certs/rds-global-bundle.pem"),
+      ).toString(),
+      rejectUnauthorized: true,
+    }
+  : undefined;
 
 // Pool size: on Vercel, every serverless invocation can spin up its own
-// connection, so we keep this at 1 to avoid exhausting RDS Free Tier's
-// connection cap. Locally (`next dev`), the app runs as a single
-// long-lived process instead, and one page load fires many parallel API
-// calls (profile, students, courses, demo-bookings, wallet, calendar,
-// reschedule-requests, enrollments, ...) — capping at 1 there just makes
-// every request but the first queue up and time out waiting for the pool.
-// Override with DATABASE_POOL_MAX if you need a different value in either
-// environment.
+// connection, so we keep this at 1 to avoid exhausting the DB connection
+// cap. On a long-lived server (Docker/EC2, `next dev`) the app is one
+// process and a page load fires many parallel API calls, so a pool of 1
+// would make requests queue and time out. Override with DATABASE_POOL_MAX.
 const isServerless = Boolean(process.env.VERCEL);
 const defaultPoolMax = isServerless ? 1 : 5;
 const poolMax = process.env.DATABASE_POOL_MAX
@@ -24,15 +29,11 @@ const poolMax = process.env.DATABASE_POOL_MAX
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    ca: caCert,
-    rejectUnauthorized: true, // now safe — we trust the real AWS CA
-  },
+  ssl,
   max: poolMax,
   idleTimeoutMillis: 10_000,
-  // A bit more headroom than 5s so a cold RDS connection under a burst of
-  // parallel requests doesn't spuriously time out before it can even get a
-  // pool slot.
+  // Extra headroom so a cold connection under a burst of parallel requests
+  // doesn't time out before it can get a pool slot.
   connectionTimeoutMillis: 10_000,
 });
 

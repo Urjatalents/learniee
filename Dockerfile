@@ -7,7 +7,7 @@ FROM node:22-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ENV DATABASE_URL="postgresql://x:x@localhost:5432/x"
+ENV DATABASE_URL="postgresql://x:x@localhost:5432/x" DATABASE_SSL=false
 RUN npx prisma generate && npm run build
 
 FROM node:22-slim AS runner
@@ -16,5 +16,6 @@ ENV NODE_ENV=production TZ=UTC
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/certs ./certs
 EXPOSE 3000
 CMD ["node", "server.js"]
