@@ -1,4 +1,4 @@
-import { Input } from "@/components/ui/input";
+import AuthField from "@/features/auth/components/shared/AuthField";
 
 interface SignupInputProps {
   placeholder: string;
@@ -9,6 +9,7 @@ interface SignupInputProps {
   type?: string;
   disabled?: boolean;
   error?: string;
+  autoComplete?: string;
 }
 
 export default function SignupInput({
@@ -18,23 +19,17 @@ export default function SignupInput({
   type = "text",
   disabled = false,
   error,
+  autoComplete,
 }: SignupInputProps) {
   return (
-    <div>
-      <Input
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        className="rounded-full"
-      />
-
-      {error && (
-        <p className="text-xs text-red-600 mt-1 ml-3">
-          {error}
-        </p>
-      )}
-    </div>
+    <AuthField
+      type={type}
+      label={placeholder}
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      error={error}
+      autoComplete={autoComplete}
+    />
   );
 }

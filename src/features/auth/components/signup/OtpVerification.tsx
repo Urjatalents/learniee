@@ -1,6 +1,8 @@
-import { Input } from "@/components/ui/input";
-
-const PRIMARY = "#7E2BF1";
+import AuthField from "@/features/auth/components/shared/AuthField";
+import {
+  AUTH_BTN_MAIN,
+  AUTH_LINK,
+} from "@/features/auth/components/shared/authStyles";
 
 interface OtpVerificationProps {
   email: string;
@@ -30,7 +32,7 @@ export default function OtpVerification({
   if (verified) {
     return (
       <div className="space-y-2 pt-1">
-        <p className="text-sm text-green-600 text-center">
+        <p className="text-center text-sm font-bold text-[#1f8f55]">
           Email verified successfully.
         </p>
       </div>
@@ -38,30 +40,25 @@ export default function OtpVerification({
   }
 
   return (
-    <div className="space-y-2 pt-1">
-      <p className="text-xs text-gray-500 ml-1">
+    <div className="space-y-3 pt-1">
+      <p className="text-xs text-[#6f6a82]">
         We emailed a verification code to {email}
       </p>
 
-      <Input
-        placeholder="Enter OTP"
+      <AuthField
+        label="Enter OTP"
         value={otp}
         onChange={onOtpChange}
-        className="rounded-full"
+        error={otpError}
+        inputMode="numeric"
+        autoComplete="one-time-code"
       />
-
-      {otpError && (
-        <p className="text-xs text-red-600 ml-3">
-          {otpError}
-        </p>
-      )}
 
       <button
         type="button"
         onClick={onVerify}
         disabled={verifying}
-        className="w-full rounded-full py-3 text-white font-semibold disabled:opacity-60"
-        style={{ backgroundColor: PRIMARY }}
+        className={AUTH_BTN_MAIN}
       >
         {verifying ? "Verifying..." : "Verify OTP"}
       </button>
@@ -70,8 +67,7 @@ export default function OtpVerification({
         type="button"
         onClick={onResend}
         disabled={sendingOtp}
-        className="w-full text-xs font-medium disabled:opacity-50"
-        style={{ color: PRIMARY }}
+        className={`${AUTH_LINK} w-full text-xs disabled:opacity-50`}
       >
         {sendingOtp ? "Resending..." : "Resend OTP"}
       </button>

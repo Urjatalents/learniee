@@ -25,7 +25,7 @@ export default function TeacherConfirmationCheckbox({
           className="mt-0.5"
         />
 
-        <span className="text-sm text-gray-600">
+        <span className="text-[0.8rem] text-[#6f6a82]">
           I confirm that I am signing up as a{" "}
           <span className="font-semibold">Teacher</span>, and I
           understand this account type cannot easily be changed
@@ -34,7 +34,7 @@ export default function TeacherConfirmationCheckbox({
       </div>
 
       {error && (
-        <p className="text-xs text-red-600 ml-1">
+        <p className="ml-1 text-xs text-[#e5484d]">
           {error}
         </p>
       )}

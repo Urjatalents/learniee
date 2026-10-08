@@ -2,11 +2,18 @@
 
 import Link from "next/link";
 
+import { useEffect } from "react";
+
 import LoginInput from "./LoginInput";
 import PasswordInput from "./PasswordInput";
+import { useAuthStage } from "@/features/auth/components/shared/AuthShell";
+import {
+  AUTH_BTN_MAIN,
+  AUTH_ERROR,
+  AUTH_LINK,
+} from "@/features/auth/components/shared/authStyles";
+import AuthField from "@/features/auth/components/shared/AuthField";
 import { useLogin } from "@/features/auth/hooks/useLogin";
-
-const PRIMARY = "#7E2BF1";
 
 export default function LoginForm() {
   const {
@@ -31,133 +38,113 @@ export default function LoginForm() {
     handleCompleteNewPassword,
   } = useLogin();
 
+  // Purely visual: make the characters react when an error appears.
+  const { signalError } = useAuthStage();
+  useEffect(() => {
+    if (error) signalError();
+  }, [error, signalError]);
+
   if (forcePasswordChange) {
     return (
-      <div className="w-full md:w-1/2 bg-white rounded-[32px] shadow-2xl p-8 md:-mr-8 z-10 min-h-[575px] flex items-center">
-        <div className="w-full">
-          <h1
-            className="text-2xl font-bold text-center mb-4"
-            style={{ color: PRIMARY }}
-          >
-            Set a New Password
-          </h1>
-          <p className="text-sm text-gray-500 text-center mb-8">
-            This is your first login. Choose a new password to continue.
+      <div className="flex flex-1 flex-col">
+        <h1 className="mt-3.5 text-center font-heading text-[1.9rem] font-bold text-[#1b1530]">
+          Set a New Password
+        </h1>
+        <p className="mb-4 mt-0.5 text-center text-sm text-[#6f6a82]">
+          This is your first login. Choose a new password to continue.
+        </p>
+
+        <form onSubmit={handleCompleteNewPassword} className="flex flex-col gap-3.5" noValidate>
+          <AuthField
+            type="password"
+            label="New Password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            disabled={loading}
+            autoComplete="new-password"
+            data-pw=""
+          />
+          <AuthField
+            type="password"
+            label="Confirm New Password"
+            value={confirmNewPassword}
+            onChange={(e) => setConfirmNewPassword(e.target.value)}
+            disabled={loading}
+            autoComplete="new-password"
+            data-pw=""
+          />
+
+          <p className="text-xs text-[#6f6a82]">
+            Password must contain at least 8 characters, one uppercase letter, one lowercase
+            letter, and one number.
           </p>
 
-          <form onSubmit={handleCompleteNewPassword} className="space-y-5" noValidate>
-            <input
-              type="password"
-              placeholder="New Password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              disabled={loading}
-              className="border rounded-full p-3 w-full outline-none"
-            />
-            <input
-              type="password"
-              placeholder="Confirm New Password"
-              value={confirmNewPassword}
-              onChange={(e) => setConfirmNewPassword(e.target.value)}
-              disabled={loading}
-              className="border rounded-full p-3 w-full outline-none"
-            />
+          <p className={AUTH_ERROR} role="alert">
+            {error}
+          </p>
 
-            <p className="text-xs text-gray-500">
-              Password must contain at least 8 characters, one uppercase letter, one lowercase
-              letter, and one number.
-            </p>
-
-            {error && <p className="text-sm text-red-600 text-center">{error}</p>}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-full py-3 text-white font-semibold text-lg disabled:opacity-60 transition"
-              style={{ backgroundColor: PRIMARY }}
-            >
-              {loading ? "Updating..." : "Set Password & Continue"}
-            </button>
-          </form>
-        </div>
+          <button type="submit" disabled={loading} className={AUTH_BTN_MAIN}>
+            {loading ? "Updating..." : "Set Password & Continue"}
+          </button>
+        </form>
       </div>
     );
   }
 
   return (
-    <div className="w-full md:w-1/2 bg-white rounded-[32px] shadow-2xl p-8 md:-mr-8 z-10 min-h-[575px] flex items-center">
-      <div className="w-full">
-        {/* Heading */}
-        <h1
-          className="text-2xl font-bold text-center mb-12"
-          style={{ color: PRIMARY }}
-        >
-          User Login
-        </h1>
+    <div className="flex flex-1 flex-col">
+      {/* Heading */}
+      <h1 className="mt-3.5 text-center font-heading text-[1.9rem] font-bold text-[#1b1530]">
+        Welcome back!
+      </h1>
+      <p className="mb-[18px] mt-0.5 text-center text-[0.9rem] text-[#6f6a82]">
+        Please enter your details
+      </p>
 
-        <form
-          onSubmit={handleLogin}
-          className="space-y-5"
-          noValidate
-        >
-          {/* Email */}
-          <LoginInput
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
-            }
-            disabled={loading}
-          />
+      <form onSubmit={handleLogin} className="flex flex-col gap-3.5" noValidate>
+        {/* Email */}
+        <LoginInput
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={loading}
+          autoComplete="email"
+        />
 
-          {/* Password */}
-          <PasswordInput
-            value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
-            showPassword={showPassword}
-            onToggle={() =>
-              setShowPassword(
-                (value) => !value
-              )
-            }
-            disabled={loading}
-          />
+        {/* Password */}
+        <PasswordInput
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          showPassword={showPassword}
+          onToggle={() => setShowPassword((value) => !value)}
+          disabled={loading}
+        />
 
-          {/* Forgot Password */}
-          <div className="flex justify-end -mt-2">
-            <Link
-              href="/forgot-password"
-              className="text-sm text-violet-600 hover:underline"
-            >
-              Forgot Password
-            </Link>
-          </div>
+        {/* Forgot Password */}
+        <div className="flex justify-end text-[0.8rem]">
+          <Link href="/forgot-password" className={AUTH_LINK}>
+            Forgot password?
+          </Link>
+        </div>
 
-          {/* Error */}
-          {error && (
-            <p className="text-sm text-red-600 text-center">
-              {error}
-            </p>
-          )}
+        {/* Error */}
+        <p className={AUTH_ERROR} role="alert">
+          {error}
+        </p>
 
-          {/* Login button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-full py-3 text-white font-semibold text-lg disabled:opacity-60 transition"
-            style={{
-              backgroundColor: PRIMARY,
-            }}
-          >
-            {loading
-              ? "Logging in..."
-              : "Log In"}
-          </button>
-        </form>
-      </div>
+        {/* Login button */}
+        <button type="submit" disabled={loading} className={AUTH_BTN_MAIN}>
+          {loading ? "Logging in..." : "Log In"}
+        </button>
+      </form>
+
+      <p className="mt-auto pt-4 text-center text-[0.85rem] text-[#6f6a82]">
+        Don&apos;t have an account?{" "}
+        <Link href="/signup" className={AUTH_LINK}>
+          Sign up
+        </Link>
+      </p>
     </div>
   );
 }

@@ -1,5 +1,7 @@
-import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
+
+import AuthField from "@/features/auth/components/shared/AuthField";
+import { AUTH_EYE_BTN } from "@/features/auth/components/shared/authStyles";
 
 interface PasswordInputProps {
   placeholder: string;
@@ -23,36 +25,26 @@ export default function PasswordInput({
   error,
 }: PasswordInputProps) {
   return (
-    <div>
-      <div className="relative">
-        <Input
-          type={showPassword ? "text" : "password"}
-          placeholder={placeholder}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          className="rounded-full pr-10"
-        />
-
+    <AuthField
+      type={showPassword ? "text" : "password"}
+      label={placeholder}
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      error={error}
+      autoComplete="new-password"
+      data-pw=""
+      trailing={
         <button
           type="button"
           onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-          tabIndex={-1}
+          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-pressed={showPassword}
+          className={AUTH_EYE_BTN}
         >
-          {showPassword ? (
-            <EyeOff size={18} />
-          ) : (
-            <Eye size={18} />
-          )}
+          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
         </button>
-      </div>
-
-      {error && (
-        <p className="text-xs text-red-600 mt-1 ml-3">
-          {error}
-        </p>
-      )}
-    </div>
+      }
+    />
   );
 }

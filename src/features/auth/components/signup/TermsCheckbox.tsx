@@ -8,8 +8,6 @@ interface TermsCheckboxProps {
   error?: string;
 }
 
-const PRIMARY = "#7E2BF1";
-
 export default function TermsCheckbox({
   checked,
   onChange,
@@ -18,23 +16,23 @@ export default function TermsCheckbox({
 }: TermsCheckboxProps) {
   return (
     <div>
-      <div className="flex items-center gap-2 pt-1">
+      <div className="flex items-start gap-2 pt-1">
         <Checkbox
           checked={checked}
           onCheckedChange={(value) =>
             onChange(value === true)
           }
           disabled={disabled}
+          className="mt-0.5"
         />
 
-        <span className="text-sm text-gray-600">
+        <span className="text-[0.8rem] text-[#6f6a82]">
           I accept the{" "}
           <Link
             href="/terms"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: PRIMARY }}
-            className="font-medium"
+            className="font-bold text-[#7e2bf1] hover:underline"
           >
             Terms & Conditions
           </Link>,{" "}
@@ -42,8 +40,7 @@ export default function TermsCheckbox({
             href="/privacy"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: PRIMARY }}
-            className="font-medium"
+            className="font-bold text-[#7e2bf1] hover:underline"
           >
             Privacy Policy
           </Link> and{" "}
@@ -51,8 +48,7 @@ export default function TermsCheckbox({
             href="/refunds"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: PRIMARY }}
-            className="font-medium"
+            className="font-bold text-[#7e2bf1] hover:underline"
           >
             Refund Policy
           </Link>
@@ -60,7 +56,7 @@ export default function TermsCheckbox({
       </div>
 
       {error && (
-        <p className="text-xs text-red-600 ml-1">
+        <p className="ml-1 text-xs text-[#e5484d]">
           {error}
         </p>
       )}

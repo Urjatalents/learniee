@@ -1,0 +1,24 @@
+/* Login / Signup animated cast. Scoped under .auth-cast / .auth-underline so
+   nothing here leaks into other pages. */
+.auth-cast .rise{animation:auth-rise .8s cubic-bezier(.2,1.2,.4,1) both;animation-delay:var(--d)}
+@keyframes auth-rise{from{transform:translateY(110%)}}
+.auth-cast .char{transform-box:fill-box;transform-origin:50% 100%;transform:skewX(calc(var(--lean,0)*1deg)) scaleY(var(--sy,1));transition:transform .5s cubic-bezier(.3,1.5,.5,1)}
+.auth-cast .pu{transition:transform .18s ease-out}
+.auth-cast .eye{transform-box:fill-box;transform-origin:center;transform:scaleY(var(--es,1)) scale(var(--ez,1));transition:transform .2s}
+.auth-cast .eye.blink{--es:.1}
+.auth-cast .mouth>*{display:none}
+.auth-cast[data-mood=idle] .m-idle,.auth-cast[data-mood=email] .m-idle,.auth-cast[data-mood=pass] .m-flat,.auth-cast[data-mood=peek] .m-o,.auth-cast[data-mood=error] .m-sad,.auth-cast[data-mood=happy] .m-happy{display:inline}
+.auth-cast[data-mood=pass]{--es:.55}
+.auth-cast[data-mood=peek]{--ez:1.35}
+.auth-cast[data-mood=happy] .bob{animation:auth-bob .5s ease-in-out 3;animation-delay:calc(var(--i)*.07s)}
+@keyframes auth-bob{50%{transform:translateY(-14px)}}
+.auth-cast.shake{animation:auth-shake .4s}
+@keyframes auth-shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media(prefers-reduced-motion:reduce){.auth-cast,.auth-cast *{animation:none!important;transition:none!important}}
+
+/* Underline-style phone field for the signup page. Overrides the shared
+   .phone-input only inside .auth-underline (onboarding keeps its own look). */
+.auth-underline .phone-input{height:auto;border:0;border-bottom:2px solid #d9d4e6;border-radius:0;padding:6px 0 7px;background:none;transition:border-color .2s}
+.auth-underline .phone-input:focus-within{border-color:#7e2bf1}
+.auth-underline .phone-input .PhoneInputInput{font-weight:600;color:#1b1530}
+.auth-underline[data-invalid=true] .phone-input{border-color:#e5484d}

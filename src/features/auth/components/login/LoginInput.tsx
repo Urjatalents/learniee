@@ -1,5 +1,7 @@
 "use client";
 
+import AuthField from "@/features/auth/components/shared/AuthField";
+
 interface LoginInputProps {
   type?: "text" | "email";
   placeholder: string;
@@ -8,6 +10,7 @@ interface LoginInputProps {
     e: React.ChangeEvent<HTMLInputElement>
   ) => void;
   disabled?: boolean;
+  autoComplete?: string;
 }
 
 export default function LoginInput({
@@ -16,15 +19,16 @@ export default function LoginInput({
   value,
   onChange,
   disabled = false,
+  autoComplete,
 }: LoginInputProps) {
   return (
-    <input
+    <AuthField
       type={type}
-      placeholder={placeholder}
+      label={placeholder}
       value={value}
       onChange={onChange}
       disabled={disabled}
-      className="w-full rounded-full border border-gray-200 px-4 py-3 outline-none focus:border-violet-500 disabled:bg-gray-100"
+      autoComplete={autoComplete}
     />
   );
 }

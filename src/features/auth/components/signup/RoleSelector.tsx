@@ -6,7 +6,10 @@ interface RoleSelectorProps {
   disabled?: boolean;
 }
 
-const PRIMARY = "#7E2BF1";
+const OPTIONS: { value: SignupRole; label: string }[] = [
+  { value: "parent", label: "Parent" },
+  { value: "teacher", label: "Teacher" },
+];
 
 export default function RoleSelector({
   role,
@@ -14,34 +17,27 @@ export default function RoleSelector({
   disabled,
 }: RoleSelectorProps) {
   return (
-    <div className="flex mb-6 border rounded-full overflow-hidden">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onChange("parent")}
-        className="flex-1 py-2 font-medium"
-        style={{
-          backgroundColor:
-            role === "parent" ? PRIMARY : "#F3F4F6",
-          color: role === "parent" ? "white" : "#4B5563",
-        }}
-      >
-        Parent
-      </button>
-
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onChange("teacher")}
-        className="flex-1 py-2 font-medium"
-        style={{
-          backgroundColor:
-            role === "teacher" ? PRIMARY : "#F3F4F6",
-          color: role === "teacher" ? "white" : "#4B5563",
-        }}
-      >
-        Teacher
-      </button>
+    <div
+      role="group"
+      aria-label="I am a"
+      className="grid grid-cols-2 rounded-full bg-[#f3f0fa] p-1"
+    >
+      {OPTIONS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          disabled={disabled}
+          aria-pressed={role === option.value}
+          onClick={() => onChange(option.value)}
+          className={`rounded-full py-2 text-[0.9rem] font-bold transition-colors focus-visible:outline-3 focus-visible:outline-[#f4c01e] disabled:opacity-60 ${
+            role === option.value
+              ? "bg-[#7e2bf1] text-white"
+              : "text-[#6f6a82]"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }
