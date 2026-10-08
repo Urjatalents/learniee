@@ -1,10 +1,12 @@
 FROM node:22-slim AS deps
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 FROM node:22-slim AS builder
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV DATABASE_URL="postgresql://x:x@localhost:5432/x" DATABASE_SSL=false
@@ -12,6 +14,7 @@ RUN npx prisma generate && npm run build
 
 FROM node:22-slim AS runner
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production TZ=UTC
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
