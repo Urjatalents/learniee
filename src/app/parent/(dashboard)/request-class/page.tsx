@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PlusCircle } from "lucide-react";
 
 import { getStandardPrice } from "@/features/courses/utils/coursePricing";
@@ -44,11 +44,39 @@ const emptyForm = {
 const inputClass =
   "w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 outline-none text-sm text-gray-800 focus:border-purple-400";
 
+/**
+ * Optional prefill from the public class pages
+ * (`/parent/request-class?title=…&subject=…&grade=Grade 5&board=CBSE`).
+ * Only values the form's own lists accept are used; everything else is ignored.
+ */
+function initialFormFromParams(params: URLSearchParams) {
+  const grade = params.get("grade") ?? "";
+  const board = params.get("board") ?? "";
+
+  return {
+    ...emptyForm,
+    title: (params.get("title") ?? "").slice(0, 120),
+    subject: (params.get("subject") ?? "").slice(0, 80),
+    grade: (GRADE_OPTIONS as readonly string[]).includes(grade) ? grade : "",
+    board: (BOARD_OPTIONS as readonly string[]).includes(board) ? board : "",
+  };
+}
+
+// useSearchParams() needs a Suspense boundary or `next build` fails on static prerender.
 export default function ParentRequestClassPage() {
+  return (
+    <Suspense fallback={null}>
+      <RequestClassContent />
+    </Suspense>
+  );
+}
+
+function RequestClassContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { requests, loading, error, submitting, submit, cancel } = useParentClassRequests();
   const { students } = useStudents();
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => initialFormFromParams(searchParams));
 
   function update(name: Exclude<keyof typeof emptyForm, "preferredDays">, value: string) {
     setForm((current) => ({ ...current, [name]: value }));

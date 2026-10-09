@@ -26,7 +26,7 @@ export default function LandingFooter() {
               <ul>
                 {col.links.map((l) => (
                   <li key={l.href + l.label}>
-                    {/* prefetch off: ~100 links, most pages not built yet */}
+                    {/* prefetch off: ~100 links; some company pages are not built yet */}
                     <Link href={l.href} prefetch={false}>
                       {l.label}
                     </Link>

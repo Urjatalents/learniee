@@ -4,6 +4,7 @@ import {
   listCategoryCounts,
   listPublishedForSitemap,
 } from "@/features/blog/server/blogPublic.service";
+import { ALL_CATALOG_PAGES, catalogHref } from "@/features/landing/catalog/pages";
 import { absoluteUrl } from "@/lib/siteUrl";
 
 // Refreshed on publish/unpublish (revalidateBlogPaths) and at least hourly.
@@ -16,6 +17,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl("/"), changeFrequency: "weekly", priority: 1 },
     { url: absoluteUrl("/blog"), changeFrequency: "daily", priority: 0.8 },
     { url: absoluteUrl("/referral"), changeFrequency: "monthly", priority: 0.6 },
+    { url: absoluteUrl("/courses"), changeFrequency: "daily", priority: 0.8 },
+    ...ALL_CATALOG_PAGES.map((p) => ({
+      url: absoluteUrl(catalogHref(p)),
+      changeFrequency: "daily" as const,
+      priority: 0.5,
+    })),
     { url: absoluteUrl("/terms"), changeFrequency: "yearly", priority: 0.3 },
     { url: absoluteUrl("/privacy"), changeFrequency: "yearly", priority: 0.3 },
     { url: absoluteUrl("/refunds"), changeFrequency: "yearly", priority: 0.3 },

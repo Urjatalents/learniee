@@ -8,6 +8,28 @@ import Cookies from "js-cookie";
 import { userPool } from "@/lib/cognito";
 import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 
+/**
+ * `?next=` support, used by the public class pages ("log in, then request this
+ * class"). Same-site /parent/... paths only, so it can't be turned into an open
+ * redirect; middleware still enforces the role on whatever page it lands on.
+ */
+function readSafeParentNext(): string | null {
+  if (typeof window === "undefined") return null;
+
+  const next = new URLSearchParams(window.location.search).get("next");
+
+  if (
+    !next ||
+    !next.startsWith("/parent/") ||
+    next.startsWith("//") ||
+    next.includes("\\")
+  ) {
+    return null;
+  }
+
+  return next;
+}
+
 export function useLogin() {
   const router = useRouter();
 
@@ -160,7 +182,7 @@ export function useLogin() {
               return;
             }
 
-            router.push("/parent");
+            router.push(readSafeParentNext() ?? "/parent");
             return;
           }
 

@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
     // Public pages that read the DB (blog, home latest-posts, sitemap).
     "/": ["./certs/rds-global-bundle.pem"],
     "/blog/**/*": ["./certs/rds-global-bundle.pem"],
+    "/courses": ["./certs/rds-global-bundle.pem"],
+    "/courses/**/*": ["./certs/rds-global-bundle.pem"],
+    "/counselling/**/*": ["./certs/rds-global-bundle.pem"],
     "/sitemap.xml": ["./certs/rds-global-bundle.pem"],
   },
 };

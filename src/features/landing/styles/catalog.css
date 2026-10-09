@@ -1,0 +1,58 @@
+/* Public class pages (/courses/*, /counselling/*). Scoped under .lh like landing.css
+   and loaded after it, so it only adds to the landing look. */
+.lh main>section.pagehead.cathead{padding:48px 0 44px}
+.lh .crumbs{font-size:14px;color:var(--ink-2);margin-bottom:18px}
+.lh .crumbs a{text-decoration:underline;text-underline-offset:3px}
+.lh .crumbs a:hover{color:var(--lav-600)}
+.lh .cathead .lede{max-width:60ch}
+.lh .cat-points{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:6px;color:var(--ink-2);font-size:15px}
+.lh .cat-points li::before{content:"✓";color:var(--lav-600);font-weight:800;margin-right:8px}
+.lh .cathead .cta{margin-top:26px}
+
+.lh .cat-search{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px;max-width:560px}
+.lh .cat-search input{flex:1 1 240px;font:500 16px var(--body);color:var(--ink);padding:12px 18px;border-radius:999px;border:2px solid var(--ink);background:#fff}
+.lh .cat-search .btn{padding:12px 24px}
+
+.lh section.catlist{padding:48px 0 72px}
+.lh .cat-count{font-size:clamp(22px,3vw,30px);max-width:none;margin-bottom:24px}
+.lh .cat-others{margin-top:48px}
+
+.lh .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px}
+.lh .ccard{background:#fff;border:1px solid var(--lav-200);border-radius:20px;overflow:hidden;transition:transform .15s,box-shadow .15s}
+.lh .ccard:hover{transform:translateY(-3px);box-shadow:0 10px 0 var(--lav-100)}
+.lh .ccard-link{display:flex;flex-direction:column;height:100%}
+.lh .cthumb{height:150px;display:grid;place-items:center;font:800 48px var(--head);color:var(--ink);overflow:hidden}
+.lh .cthumb img{width:100%;height:100%;object-fit:cover}
+.lh .cbody{padding:16px 18px 18px;display:flex;flex-direction:column;gap:6px;flex:1}
+.lh .cteacher{font-size:13px;color:var(--ink-2);display:flex;justify-content:space-between;gap:8px;align-items:center}
+.lh .crating{font-weight:700;color:var(--ink);white-space:nowrap}
+.lh .ccard h3{font-size:19px;letter-spacing:-.01em;overflow-wrap:anywhere}
+.lh .cmeta{font-size:14px;color:var(--ink-2)}
+.lh .crow{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:12px;font-weight:700;gap:8px}
+.lh .cgo{color:var(--lav-600);font-size:14px}
+
+.lh .cat-empty{background:#fff;border:2px dashed var(--lav-400);border-radius:24px;padding:36px 28px;display:grid;gap:14px;justify-items:start}
+.lh .cat-empty h2{font-size:clamp(24px,3vw,32px);max-width:none}
+.lh .cat-empty p{color:var(--ink-2);max-width:56ch}
+
+.lh .cat-cta{display:inline-flex;flex-direction:column;gap:6px;align-items:flex-start}
+.lh .cat-cta small{font-size:13px;color:var(--ink-2)}
+.lh .cat-note{font-size:14px;color:var(--ink-2);max-width:40ch;align-self:center}
+
+.lh .cat-pager{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:32px;font-weight:600}
+.lh .cat-pager a{text-decoration:underline;text-underline-offset:3px}
+.lh .cat-pager a:hover{color:var(--lav-600)}
+
+.lh section.catask{padding:56px 0;background:var(--lav-100)}
+.lh .catask .wrap{display:grid;gap:14px;justify-items:start}
+
+.lh section.catexplore{padding:40px 0 8px}
+.lh .catexplore h2{font-size:clamp(22px,3vw,30px);max-width:none}
+.lh .chips{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.lh .chips a{display:inline-block;font:600 15px var(--body);padding:8px 16px;border-radius:999px;background:#fff;border:1px solid var(--lav-200)}
+.lh .chips a:hover{border-color:var(--lav-600);color:var(--lav-600)}
+
+@media(max-width:600px){
+  .lh main>section.pagehead.cathead{padding:32px 0 32px}
+  .lh .cgrid{grid-template-columns:1fr}
+}

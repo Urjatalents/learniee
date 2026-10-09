@@ -1,7 +1,6 @@
-// Where course cards, "View all courses" and the footer search go.
-// /courses is not built yet, so they point at signup. Flip to "/courses"
-// once the public course listing exists.
-export const COURSES_HREF = "/signup";
+// Where course cards, "View all courses" and the footer search go
+// (the public listing, src/app/courses).
+export const COURSES_HREF = "/courses";
 
 export interface CourseCard {
   title: string;
@@ -51,8 +50,9 @@ export interface FooterGroup {
   columns: FooterColumn[];
 }
 
-// NOTE: most of these pages are not built yet (public marketing site is a
-// later phase) — until then they 404. Only /login and /signup exist.
+// NOTE: the "Browse classes" and "Counselling" links resolve through
+// src/features/landing/catalog/pages.ts — keep the slugs in sync. The
+// company/support links (about, careers, press, ...) are not built yet and 404.
 export const FOOTER_GROUPS: FooterGroup[] = [
   {
     label: "Company and support",
