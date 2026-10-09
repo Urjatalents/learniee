@@ -6,13 +6,19 @@ import {
 import { hasCancelNotice } from "@/features/shared/utils/sessionOutcome";
 import { SESSION_POLICY } from "@/lib/platformConfig";
 import {
+    addDays,
+    calendarDateToDate,
+    compareDates,
     dateToCalendarDate,
+    formatPlatformTime,
     isValidTimeOfDay,
     platformWallClockToUtc,
     type CalendarDate
 } from "@/lib/platformTime";
 import { prisma } from "@/lib/prisma";
 import {
+    ClassSessionStatus,
+    LeaveRequestStatus,
     RescheduleRequestStatus
 } from "@prisma/client";
 import "server-only";
@@ -146,6 +152,89 @@ export async function assertCycleSlotAllowed(
     }
   }
 }
+/**
+ * Phase 1.1: the slot must not fall inside the teacher's approved
+ * leave. Checked when a request is proposed and again when it is
+ * approved. `proposedDate` is the saved calendar date (UTC midnight).
+ */
+export async function assertNotOnTeacherLeave(teacherId: string, proposedDate: Date) {
+  const day = dateToCalendarDate(proposedDate);
+
+  // Widened by a day each side, then compared on calendar dates
+  // (same approach as loadSlotContext).
+  const leaves = await prisma.leaveRequest.findMany({
+    where: {
+      teacherId,
+      status: LeaveRequestStatus.APPROVED,
+      startDate: { lte: calendarDateToDate(addDays(day, 1)) },
+      endDate: { gte: calendarDateToDate(addDays(day, -1)) },
+    },
+    select: { startDate: true, endDate: true },
+  });
+
+  const onLeave = leaves.some(
+    (leave) =>
+      compareDates(day, dateToCalendarDate(leave.startDate)) >= 0 &&
+      compareDates(day, dateToCalendarDate(leave.endDate)) <= 0,
+  );
+
+  if (onLeave) {
+    throw new RescheduleRequestError(
+      "The teacher is on approved leave on that date. Please pick another date.",
+      409,
+    );
+  }
+}
+
+/** Phase 1.4: a class can only be moved by an approved reschedule so many times. */
+export async function assertUnderRescheduleCap(classSessionId: string) {
+  const approved = await prisma.rescheduleRequest.count({
+    where: { classSessionId, status: RescheduleRequestStatus.APPROVED },
+  });
+
+  if (approved >= SESSION_POLICY.maxReschedulesPerSession) {
+    throw new RescheduleRequestError(
+      `This class has already been rescheduled ${SESSION_POLICY.maxReschedulesPerSession} times and can't be moved again. Please keep the current time or cancel the class.`,
+      409,
+    );
+  }
+}
+
+/**
+ * Phase 1.5: at approval, the slot must still be free — no overlap
+ * with another scheduled class of this teacher or student. The
+ * request is left pending on failure so the proposer can withdraw it
+ * and propose a new slot (or it expires at class start).
+ */
+export async function assertSlotStillFree(
+  session: { id: string; teacherId: string; studentId: string; lengthMinutes: number | null },
+  proposedDate: CalendarDate,
+  time: string,
+) {
+  if (!session.lengthMinutes) return;
+
+  const startsAt = platformWallClockToUtc(proposedDate, time);
+  const endsAt = new Date(startsAt.getTime() + session.lengthMinutes * 60_000);
+
+  const clash = await prisma.classSession.findFirst({
+    where: {
+      id: { not: session.id },
+      status: ClassSessionStatus.SCHEDULED,
+      OR: [{ teacherId: session.teacherId }, { studentId: session.studentId }],
+      startsAt: { lt: endsAt },
+      endsAt: { gt: startsAt },
+    },
+    select: { id: true },
+  });
+
+  if (clash) {
+    throw new RescheduleRequestError(
+      `That slot (${formatPlatformTime(startsAt, true)}) is no longer free because another class overlaps it. This request is still pending, so you can reject or withdraw it and propose a different time.`,
+      409,
+    );
+  }
+}
+
 export const requestInclude = {
   classSession: {
     select: { id: true, scheduledDate: true, scheduledTime: true, status: true },

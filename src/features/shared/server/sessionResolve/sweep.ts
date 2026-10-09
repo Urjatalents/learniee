@@ -1,4 +1,5 @@
 import { closeDueCycles, releaseDueCyclePayouts } from "@/features/shared/server/cycleClose.service";
+import { expireStaleRescheduleRequests } from "@/features/shared/server/rescheduleRequest/close";
 import { reapplyApprovedLeaves } from "@/features/shared/server/leaveShift.service";
 import {
     acceptExpiredConfirmations,
@@ -67,6 +68,8 @@ export interface SessionSweepResult {
   followUpsRepaired: number;
   /** Part 1C: sessions moved or cancelled because of approved teacher leave. */
   leaveSessionsShifted: number;
+  /** Phase 1.3: unanswered reschedule requests closed because the class started. */
+  rescheduleRequestsExpired: number;
   /** Part 1C: cycles closed by this run. */
   cyclesClosed: number;
   /** Part 2A: sessions accepted because the parent's 48 hours passed with no action. */
@@ -138,6 +141,7 @@ export async function runSessionSweep(now: Date = new Date()): Promise<SessionSw
   // is idempotent and isolated: one failing must not stop the rest.
   let followUpsRepaired = 0;
   let leaveSessionsShifted = 0;
+  let rescheduleRequestsExpired = 0;
   let cyclesClosed = 0;
   let confirmationsAccepted = 0;
   let payoutsReleased = 0;
@@ -150,6 +154,12 @@ export async function runSessionSweep(now: Date = new Date()): Promise<SessionSw
     confirmationsAccepted = await acceptExpiredConfirmations(now);
   } catch (err) {
     console.error("Sweep confirmation accept failed:", err);
+  }
+
+  try {
+    rescheduleRequestsExpired = await expireStaleRescheduleRequests(now);
+  } catch (err) {
+    console.error("Sweep reschedule expiry failed:", err);
   }
 
   try {
@@ -189,6 +199,7 @@ export async function runSessionSweep(now: Date = new Date()): Promise<SessionSw
     repaired,
     followUpsRepaired,
     leaveSessionsShifted,
+    rescheduleRequestsExpired,
     cyclesClosed,
     confirmationsAccepted,
     payoutsReleased,

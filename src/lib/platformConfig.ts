@@ -31,6 +31,10 @@ export const SESSION_POLICY = {
   minOverlapPercent: 50,
   /** Minimum notice (hours) to cancel/reschedule a session. */
   cancelNoticeHours: 4,
+  /** Phase 1.4: most times one class can be moved by an approved reschedule. */
+  maxReschedulesPerSession: 2,
+  /** Phase 1.6: leave starting within this many hours of being submitted is flagged to Admin. */
+  emergencyLeaveHours: 24,
   /** How long (hours) after a session a dispute can be raised. */
   disputeWindowHours: 48,
   /** Days a cycle has to be completed. */

@@ -11,6 +11,10 @@ export interface AdminLeaveRequest {
   adminNote: string | null;
   respondedAt: string | null;
   createdAt: string;
+  /** Leave starts in under 24 hours from when it was submitted. */
+  isEmergency: boolean;
+  /** Pending only: what approving would do. Null if it could not be worked out. */
+  impact: { moving: number; cancelling: number; tooSoon: number } | null;
   teacher: {
     id: string;
     firstName: string;
@@ -64,8 +68,11 @@ export function useAdminLeaveRequests() {
       }
 
       setRequests((current) =>
-        current.map((r) => (r.id === requestId ? { ...r, ...data.request } : r)),
+        current.map((r) => (r.id === requestId ? { ...r, ...data.request, impact: null } : r)),
       );
+
+      // Approving moves classes, which changes what other pending leaves would do.
+      if (action === "APPROVE") await load();
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to update leave request.");

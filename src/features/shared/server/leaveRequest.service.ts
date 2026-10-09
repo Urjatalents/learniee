@@ -6,7 +6,19 @@ import {
   notifyLeaveRequestSubmitted,
   notifyLeaveRequestResponded,
 } from "@/features/shared/server/notificationTriggers.service";
-import { applyApprovedLeaveToSessions } from "@/features/shared/server/leaveShift.service";
+import {
+  applyApprovedLeaveToSessions,
+  previewLeaveImpact,
+  type LeaveImpact,
+} from "@/features/shared/server/leaveShift.service";
+import { isEmergencyLeave } from "@/features/shared/utils/leaveRules";
+import {
+  calendarDateToDate,
+  compareDates,
+  parseDateKey,
+  todayInPlatformTz,
+  type CalendarDate,
+} from "@/lib/platformTime";
 
 /**
  * Teacher leave requests — single-step Teacher -> Admin approval.
@@ -30,19 +42,29 @@ export class LeaveRequestError extends Error {
   }
 }
 
-/** Same "date-only, local midnight" convention used elsewhere (ClassSession, RescheduleRequest). */
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
+/**
+ * Phase 1.9: leave dates are platform-timezone calendar dates saved
+ * as UTC midnight (`calendarDateToDate`) — the same convention the
+ * leave shift and the slot search read them with — so nothing here
+ * depends on the host's own timezone.
+ */
+function parseLeaveDate(value: string, label: string): CalendarDate {
+  const parsed = parseDateKey(typeof value === "string" ? value.trim().slice(0, 10) : null);
 
-function parseDateOnly(value: string, label: string): Date {
-  const parsed = new Date(value.length <= 10 ? `${value}T00:00:00` : value);
-
-  if (Number.isNaN(parsed.getTime())) {
+  if (!parsed) {
     throw new LeaveRequestError(`Invalid ${label}.`);
   }
 
-  return startOfDay(parsed);
+  return parsed;
+}
+
+function formatLeaveDate(d: Date): string {
+  return d.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 const MAX_REASON_LENGTH = 500;
@@ -56,9 +78,9 @@ export interface CreateLeaveRequestInput {
 
 /**
  * Teacher raises a new leave request, PENDING until Admin responds.
- * No limit today on overlapping/duplicate date ranges — a teacher
- * can have more than one PENDING request in flight; Admin sees and
- * resolves each independently.
+ * Phase 1.8: a range that overlaps one of this teacher's own PENDING
+ * or APPROVED leaves is refused. Phase 1.6: a leave starting in under
+ * 24 hours is allowed, and Admin is told it is an emergency.
  */
 export async function createLeaveRequest(input: CreateLeaveRequestInput) {
   const reason = input.reason?.trim() ?? "";
@@ -71,16 +93,37 @@ export async function createLeaveRequest(input: CreateLeaveRequestInput) {
     throw new LeaveRequestError(`Reason must be ${MAX_REASON_LENGTH} characters or fewer.`);
   }
 
-  const startDate = parseDateOnly(input.startDate, "start date");
-  const endDate = parseDateOnly(input.endDate, "end date");
+  const start = parseLeaveDate(input.startDate, "start date");
+  const end = parseLeaveDate(input.endDate, "end date");
 
-  const today = startOfDay(new Date());
-  if (startDate < today) {
+  if (compareDates(start, todayInPlatformTz()) < 0) {
     throw new LeaveRequestError("Start date can't be in the past.");
   }
 
-  if (endDate < startDate) {
+  if (compareDates(end, start) < 0) {
     throw new LeaveRequestError("End date can't be before the start date.");
+  }
+
+  const startDate = calendarDateToDate(start);
+  const endDate = calendarDateToDate(end);
+
+  const overlapping = await prisma.leaveRequest.findFirst({
+    where: {
+      teacherId: input.teacherId,
+      status: { in: [LeaveRequestStatus.PENDING, LeaveRequestStatus.APPROVED] },
+      startDate: { lte: endDate },
+      endDate: { gte: startDate },
+    },
+    select: { startDate: true, endDate: true, status: true },
+  });
+
+  if (overlapping) {
+    throw new LeaveRequestError(
+      `These dates overlap your ${overlapping.status === LeaveRequestStatus.APPROVED ? "approved" : "pending"} leave (${formatLeaveDate(
+        overlapping.startDate,
+      )} to ${formatLeaveDate(overlapping.endDate)}). Withdraw it first or choose other dates.`,
+      409,
+    );
   }
 
   const created = await prisma.leaveRequest.create({
@@ -93,7 +136,10 @@ export async function createLeaveRequest(input: CreateLeaveRequestInput) {
     },
   });
 
-  await notifyLeaveRequestSubmitted(input.teacherId);
+  await notifyLeaveRequestSubmitted(
+    input.teacherId,
+    isEmergencyLeave(created.startDate, created.createdAt),
+  );
 
   return created;
 }
@@ -137,12 +183,45 @@ const teacherSelect = {
   email: true,
 } as const;
 
-/** Every leave request across every Teacher, newest first — Admin's full view (pending + resolved). */
-export function listLeaveRequestsForAdmin() {
-  return prisma.leaveRequest.findMany({
+/**
+ * Every leave request across every Teacher, newest first — Admin's
+ * full view (pending + resolved). Each row carries `isEmergency`
+ * (Phase 1.6) and, for PENDING rows, `impact` (Phase 1.7): how many
+ * classes would move, be cancelled for lack of a slot, or be left
+ * alone for being under 4 hours away. `impact` is null when it could
+ * not be worked out — the approval itself never depends on it.
+ */
+export async function listLeaveRequestsForAdmin() {
+  const rows = await prisma.leaveRequest.findMany({
     include: { teacher: { select: teacherSelect } },
     orderBy: { createdAt: "desc" },
   });
+
+  const now = new Date();
+
+  // One at a time: each preview takes cycle locks, so running them
+  // together could make them wait on each other.
+  const result = [];
+
+  for (const row of rows) {
+    let impact: LeaveImpact | null = null;
+
+    if (row.status === LeaveRequestStatus.PENDING) {
+      try {
+        impact = await previewLeaveImpact(row, now);
+      } catch (err) {
+        console.error(`Leave impact preview failed for ${row.id}:`, err);
+      }
+    }
+
+    result.push({
+      ...row,
+      isEmergency: isEmergencyLeave(row.startDate, row.createdAt),
+      impact,
+    });
+  }
+
+  return result;
 }
 
 export interface RespondToLeaveRequestInput {

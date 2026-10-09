@@ -5,6 +5,7 @@ import {
 } from "@prisma/client";
 import "server-only";
 import { ActorRole, PENDING_STATUSES, requestInclude, RescheduleRequestError } from './base';
+import { expireStaleRescheduleRequestsQuietly } from './close';
 
 export interface CancelRescheduleInput {
   requestId: string;
@@ -47,7 +48,10 @@ export async function cancelRescheduleRequest(input: CancelRescheduleInput) {
   });
 }
 /** Every reschedule request involving this Teacher — awaiting their response, or raised by/resolved for them. */
-export function listRescheduleRequestsForTeacher(teacherId: string) {
+export async function listRescheduleRequestsForTeacher(teacherId: string) {
+  // Phase 1.3: read-time trigger for closing unanswered requests.
+  await expireStaleRescheduleRequestsQuietly({ teacherId });
+
   return prisma.rescheduleRequest.findMany({
     where: { teacherId },
     include: requestInclude,
@@ -55,7 +59,9 @@ export function listRescheduleRequestsForTeacher(teacherId: string) {
   });
 }
 /** Every reschedule request involving this Parent. */
-export function listRescheduleRequestsForParent(parentId: string) {
+export async function listRescheduleRequestsForParent(parentId: string) {
+  await expireStaleRescheduleRequestsQuietly({ parentId });
+
   return prisma.rescheduleRequest.findMany({
     where: { parentId },
     include: requestInclude,

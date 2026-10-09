@@ -64,12 +64,38 @@ export default function AdminLeaveRequestsPage() {
                 className="bg-white border rounded-xl p-6 shadow-sm flex items-start justify-between gap-4 flex-wrap"
               >
                 <div>
-                  <p className="text-lg font-semibold text-gray-800">{teacherName(r.teacher)}</p>
+                  <p className="text-lg font-semibold text-gray-800">
+                    {teacherName(r.teacher)}
+                    {r.isEmergency && (
+                      <span className="ml-2 align-middle text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                        Emergency
+                      </span>
+                    )}
+                  </p>
                   <p className="text-sm text-gray-500">{r.teacher.email}</p>
                   <p className="text-sm text-gray-700 mt-2">
                     {formatDate(r.startDate)} – {formatDate(r.endDate)}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">{r.reason}</p>
+                  {r.status === "PENDING" && r.impact && (
+                    <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
+                      If approved: {r.impact.moving} class{r.impact.moving === 1 ? "" : "es"} will
+                      move to a new slot
+                      {r.impact.cancelling > 0 && (
+                        <>
+                          , <strong>{r.impact.cancelling}</strong> will be cancelled (no free slot
+                          in the 45-day window)
+                        </>
+                      )}
+                      {r.impact.tooSoon > 0 && (
+                        <>
+                          ; {r.impact.tooSoon} starting in under 4 hours can&apos;t be moved
+                          (normal teacher cancel rules apply)
+                        </>
+                      )}
+                      .
+                    </p>
+                  )}
                   {r.adminNote && (
                     <p className="text-xs text-gray-400 mt-1">Your note: {r.adminNote}</p>
                   )}

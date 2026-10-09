@@ -128,11 +128,54 @@ export function notifyRescheduleResponded(requestId: string, approved: boolean) 
     });
   });
 }
+/**
+ * Phase 1.2 / 1.3: a pending request was closed by the system
+ * (expired at class start, or cancelled because the teacher's leave
+ * was approved). Both parties are told; reuses RESCHEDULE_REJECTED so
+ * no enum migration is needed.
+ */
+export function notifyRescheduleClosed(requestId: string, reason: "EXPIRED" | "TEACHER_LEAVE") {
+  return safe("reschedule closed", async () => {
+    const request = await prisma.rescheduleRequest.findUnique({
+      where: { id: requestId },
+      select: {
+        parentId: true,
+        teacherId: true,
+        enrollment: { select: { course: { select: { courseTitle: true } } } },
+      },
+    });
+    if (!request) return;
+
+    const courseTitle = request.enrollment.course.courseTitle || "the class";
+    const message =
+      reason === "EXPIRED"
+        ? `The reschedule request for "${courseTitle}" got no response before the class started, so it was closed. The original time stands.`
+        : `The reschedule request for "${courseTitle}" was closed because of the teacher's approved leave. Any class affected will be moved or you'll be notified.`;
+
+    await createNotification({
+      recipientId: request.parentId,
+      recipientRole: R.PARENT,
+      type: T.RESCHEDULE_REJECTED,
+      title: "Reschedule request closed",
+      message,
+      link: "/parent/reschedule",
+    });
+
+    await createNotification({
+      recipientId: request.teacherId,
+      recipientRole: R.TEACHER,
+      type: T.RESCHEDULE_REJECTED,
+      title: "Reschedule request closed",
+      message,
+      link: "/teacher/reschedule",
+    });
+  });
+}
 // ---------------------------------------------------------------------------
 // Leave requests
 // ---------------------------------------------------------------------------
 
-export function notifyLeaveRequestSubmitted(teacherId: string) {
+export function notifyLeaveRequestSubmitted(teacherId: string, emergency = false) {
   return safe("leave request submitted", async () => {
     const teacher = await prisma.teacher.findUnique({
       where: { id: teacherId },
@@ -142,8 +185,10 @@ export function notifyLeaveRequestSubmitted(teacherId: string) {
 
     await notifyAllAdmins({
       type: T.LEAVE_REQUEST_SUBMITTED,
-      title: "New leave request",
-      message: `${displayName(teacher)} submitted a leave request for review.`,
+      title: emergency ? "Emergency leave request" : "New leave request",
+      message: emergency
+        ? `${displayName(teacher)} submitted a leave request starting in under 24 hours. Please review it soon.`
+        : `${displayName(teacher)} submitted a leave request for review.`,
       link: "/admin/leave-requests",
     });
   });

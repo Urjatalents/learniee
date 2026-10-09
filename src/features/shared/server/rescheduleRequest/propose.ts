@@ -12,7 +12,7 @@ import {
     RescheduleRequestStatus,
 } from "@prisma/client";
 import "server-only";
-import { ActorRole, assertCycleSlotAllowed, assertValidTime, isCycleModelSession, parseDateOnly, PENDING_STATUSES, requestInclude, RescheduleRequestError, startOfDay } from './base';
+import { ActorRole, assertCycleSlotAllowed, assertNotOnTeacherLeave, assertUnderRescheduleCap, assertValidTime, isCycleModelSession, parseDateOnly, PENDING_STATUSES, requestInclude, RescheduleRequestError, startOfDay } from './base';
 
 /**
  * Loads the target ClassSession and checks it belongs to the actor
@@ -77,6 +77,8 @@ export async function proposeReschedule(input: ProposeRescheduleInput) {
     );
   }
 
+  await assertUnderRescheduleCap(session.id);
+
   let proposedDate: Date;
   const proposedTime = assertValidTime(input.proposedTime);
 
@@ -101,6 +103,8 @@ export async function proposeReschedule(input: ProposeRescheduleInput) {
       throw new RescheduleRequestError("Proposed date can't be in the past.");
     }
   }
+
+  await assertNotOnTeacherLeave(session.teacherId, proposedDate);
 
   const requestedBy: RescheduleRequestedBy =
     input.actorRole === "PARENT" ? RescheduleRequestedBy.PARENT : RescheduleRequestedBy.TEACHER;

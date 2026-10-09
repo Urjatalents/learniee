@@ -12,7 +12,8 @@ import {
     RescheduleRequestStatus
 } from "@prisma/client";
 import "server-only";
-import { ActorRole, assertCycleSlotAllowed, isCycleModelSession, requestInclude, RescheduleRequestError } from './base';
+import { expireStaleRescheduleRequests } from './close';
+import { ActorRole, assertCycleSlotAllowed, assertNotOnTeacherLeave, assertSlotStillFree, isCycleModelSession, requestInclude, RescheduleRequestError } from './base';
 
 function assertCanRespond(
   request: { teacherId: string; parentId: string; status: RescheduleRequestStatus },
@@ -66,6 +67,17 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
 
   assertCanRespond(request, input.actorRole, input.actorId);
 
+  // Phase 1.3: a request nobody answered before the class started is
+  // closed (original slot kept) rather than answered late.
+  const expired = await expireStaleRescheduleRequests(new Date(), { id: request.id });
+
+  if (expired > 0) {
+    throw new RescheduleRequestError(
+      "This request expired because the class has already started. The original time stands.",
+      409,
+    );
+  }
+
   const responseNote = input.responseNote?.trim() || null;
 
   if (input.decision === "REJECT") {
@@ -105,6 +117,19 @@ export async function respondToReschedule(input: RespondToRescheduleInput) {
       request.proposedTime,
       new Date(),
     );
+  }
+
+  // Phase 1.1 (again at approval): the teacher's leave may have been
+  // approved after the request was made.
+  await assertNotOnTeacherLeave(session.teacherId, request.proposedDate);
+
+  // Phase 1.5: another class may have taken the slot since the proposal.
+  if (isCycleModelSession(session)) {
+    const slotTime = request.proposedTime ?? session.scheduledTime;
+
+    if (isValidTimeOfDay(slotTime)) {
+      await assertSlotStillFree(session, dateToCalendarDate(request.proposedDate), slotTime);
+    }
   }
 
   const conflict = await prisma.classSession.findFirst({
