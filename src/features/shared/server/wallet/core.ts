@@ -1,7 +1,7 @@
 import { generateInvoiceForPayment } from "@/features/shared/server/invoice.service";
 import { notifyWalletCredited } from "@/features/shared/server/notificationTriggers.service";
 import { prisma } from "@/lib/prisma";
-import { InvoiceType, WalletTransactionType } from "@prisma/client";
+import { InvoiceType, Prisma, WalletTransactionType } from "@prisma/client";
 
 /**
  * Wallet (06-OPEN-DECISIONS.md #28) — closed-loop credit ledger per
@@ -77,6 +77,53 @@ function assertValidAdjustment(input: WalletAdjustmentInput) {
   }
 }
 /**
+ * The balance + WalletTransaction write, for a caller that already has a
+ * transaction open (e.g. an approved refund, which must be marked APPROVED and
+ * credited atomically). No notification here — send it after the outer
+ * transaction commits.
+ */
+export async function creditWalletInTx(
+  tx: Prisma.TransactionClient,
+  input: WalletAdjustmentInput,
+) {
+  assertValidAdjustment(input);
+
+  let wallet = await tx.wallet.findUnique({ where: { parentId: input.parentId } });
+
+  if (!wallet) {
+    wallet = await tx.wallet.create({
+      data: { parentId: input.parentId, balance: 0 },
+    });
+  }
+
+  // Decimal fields need an explicit Number(...) conversion before
+  // Prisma writes (02-ARCHITECTURE.md's Prisma 7 gotcha — bit
+  // Course.price once already).
+  const balanceAfter = Number(wallet.balance) + input.amount;
+
+  const updatedWallet = await tx.wallet.update({
+    where: { id: wallet.id },
+    data: { balance: balanceAfter },
+  });
+
+  const transaction = await tx.walletTransaction.create({
+    data: {
+      walletId: wallet.id,
+      type: WalletTransactionType.CREDIT,
+      amount: input.amount,
+      balanceAfter,
+      reason: input.reason.trim(),
+      referenceType: input.referenceType,
+      referenceId: input.referenceId,
+      createdByStaffSub: input.createdByStaffSub,
+      razorpayOrderId: input.razorpayOrderId,
+      razorpayPaymentId: input.razorpayPaymentId,
+    },
+  });
+
+  return { wallet: updatedWallet, transaction };
+}
+/**
  * Credits a parent's Wallet — the only way money enters a Wallet
  * today. Creates the Wallet row on first use, same as
  * getOrCreateWallet(). Runs inside a transaction so the balance
@@ -85,42 +132,7 @@ function assertValidAdjustment(input: WalletAdjustmentInput) {
 export async function creditWallet(input: WalletAdjustmentInput) {
   assertValidAdjustment(input);
 
-  const result = await prisma.$transaction(async (tx) => {
-    let wallet = await tx.wallet.findUnique({ where: { parentId: input.parentId } });
-
-    if (!wallet) {
-      wallet = await tx.wallet.create({
-        data: { parentId: input.parentId, balance: 0 },
-      });
-    }
-
-    // Decimal fields need an explicit Number(...) conversion before
-    // Prisma writes (02-ARCHITECTURE.md's Prisma 7 gotcha — bit
-    // Course.price once already).
-    const balanceAfter = Number(wallet.balance) + input.amount;
-
-    const updatedWallet = await tx.wallet.update({
-      where: { id: wallet.id },
-      data: { balance: balanceAfter },
-    });
-
-    const transaction = await tx.walletTransaction.create({
-      data: {
-        walletId: wallet.id,
-        type: WalletTransactionType.CREDIT,
-        amount: input.amount,
-        balanceAfter,
-        reason: input.reason.trim(),
-        referenceType: input.referenceType,
-        referenceId: input.referenceId,
-        createdByStaffSub: input.createdByStaffSub,
-        razorpayOrderId: input.razorpayOrderId,
-        razorpayPaymentId: input.razorpayPaymentId,
-      },
-    });
-
-    return { wallet: updatedWallet, transaction };
-  });
+  const result = await prisma.$transaction((tx) => creditWalletInTx(tx, input));
 
   await notifyWalletCredited(input.parentId, input.amount, input.reason);
 

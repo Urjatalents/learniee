@@ -60,6 +60,7 @@ model ParentProfile {
   certificates        Certificate[]
   resources           Resource[]
   classRequests       ClassRequest[]
+  refundRequests      RefundRequest[]
 }
 
 model Admin {
@@ -1732,6 +1733,9 @@ enum CertificateStatus {
 }
 
 enum NotificationType {
+  /// Refund requests (Oct 12, 2026)
+  REFUND_REQUEST_SUBMITTED
+  REFUND_REQUEST_DECIDED
   CLASS_REQUEST_SUBMITTED
   CLASS_REQUEST_REVIEWED
   CLASS_REQUEST_VACANCY
@@ -1890,6 +1894,8 @@ enum ActivityActorRole {
 /// rather than reusing GENERIC when a new "major thing" needs
 /// tracking; GENERIC is a last-resort catch-all only.
 enum ActivityAction {
+  /// Refund requests (Oct 12, 2026)
+  REFUND_REQUEST_DECIDED
   CLASS_REQUEST_REVIEWED
   CLASS_REQUEST_CLOSED
   AUTH_LOGIN
@@ -2011,6 +2017,7 @@ model Invoice {
   razorpayPaymentId String?          @unique
   issuedAt          DateTime         @default(now())
   createdAt         DateTime         @default(now())
+  refundRequests    RefundRequest[]
 
   @@index([payerId, payerRole, createdAt])
   @@index([referenceType, referenceId])
@@ -2104,4 +2111,42 @@ enum ClassRequestStatus {
 enum ClassRequestResponseStatus {
   ACCEPTED
   DECLINED
+}
+
+/// Refund requests (Oct 12, 2026). Policy: no refund until Admin approves it.
+/// A Parent raises a request against one paid Invoice (from the Payments
+/// page); Admin approves — typing the amount himself, nothing is calculated by
+/// the system — or rejects. An approved refund is credited to the Parent's
+/// Wallet in the same transaction that marks it APPROVED. `amountPaid` is the
+/// invoice amount (the cap); `approvedAmount` is what Admin entered/credited.
+enum RefundRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model RefundRequest {
+  id                  String              @id @default(uuid())
+  parentId            String
+  invoiceId           String
+  reason              String
+  status              RefundRequestStatus @default(PENDING)
+  /// Invoice amount at request time — the most Admin can refund for it.
+  amountPaid          Decimal             @db.Decimal(10, 2)
+  approvedAmount      Decimal?            @db.Decimal(10, 2)
+  adminNote           String?
+  decidedBySub        String?
+  decidedByName       String?
+  decidedAt           DateTime?
+  /// The Wallet credit written when APPROVED (unique: one credit per request).
+  walletTransactionId String?             @unique
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  parent              ParentProfile       @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  invoice             Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([parentId, createdAt])
+  @@index([status, createdAt])
+  @@index([invoiceId])
 }
