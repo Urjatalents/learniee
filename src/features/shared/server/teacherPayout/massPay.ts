@@ -3,7 +3,9 @@ import {
     notifyPayoutPaid
 } from "@/features/shared/server/notificationTriggers.service";
 import { prisma } from "@/lib/prisma";
+import { isRazorpayXEnabled } from "@/lib/razorpayX";
 import { initiateStubTeacherPayout } from "@/lib/teacherPayoutGateway";
+import { dispatchPayoutRecord, reconcileProcessingPayouts } from "./gateway";
 import {
     BankAccountStatus,
     LedgerPayoutStatus,
@@ -23,7 +25,13 @@ import { listPaymentQueueGroupedByTeacher } from './records';
 export interface MassPayResult {
   batchId: string;
   status: PayoutBatchStatus;
+  /** Money confirmed sent (always the case for the simulated mode). */
   paidTeacherIds: string[];
+  /** RazorpayX accepted the payout; the bank result arrives by webhook. */
+  processingTeacherIds: string[];
+  /** Gateway rejected it — cycles are back in the queue. */
+  failedTeacherIds: string[];
+  /** No approved bank account. */
   skippedTeacherIds: string[];
   totalAmount: number;
 }
@@ -105,7 +113,21 @@ export async function massPayTeachers(
     });
   }
 
+  const live = isRazorpayXEnabled();
+
+  if (live) {
+    // Settle anything a webhook missed before queueing new money.
+    await reconcileProcessingPayouts().catch((error) =>
+      console.error("Payout reconcile before mass-pay failed:", error),
+    );
+  } else if (process.env.NODE_ENV === "production") {
+    console.warn("RAZORPAYX_ENABLED is not 'true' — mass-pay is SIMULATED, no money moves.");
+  }
+
   const paidTeacherIds: string[] = [];
+  const processingTeacherIds: string[] = [];
+  const failedTeacherIds: string[] = [];
+  let acceptedAmount = 0;
 
   for (const group of payable) {
     const bankAccount = await prisma.bankAccount.findUnique({ where: { teacherId: group.teacherId } });
@@ -127,69 +149,127 @@ export async function massPayTeachers(
             : "Bank account was removed between listing and payout.",
         },
       });
+      skipped.push(group);
       continue;
     }
 
-    const gatewayResult = await initiateStubTeacherPayout({
-      teacherId: group.teacherId,
-      amountInRupees: group.totalAmount,
-      bankAccount: {
-        accountHolderName: bankAccount.accountHolderName,
-        accountNumber: bankAccount.accountNumber,
-        ifscCode: bankAccount.ifscCode,
-      },
-    });
-
-    await prisma.$transaction(async (tx) => {
-      const record = await tx.payoutRecord.create({
-        data: {
-          payoutBatchId: batch.id,
-          teacherId: group.teacherId,
-          amount: group.totalAmount,
-          cycleCount: group.cycleCount,
-          status: PayoutRecordStatus.SUCCESS,
-          bankAccountSnapshot: {
-            accountHolderName: bankAccount.accountHolderName,
-            accountNumber: bankAccount.accountNumber,
-            ifscCode: bankAccount.ifscCode,
-            bankName: bankAccount.bankName,
-          } as Prisma.InputJsonValue,
-          razorpayPayoutId: gatewayResult.razorpayPayoutId,
+    try {
+      const stub = live ? null : await initiateStubTeacherPayout({
+        teacherId: group.teacherId,
+        amountInRupees: group.totalAmount,
+        bankAccount: {
+          accountHolderName: bankAccount.accountHolderName,
+          accountNumber: bankAccount.accountNumber,
+          ifscCode: bankAccount.ifscCode,
         },
       });
 
-      await tx.tuitionLedgerEntry.updateMany({
-        where: { id: { in: group.entryIds } },
-        data: {
-          payoutStatus: LedgerPayoutStatus.PAID,
-          payoutRecordId: record.id,
-          paidAt: new Date(),
-        },
+      // Claim the queued cycles and create the record in ONE transaction.
+      // The conditional update means a double-click or a second Accounts
+      // user can never pay the same cycles twice.
+      const record = await prisma.$transaction(async (tx) => {
+        const claimed = await tx.tuitionLedgerEntry.updateMany({
+          where: { id: { in: group.entryIds }, payoutStatus: LedgerPayoutStatus.QUEUED_FOR_PAYMENT },
+          data: live
+            ? { payoutStatus: LedgerPayoutStatus.PROCESSING }
+            : { payoutStatus: LedgerPayoutStatus.PAID, paidAt: new Date() },
+        });
+
+        if (claimed.count !== group.entryIds.length) {
+          throw new TeacherPayoutError("Queued cycles changed while paying — try again.", 409);
+        }
+
+        const created = await tx.payoutRecord.create({
+          data: {
+            payoutBatchId: batch.id,
+            teacherId: group.teacherId,
+            amount: group.totalAmount,
+            cycleCount: group.cycleCount,
+            status: live ? PayoutRecordStatus.PROCESSING : PayoutRecordStatus.SUCCESS,
+            bankAccountSnapshot: {
+              accountHolderName: bankAccount.accountHolderName,
+              accountNumber: bankAccount.accountNumber,
+              ifscCode: bankAccount.ifscCode,
+              bankName: bankAccount.bankName,
+            } as Prisma.InputJsonValue,
+            razorpayPayoutId: stub?.razorpayPayoutId ?? null,
+            processedAt: live ? null : new Date(),
+          },
+        });
+
+        await tx.tuitionLedgerEntry.updateMany({
+          where: { id: { in: group.entryIds } },
+          data: { payoutRecordId: created.id },
+        });
+
+        return created;
       });
-    });
 
-    paidTeacherIds.push(group.teacherId);
+      if (!live) {
+        paidTeacherIds.push(group.teacherId);
+        acceptedAmount += group.totalAmount;
+        await notifyPayoutPaid(group.teacherId, group.totalAmount, group.cycleCount);
+        continue;
+      }
 
-    await notifyPayoutPaid(group.teacherId, group.totalAmount, group.cycleCount);
+      const outcome = await dispatchPayoutRecord(record.id);
+
+      if (outcome === "FAILED") {
+        failedTeacherIds.push(group.teacherId);
+      } else if (outcome === "SETTLED") {
+        paidTeacherIds.push(group.teacherId);
+        acceptedAmount += group.totalAmount;
+      } else {
+        processingTeacherIds.push(group.teacherId);
+        acceptedAmount += group.totalAmount;
+      }
+    } catch (error) {
+      console.error(`Mass-pay failed for teacher ${group.teacherId}:`, error);
+      failedTeacherIds.push(group.teacherId);
+    }
   }
 
   const skippedTeacherIds = skipped.map((g) => g.teacherId);
+  const notPaidCount = skippedTeacherIds.length + failedTeacherIds.length;
+  const finalStatus = notPaidCount > 0 ? PayoutBatchStatus.PARTIALLY_COMPLETED : PayoutBatchStatus.COMPLETED;
+
+  await prisma.payoutBatch.update({
+    where: { id: batch.id },
+    data: {
+      totalAmount: round2(acceptedAmount),
+      successCount: paidTeacherIds.length + processingTeacherIds.length,
+      skippedCount: notPaidCount,
+      status: finalStatus,
+    },
+  });
 
   await logActivity({
     action: "PAYOUT_MASS_PAID",
     actorRole: "ACCOUNTS",
     actorId: staffSub,
-    description: `Paid ${paidTeacherIds.length} teacher(s) ₹${totalAmount.toLocaleString("en-IN")} total${
-      skippedTeacherIds.length ? `; skipped ${skippedTeacherIds.length} (no bank account)` : ""
+    description: `${live ? "Sent" : "Simulated"} payouts to ${paidTeacherIds.length + processingTeacherIds.length} teacher(s), ₹${round2(acceptedAmount).toLocaleString("en-IN")} total${
+      processingTeacherIds.length ? ` (${processingTeacherIds.length} awaiting bank confirmation)` : ""
+    }${skippedTeacherIds.length ? `; skipped ${skippedTeacherIds.length} (no approved bank account)` : ""}${
+      failedTeacherIds.length ? `; ${failedTeacherIds.length} failed` : ""
     }.`,
-    metadata: { batchId: batch.id, paidTeacherIds, skippedTeacherIds, totalAmount },
+    metadata: {
+      batchId: batch.id,
+      live,
+      paidTeacherIds,
+      processingTeacherIds,
+      failedTeacherIds,
+      skippedTeacherIds,
+      totalAmount: round2(acceptedAmount),
+    },
   });
 
   return {
     batchId: batch.id,
-    status: batch.status,
+    status: finalStatus,
     paidTeacherIds,
+    processingTeacherIds,
+    failedTeacherIds,
     skippedTeacherIds,
-    totalAmount,
+    totalAmount: round2(acceptedAmount),
   };
 }

@@ -6,6 +6,7 @@ export type LedgerPayoutStatusView =
   | "PENDING_VERIFICATION"
   | "ON_HOLD"
   | "QUEUED_FOR_PAYMENT"
+  | "PROCESSING"
   | "PAID"
   | "REJECTED"
   | "EXPIRED"
@@ -26,7 +27,7 @@ export interface TeacherEarningsLedgerEntry {
   paidAt: string | null;
 }
 
-export type PayoutRecordStatusView = "SUCCESS" | "SKIPPED_NO_BANK_ACCOUNT" | "FAILED";
+export type PayoutRecordStatusView = "SUCCESS" | "PROCESSING" | "SKIPPED_NO_BANK_ACCOUNT" | "FAILED";
 
 export interface TeacherPayoutRecord {
   id: string;

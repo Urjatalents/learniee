@@ -578,6 +578,12 @@ model BankAccount {
   reviewedByStaffSub String?
   reviewedAt         DateTime?
   rejectionReason    String?
+  /// RazorpayX (Oct 13, 2026) — cached ids so a teacher's Contact/Fund Account
+  /// is created once. `fundAccountKey` is a hash of holder|number|IFSC: when the
+  /// teacher edits their details it no longer matches and a new Fund Account is made.
+  razorpayContactId     String?
+  razorpayFundAccountId String?
+  fundAccountKey        String?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
   teacher            Teacher           @relation(fields: [teacherId], references: [id], onDelete: Cascade)
@@ -616,12 +622,18 @@ model PayoutRecord {
   bankAccountSnapshot Json?
   razorpayPayoutId    String?
   failureReason       String?
+  /// RazorpayX (Oct 13, 2026): last gateway status, bank UTR, time of final result.
+  gatewayStatus       String?
+  utr                 String?
+  processedAt         DateTime?
   createdAt           DateTime            @default(now())
   batch               PayoutBatch         @relation(fields: [payoutBatchId], references: [id], onDelete: Cascade)
   ledgerEntries       TuitionLedgerEntry[]
 
   @@index([teacherId])
   @@index([payoutBatchId])
+  @@index([status])
+  @@index([razorpayPayoutId])
 }
 
 /// One chat room per Enrollment — i.e. one per (parent, teacher,
@@ -1540,6 +1552,10 @@ enum LedgerPayoutStatus {
   ON_HOLD
   QUEUED_FOR_PAYMENT
   PAID
+  /// RazorpayX payout submitted, final bank result not yet received (Oct 13, 2026).
+  /// Set when mass-pay claims a queued cycle; the payout webhook flips it to PAID,
+  /// or back to QUEUED_FOR_PAYMENT if the transfer fails/reverses.
+  PROCESSING
   REJECTED
   EXPIRED
   /// @deprecated legacy-only, see doc-comment above — no code writes this anymore
@@ -1580,6 +1596,8 @@ enum BankAccountStatus {
 
 enum PayoutRecordStatus {
   SUCCESS
+  /// RazorpayX payout in flight (Oct 13, 2026) — settled by webhook/reconcile.
+  PROCESSING
   SKIPPED_NO_BANK_ACCOUNT
   FAILED
 }
@@ -1922,6 +1940,8 @@ enum ActivityAction {
   PAYOUT_HELD_OR_REJECTED
   PAYOUT_ADMIN_DECISION
   PAYOUT_MASS_PAID
+  /// RazorpayX payout failed/reversed/rejected (Oct 13, 2026)
+  PAYOUT_FAILED
   /// Bank Account Approval (Sep 10, 2026)
   BANK_ACCOUNT_APPROVAL_DECISION
   /// Complaints (Sep 10, 2026)

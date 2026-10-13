@@ -37,6 +37,7 @@ const LEDGER_STATUS_STYLE: Record<LedgerPayoutStatusView, string> = {
   PENDING_VERIFICATION: "bg-amber-100 text-amber-700",
   ON_HOLD: "bg-orange-100 text-orange-700",
   QUEUED_FOR_PAYMENT: "bg-blue-100 text-blue-700",
+  PROCESSING: "bg-sky-100 text-sky-700",
   PAID: "bg-green-100 text-green-700",
   REJECTED: "bg-red-100 text-red-700",
   EXPIRED: "bg-orange-100 text-orange-700",
@@ -45,6 +46,7 @@ const LEDGER_STATUS_STYLE: Record<LedgerPayoutStatusView, string> = {
 
 const RECORD_STATUS_STYLE: Record<PayoutRecordStatusView, string> = {
   SUCCESS: "bg-green-100 text-green-700",
+  PROCESSING: "bg-sky-100 text-sky-700",
   SKIPPED_NO_BANK_ACCOUNT: "bg-orange-100 text-orange-700",
   FAILED: "bg-red-100 text-red-700",
 };
@@ -92,7 +94,7 @@ export default function TeacherEarningsPage() {
     .reduce((sum, e) => sum + e.monthlyTeacherPay, 0);
 
   const queuedForPayment = ledgerEntries
-    .filter((e) => e.payoutStatus === "QUEUED_FOR_PAYMENT")
+    .filter((e) => e.payoutStatus === "QUEUED_FOR_PAYMENT" || e.payoutStatus === "PROCESSING")
     .reduce((sum, e) => sum + e.monthlyTeacherPay, 0);
 
   const awaitingVerification = ledgerEntries.filter(

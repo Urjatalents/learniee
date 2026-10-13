@@ -19,6 +19,8 @@ export interface MassPayResult {
   batchId: string;
   status: "COMPLETED" | "PARTIALLY_COMPLETED";
   paidTeacherIds: string[];
+  processingTeacherIds: string[];
+  failedTeacherIds: string[];
   skippedTeacherIds: string[];
   totalAmount: number;
 }

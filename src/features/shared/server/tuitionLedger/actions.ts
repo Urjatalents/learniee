@@ -167,10 +167,10 @@ export async function getLedgerSummary(rows: TuitionLedgerEntryView[]) {
     // Legacy 'APPROVED' rows are backfilled to QUEUED_FOR_PAYMENT by the
     // migration, so this only ever needs to check the one status now.
     totalApprovedPayout: rows
-      .filter((r) => r.payoutStatus === "QUEUED_FOR_PAYMENT" || r.payoutStatus === "PAID")
+      .filter((r) => r.payoutStatus === "QUEUED_FOR_PAYMENT" || r.payoutStatus === "PROCESSING" || r.payoutStatus === "PAID")
       .reduce((s, r) => s + r.monthlyTeacherPay, 0),
     totalPlatformProfit: rows
-      .filter((r) => r.payoutStatus === "QUEUED_FOR_PAYMENT" || r.payoutStatus === "PAID")
+      .filter((r) => r.payoutStatus === "QUEUED_FOR_PAYMENT" || r.payoutStatus === "PROCESSING" || r.payoutStatus === "PAID")
       .reduce((s, r) => s + r.profits, 0),
     totalPaidOut: rows
       .filter((r) => r.payoutStatus === "PAID")

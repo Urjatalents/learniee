@@ -94,7 +94,11 @@ function dateFilter(range?: AccountsAnalyticsRange) {
 export async function getAccountsAnalytics(
   range?: AccountsAnalyticsRange,
 ): Promise<AccountsAnalytics> {
-  const realizedStatuses = [LedgerPayoutStatus.QUEUED_FOR_PAYMENT, LedgerPayoutStatus.PAID];
+  const realizedStatuses = [
+    LedgerPayoutStatus.QUEUED_FOR_PAYMENT,
+    LedgerPayoutStatus.PROCESSING,
+    LedgerPayoutStatus.PAID,
+  ];
 
   const transactionDate = dateFilter(range);
   const paidAt = dateFilter(range);

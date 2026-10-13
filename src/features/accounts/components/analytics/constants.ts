@@ -29,6 +29,7 @@ export const PAYOUT_STATUS_COLORS: Partial<Record<LedgerPayoutStatus, string>> =
   PENDING_VERIFICATION: "#64748b", // slate — waiting
   ON_HOLD: "#f59e0b", // amber — needs a decision
   QUEUED_FOR_PAYMENT: "#7e2bf1", // brand violet — on its way
+  PROCESSING: "#0ea5e9", // sky — transfer in flight
   PAID: "#059669", // emerald — done
   REJECTED: "#e11d48", // rose — money not going out
   EXPIRED: "#9ca3af", // gray — stale
@@ -109,6 +110,7 @@ export const PAYOUT_STATUS_LABELS: Record<LedgerPayoutStatus, string> = {
   PENDING_VERIFICATION: "Pending Verification",
   ON_HOLD: "On Hold",
   QUEUED_FOR_PAYMENT: "Queued for Payment",
+  PROCESSING: "Processing",
   PAID: "Paid",
   REJECTED: "Rejected",
   EXPIRED: "Expired",

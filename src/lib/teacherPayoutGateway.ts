@@ -1,7 +1,12 @@
 import "server-only";
 
 /**
- * STUB — Teacher Payouts (Sep 9, 2026).
+ * SIMULATED PAYOUT (used while `RAZORPAYX_ENABLED` is not "true").
+ * UPDATE Oct 13, 2026: real RazorpayX payouts now exist — see
+ * `src/lib/razorpayX.ts` and `features/shared/server/teacherPayout/gateway.ts`.
+ * This stub is kept only as the safe default before KYC/activation.
+ *
+ * Original note — Teacher Payouts (Sep 9, 2026).
  *
  * Actually sending money to a teacher's bank account needs
  * RazorpayX Payouts, which is a SEPARATE product from the Razorpay

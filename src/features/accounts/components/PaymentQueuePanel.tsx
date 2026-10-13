@@ -59,8 +59,8 @@ export default function PaymentQueuePanel() {
           <h2 className="text-lg font-semibold text-gray-800">Payment Queue</h2>
           <p className="text-xs text-gray-400 mt-1">
             Grouped by teacher — select several and pay them all at once instead of one cycle at a
-            time. Payout transfer is currently simulated (RazorpayX Payouts isn&apos;t wired up yet);
-            selecting Pay marks these as PAID and records the batch for when it is.
+            time. Pay sends the transfer through RazorpayX; cycles show as Processing until the bank
+            confirms, and return to this queue if the transfer fails.
           </p>
         </div>
         <button
@@ -82,7 +82,13 @@ export default function PaymentQueuePanel() {
 
       {lastResult && (
         <div className="px-6 py-3 text-sm bg-green-50 border-b text-green-800">
-          Paid {lastResult.paidTeacherIds.length} teacher(s), {currency.format(lastResult.totalAmount)} total.
+          Sent {lastResult.paidTeacherIds.length + lastResult.processingTeacherIds.length} teacher(s), {currency.format(lastResult.totalAmount)} total.
+          {lastResult.processingTeacherIds.length > 0 && (
+            <> {lastResult.processingTeacherIds.length} awaiting bank confirmation.</>
+          )}
+          {lastResult.failedTeacherIds.length > 0 && (
+            <> {lastResult.failedTeacherIds.length} failed — back in the queue.</>
+          )}
           {lastResult.skippedTeacherIds.length > 0 && (
             <> {lastResult.skippedTeacherIds.length} skipped — no bank account on file.</>
           )}
