@@ -36,12 +36,11 @@ import "server-only";
  * `razorpayOrderId` via the Invoice's unique constraint, same
  * pattern as `verifyEnrollmentPayment`.
  *
- * What this deliberately does NOT do (flagged, not built): reconcile
- * from the Razorpay webhook the way `enrollment.service.ts`'s first
- * payment does — a renewal whose tab closes right after paying needs
- * the parent to come back to `/parent/enrollments` and retry, same
- * as it would if `/verify` failed outright. Worth adding before a
- * real launch, same open-decision shape as `06` #48-59.
+ * Webhook reconciliation: a renewal whose tab closes right after
+ * paying is picked up by `reconcileRenewalFromWebhook()` (see
+ * `renewal/webhook.ts`), which shares `applyPaidRenewal()` with
+ * `verifyRenewalPayment()` — so the next cycle is created whether or
+ * not the browser ever calls `/renew/verify`.
  */
 
 export class RenewalError extends Error {

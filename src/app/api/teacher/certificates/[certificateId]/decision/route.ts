@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireTeacherId } from "@/features/teacher/server/auth";
+import { requireVerifiedTeacherId } from "@/features/teacher/server/verifiedAuth";
 import {
   decideCertificate,
   CertificateActionError,
@@ -24,7 +24,7 @@ export async function POST(
     // (`/api/teacher/certificates/<enrollmentId>/decision`), so alias it.
     const { certificateId: enrollmentId } = await params;
 
-    const teacher = await requireTeacherId(req);
+    const teacher = await requireVerifiedTeacherId(req);
 
     if ("error" in teacher) {
       return teacher.error;

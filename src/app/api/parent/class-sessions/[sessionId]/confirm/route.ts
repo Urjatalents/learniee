@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireParentId } from "@/features/parent/server/auth";
+import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
 import { confirmSessionOutcome } from "@/features/shared/server/sessionFlow.service";
 import { sessionFlowErrorResponse } from "@/features/shared/server/sessionFlowRoute";
 
@@ -16,7 +16,7 @@ export async function POST(
   try {
     const { sessionId } = await params;
 
-    const parent = await requireParentId(req);
+    const parent = await requireVerifiedParentId(req);
     if ("error" in parent) return parent.error;
 
     const session = await confirmSessionOutcome(sessionId, parent.parentId);

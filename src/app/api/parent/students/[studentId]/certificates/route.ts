@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireParentId } from "@/features/parent/server/auth";
+import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
 import { getCertificatesForStudent } from "@/features/shared/server/certificate.service";
 
 /**
@@ -18,7 +18,7 @@ export async function GET(
   try {
     const { studentId } = await params;
 
-    const parent = await requireParentId(req);
+    const parent = await requireVerifiedParentId(req);
 
     if ("error" in parent) {
       return parent.error;

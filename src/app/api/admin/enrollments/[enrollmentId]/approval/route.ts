@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/verifyAdmin";
 import {
   adminApproveEnrollment,
   adminRejectEnrollment,
@@ -31,10 +31,12 @@ export async function PATCH(
       );
     }
 
-    const auth = requireAdminAuth(req);
+    // Signature-verified (not decode-only): approving an enrollment
+    // activates a paid class, so a forged admin token must not pass.
+    const admin = await requireAdmin();
 
-    if ("error" in auth) {
-      return auth.error;
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
@@ -56,7 +58,12 @@ export async function PATCH(
     await logActivity({
       action: action === "APPROVE" ? "ENROLLMENT_ADMIN_APPROVED" : "ENROLLMENT_REJECTED",
       actorRole: "ADMIN",
-      ...actorFromTokenPayload(auth.payload),
+      ...actorFromTokenPayload({
+        sub: admin.sub,
+        email: admin.email as string | undefined,
+        given_name: admin.given_name as string | undefined,
+        family_name: admin.family_name as string | undefined,
+      }),
       description: `Admin ${action === "APPROVE" ? "approved" : "rejected"} enrollment ${enrollmentId}.`,
       metadata: { enrollmentId, reason: action === "REJECT" ? body.reason : undefined },
     });

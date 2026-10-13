@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireParentId } from "@/features/parent/server/auth";
+import { requireVerifiedParentId } from "@/features/parent/server/verifiedAuth";
 import {
   parentConfirmRevision,
   parentDeclineRevision,
@@ -30,7 +30,7 @@ export async function PATCH(
       );
     }
 
-    const parent = await requireParentId(req);
+    const parent = await requireVerifiedParentId(req);
 
     if ("error" in parent) {
       return parent.error;

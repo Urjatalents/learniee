@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireTeacherId } from "@/features/teacher/server/auth";
+import { requireVerifiedTeacherId } from "@/features/teacher/server/verifiedAuth";
 import { getTeacherCertificateBoard } from "@/features/shared/server/certificate.service";
 
 /**
@@ -13,7 +13,7 @@ import { getTeacherCertificateBoard } from "@/features/shared/server/certificate
  */
 export async function GET(req: Request) {
   try {
-    const teacher = await requireTeacherId(req);
+    const teacher = await requireVerifiedTeacherId(req);
 
     if ("error" in teacher) {
       return teacher.error;

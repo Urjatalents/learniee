@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireTeacherId } from "@/features/teacher/server/auth";
+import { requireVerifiedTeacherId } from "@/features/teacher/server/verifiedAuth";
 import { getCertificateForTeacher } from "@/features/shared/server/certificate.service";
 
 /**
@@ -17,7 +17,7 @@ export async function GET(
   try {
     const { certificateId } = await params;
 
-    const teacher = await requireTeacherId(req);
+    const teacher = await requireVerifiedTeacherId(req);
 
     if ("error" in teacher) {
       return teacher.error;
