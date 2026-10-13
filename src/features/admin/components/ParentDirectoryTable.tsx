@@ -1,69 +1,67 @@
 "use client";
 
 import type { ParentDirectoryRow } from "@/features/admin/hooks/useParentDirectory";
+import {
+  AdminAvatar,
+  AdminPill,
+  AdminTableCard,
+  adminRowClass,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+  formatAdminDate,
+} from "@/features/admin/components/ui/primitives";
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-interface ParentDirectoryTableProps {
-  parents: ParentDirectoryRow[];
-}
-
-export default function ParentDirectoryTable({ parents }: ParentDirectoryTableProps) {
+export default function ParentDirectoryTable({ parents }: { parents: ParentDirectoryRow[] }) {
   return (
-    <div className="bg-white rounded-xl border shadow-sm overflow-hidden overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-100 text-left text-gray-600">
+    <AdminTableCard>
+      <table className={`${adminTableClass} min-w-[860px]`}>
+        <thead>
           <tr>
-            <th className="px-4 py-3">Name</th>
-            <th className="px-4 py-3">Email</th>
-            <th className="px-4 py-3">Location</th>
-            <th className="px-4 py-3">Onboarding</th>
-            <th className="px-4 py-3 text-right">Students</th>
-            <th className="px-4 py-3 text-right">Active Enrollments</th>
-            <th className="px-4 py-3 text-right">Wallet</th>
-            <th className="px-4 py-3">Joined</th>
+            <th className={adminThClass}>Parent</th>
+            <th className={adminThClass}>Location</th>
+            <th className={adminThClass}>Onboarding</th>
+            <th className={`${adminThClass} text-right`}>Students</th>
+            <th className={`${adminThClass} text-right`}>Active</th>
+            <th className={`${adminThClass} text-right`}>Wallet</th>
+            <th className={adminThClass}>Joined</th>
           </tr>
         </thead>
         <tbody>
           {parents.map((p) => (
-            <tr key={p.id} className="border-t">
-              <td className="px-4 py-3 font-medium text-gray-800">{p.name}</td>
-              <td className="px-4 py-3">{p.email}</td>
-              <td className="px-4 py-3">
+            <tr key={p.id} className={adminRowClass}>
+              <td className={adminTdClass}>
+                <div className="flex min-w-0 items-center gap-3">
+                  <AdminAvatar name={p.name} />
+                  <div className="min-w-0">
+                    <p className="truncate font-extrabold">{p.name}</p>
+                    <p className="truncate text-sm text-admin-muted">{p.email}</p>
+                  </div>
+                </div>
+              </td>
+              <td className={adminTdClass}>
                 {[p.city, p.country].filter(Boolean).join(", ") || "—"}
               </td>
-              <td className="px-4 py-3">
-                <span
-                  className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                    p.onboardingComplete
-                      ? "bg-green-100 text-green-700"
-                      : "bg-yellow-100 text-yellow-700"
-                  }`}
-                >
+              <td className={adminTdClass}>
+                <AdminPill tone={p.onboardingComplete ? "brand" : "warn"}>
                   {p.onboardingComplete ? "Complete" : "In progress"}
-                </span>
+                </AdminPill>
               </td>
-              <td className="px-4 py-3 text-right">{p.studentsCount}</td>
-              <td className="px-4 py-3 text-right">{p.activeEnrollmentsCount}</td>
-              <td className="px-4 py-3 text-right">₹{p.walletBalance.toLocaleString("en-IN")}</td>
-              <td className="px-4 py-3 text-gray-500">{formatDate(p.createdAt)}</td>
+              <td className={`${adminTdClass} text-right`}>{p.studentsCount}</td>
+              <td className={`${adminTdClass} text-right`}>{p.activeEnrollmentsCount}</td>
+              <td className={`${adminTdClass} text-right`}>₹{p.walletBalance.toLocaleString("en-IN")}</td>
+              <td className={`${adminTdClass} whitespace-nowrap`}>{formatAdminDate(p.createdAt)}</td>
             </tr>
           ))}
           {parents.length === 0 && (
             <tr>
-              <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
+              <td colSpan={7} className="px-5 py-10 text-center text-admin-muted">
                 No parents found.
               </td>
             </tr>
           )}
         </tbody>
       </table>
-    </div>
+    </AdminTableCard>
   );
 }

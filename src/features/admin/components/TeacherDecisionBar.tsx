@@ -32,7 +32,7 @@ export default function TeacherDecisionBar({ teacherName, status, deciding, onDe
 
   return (
     <>
-      <div className="sticky bottom-0 z-10 -mx-8 mt-8 border-t bg-white/95 px-8 py-4 backdrop-blur">
+      <div className="sticky bottom-0 z-10 -mx-4 mt-8 border-t border-admin-line bg-white/95 px-4 py-4 backdrop-blur sm:-mx-8 sm:px-8">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-gray-500">
             {status === "PENDING"
@@ -47,7 +47,7 @@ export default function TeacherDecisionBar({ teacherName, status, deciding, onDe
               <button
                 onClick={() => setConfirming("REJECTED")}
                 disabled={deciding}
-                className="rounded-lg bg-red-600 px-6 py-2 text-white hover:bg-red-700 disabled:opacity-60"
+                className="inline-flex min-h-11 items-center rounded-xl border border-admin-line bg-white px-6 font-extrabold text-red-700 hover:bg-admin-hover disabled:opacity-60"
               >
                 {status === "APPROVED" ? "Revoke approval" : "Reject"}
               </button>
@@ -57,7 +57,7 @@ export default function TeacherDecisionBar({ teacherName, status, deciding, onDe
               <button
                 onClick={() => setConfirming("APPROVED")}
                 disabled={deciding}
-                className="rounded-lg bg-green-600 px-6 py-2 text-white hover:bg-green-700 disabled:opacity-60"
+                className="inline-flex min-h-11 items-center rounded-xl bg-brand px-6 font-extrabold text-white hover:bg-[#6a1fd6] disabled:opacity-60"
               >
                 {status === "REJECTED" ? "Approve instead" : "Approve"}
               </button>

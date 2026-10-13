@@ -6,11 +6,27 @@ import {
   useAdminRefundRequests,
   type AdminRefundRequest,
 } from "@/features/refunds/hooks/useRefundRequests";
-import ErrorBanner from "@/features/shared/components/ErrorBanner";
-import { REFUND_STATUS_LABELS, getRefundStatusStyle } from "@/features/shared/utils/refundStatus";
+import {
+  AdminDialog,
+  AdminEmpty,
+  AdminError,
+  AdminFact,
+  AdminLoading,
+  AdminPage,
+  AdminPageHeader,
+  AdminPanel,
+  AdminPill,
+  AdminTabs,
+  adminButtonClass,
+  adminInputClass,
+  adminLabelClass,
+  adminTextareaClass,
+  type PillTone,
+} from "@/features/admin/components/ui/primitives";
+import { REFUND_STATUS_LABELS } from "@/features/shared/utils/refundStatus";
 
 /**
- * Admin "Refund Requests" screen. A Parent's request waits here; Admin decides
+ * Admin "Refund requests" screen. A Parent's request waits here; Admin decides
  * whether to refund. Approve credits the Parent's Wallet for the amount Admin
  * types (nothing is calculated for him); Reject needs a note the Parent sees.
  * See `refundRequest.service.ts` and the Refund Policy (`/refunds`).
@@ -24,18 +40,26 @@ const TABS: { value: Tab; label: string }[] = [
   { value: "REJECTED", label: "Rejected" },
 ];
 
-const currency = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
-const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+const STATUS_TONE: Record<string, PillTone> = {
+  PENDING: "warn",
+  APPROVED: "good",
+  REJECTED: "bad",
+};
 
-const inputClass =
-  "w-full border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 outline-none text-sm text-gray-800 focus:border-purple-400";
+const currency = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 2,
+});
+const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
 export default function AdminRefundRequestsPage() {
   const { requests, loading, error, busyId, decide } = useAdminRefundRequests();
   const [tab, setTab] = useState<Tab>("PENDING");
   const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const [reject, setReject] = useState<AdminRefundRequest | null>(null);
-  const [note, setNote] = useState("");
+  const [rejectNote, setRejectNote] = useState("");
 
   const counts = {
     PENDING: requests.filter((r) => r.status === "PENDING").length,
@@ -54,166 +78,192 @@ export default function AdminRefundRequestsPage() {
 
     if (!Number.isFinite(amount) || amount <= 0) return;
 
-    await decide(r.id, "APPROVE", { approvedAmount: amount });
+    const note = (notes[r.id] ?? "").trim();
+
+    await decide(r.id, "APPROVE", {
+      approvedAmount: amount,
+      ...(note ? { adminNote: note } : {}),
+    });
+  }
+
+  function closeReject() {
+    setReject(null);
+    setRejectNote("");
   }
 
   async function confirmReject() {
-    if (!reject || note.trim().length < 5) return;
+    if (!reject || rejectNote.trim().length < 5) return;
 
-    if (await decide(reject.id, "REJECT", { adminNote: note.trim() })) {
-      setReject(null);
-      setNote("");
+    if (await decide(reject.id, "REJECT", { adminNote: rejectNote.trim() })) {
+      closeReject();
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-800">Refund Requests</h1>
-        <p className="text-sm text-gray-500 mt-1 mb-6">
-          Nothing is refunded until you approve it. Enter the refund amount yourself; it is credited to the parent&apos;s wallet.
-        </p>
+    <AdminPage>
+      <AdminPageHeader
+        crumbs={[{ label: "Overview", href: "/admin" }, { label: "Money" }]}
+        title="Refund requests"
+        description="Approve to credit the parent's wallet, or reject with a note. Nothing is refunded until you approve it."
+      />
 
-        {error && <ErrorBanner>{error}</ErrorBanner>}
+      <AdminTabs
+        label="Request status"
+        value={tab}
+        onChange={setTab}
+        tabs={TABS.map((t) => ({ ...t, count: counts[t.value] }))}
+      />
 
-        <div className="flex gap-2 mb-6">
-          {TABS.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => setTab(t.value)}
-              className={`text-sm font-semibold px-4 py-2 rounded-lg ${
-                tab === t.value ? "bg-purple-600 text-white" : "bg-white border text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              {t.label} ({counts[t.value]})
-            </button>
-          ))}
-        </div>
+      <AdminError>{error}</AdminError>
 
-        {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
-        ) : visible.length === 0 ? (
-          <div className="bg-white border rounded-xl p-10 text-center text-sm text-gray-500">Nothing here.</div>
-        ) : (
-          <div className="space-y-4">
-            {visible.map((r) => {
-              const busy = busyId === r.id;
+      {loading ? (
+        <AdminLoading />
+      ) : visible.length === 0 ? (
+        <AdminEmpty message="Nothing here." />
+      ) : (
+        <div className="flex flex-col gap-4">
+          {visible.map((r) => {
+            const busy = busyId === r.id;
 
-              return (
-                <article key={r.id} className="bg-white border rounded-xl shadow-sm p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h2 className="font-semibold text-gray-800">{r.description}</h2>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {r.parentName} ({r.parentEmail}) · requested {dateFmt.format(new Date(r.createdAt))}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Invoice {r.invoiceNumber} · paid {dateFmt.format(new Date(r.paidAt))}
-                      </p>
+            return (
+              <AdminPanel key={r.id} className="overflow-hidden">
+                <article className="grid gap-0 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                  <div className="flex min-w-0 flex-col gap-4 p-5 sm:p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-lg font-extrabold">{r.parentName}</p>
+                        <p className="truncate text-sm text-admin-muted">
+                          {r.parentEmail} · requested {dateFmt.format(new Date(r.createdAt))}
+                        </p>
+                      </div>
+                      <AdminPill tone={STATUS_TONE[r.status] ?? "neutral"}>
+                        {REFUND_STATUS_LABELS[r.status] ?? r.status}
+                      </AdminPill>
                     </div>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${getRefundStatusStyle(r.status)}`}>
-                      {REFUND_STATUS_LABELS[r.status] ?? r.status}
-                    </span>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <AdminFact label="Amount paid">{currency.format(r.amountPaid)}</AdminFact>
+                      <AdminFact label="Invoice">
+                        {r.invoiceNumber}
+                        <span className="block text-sm font-normal text-admin-muted">
+                          paid {dateFmt.format(new Date(r.paidAt))}
+                        </span>
+                      </AdminFact>
+                    </div>
+
+                    <AdminFact label="Reason given">
+                      <span className="whitespace-pre-line font-normal">{r.reason}</span>
+                    </AdminFact>
+
+                    {r.status === "APPROVED" && r.approvedAmount != null && (
+                      <p className="text-[15px] font-bold text-green-800">
+                        {currency.format(r.approvedAmount)} credited to wallet
+                        {r.decidedByName ? ` by ${r.decidedByName}` : ""}.
+                      </p>
+                    )}
+
+                    {r.adminNote && (
+                      <p className="text-[15px] text-admin-muted">Note: {r.adminNote}</p>
+                    )}
                   </div>
 
-                  <p className="text-sm text-gray-600 mt-3 whitespace-pre-line">{r.reason}</p>
-
-                  <p className="text-xs text-gray-500 mt-3">Paid {currency.format(r.amountPaid)}</p>
-
-                  {r.status === "APPROVED" && r.approvedAmount != null && (
-                    <p className="text-sm text-green-700 mt-2">
-                      {currency.format(r.approvedAmount)} credited to wallet
-                      {r.decidedByName ? ` by ${r.decidedByName}` : ""}.
-                    </p>
-                  )}
-
-                  {r.adminNote && <p className="mt-2 text-sm text-gray-600">Note: {r.adminNote}</p>}
-
                   {r.status === "PENDING" && (
-                    <div className="mt-4 flex flex-wrap items-end gap-3">
-                      <label className="text-xs text-gray-500">
-                        Refund amount (max {currency.format(r.remainingRefundable)})
+                    <div className="flex flex-col gap-4 border-t border-admin-line-soft bg-admin-surface p-5 sm:p-6 lg:border-l lg:border-t-0">
+                      <div>
+                        <label htmlFor={`amount-${r.id}`} className={adminLabelClass}>
+                          Refund amount
+                        </label>
                         <input
+                          id={`amount-${r.id}`}
                           type="number"
+                          inputMode="decimal"
                           min={1}
                           max={r.remainingRefundable}
                           step="1"
-                          className={`${inputClass} mt-1 w-44`}
+                          className={adminInputClass}
                           value={amountFor(r)}
                           onChange={(e) => setAmounts((prev) => ({ ...prev, [r.id]: e.target.value }))}
                         />
-                      </label>
-                      <button
-                        type="button"
-                        disabled={busy || !(Number(amountFor(r)) > 0)}
-                        onClick={() => approve(r)}
-                        className="text-sm font-bold text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg disabled:opacity-60"
-                      >
-                        {busy ? "Working..." : "Approve & credit wallet"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => setReject(r)}
-                        className="text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg"
-                      >
-                        Reject
-                      </button>
+                        <span className="mt-1 block text-sm text-admin-muted">
+                          Up to {currency.format(r.remainingRefundable)}.
+                        </span>
+                      </div>
+
+                      <div>
+                        <label htmlFor={`note-${r.id}`} className={adminLabelClass}>
+                          Note for the parent{" "}
+                          <span className="font-semibold text-admin-muted">(optional)</span>
+                        </label>
+                        <textarea
+                          id={`note-${r.id}`}
+                          rows={2}
+                          maxLength={500}
+                          className={adminTextareaClass}
+                          value={notes[r.id] ?? ""}
+                          onChange={(e) => setNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={busy || !(Number(amountFor(r)) > 0)}
+                          onClick={() => approve(r)}
+                          className={adminButtonClass("primary")}
+                        >
+                          {busy ? "Working…" : "Approve and credit wallet"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setReject(r)}
+                          className={adminButtonClass("secondary", "text-red-700")}
+                        >
+                          Reject
+                        </button>
+                      </div>
                     </div>
                   )}
                 </article>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              </AdminPanel>
+            );
+          })}
+        </div>
+      )}
 
       {reject && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => {
-            setReject(null);
-            setNote("");
-          }}
-        >
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-gray-800">Reject refund request</h2>
-            <p className="text-sm text-gray-500 mt-1 truncate">
-              {reject.parentName} — {reject.description}
-            </p>
-            <label className="block text-sm text-gray-600 mt-4">
-              Reason (the parent will see this)
-              <textarea
-                className={`${inputClass} mt-1 min-h-[90px]`}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                maxLength={500}
-              />
-            </label>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setReject(null);
-                  setNote("");
-                }}
-                className="text-sm font-semibold text-gray-600 border px-4 py-2 rounded-lg hover:bg-gray-50"
-              >
+        <AdminDialog
+          title="Reject refund request"
+          subtitle={`${reject.parentName} — ${reject.description}`}
+          onClose={closeReject}
+          footer={
+            <>
+              <button type="button" onClick={closeReject} className={adminButtonClass("secondary")}>
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={busyId === reject.id || note.trim().length < 5}
+                disabled={busyId === reject.id || rejectNote.trim().length < 5}
                 onClick={confirmReject}
-                className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg disabled:opacity-60"
+                className={adminButtonClass("danger")}
               >
                 Reject request
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        >
+          <label htmlFor="reject-note" className={adminLabelClass}>
+            Reason (the parent will see this)
+          </label>
+          <textarea
+            id="reject-note"
+            className={`${adminTextareaClass} min-h-[90px]`}
+            value={rejectNote}
+            onChange={(e) => setRejectNote(e.target.value)}
+            maxLength={500}
+          />
+        </AdminDialog>
       )}
-    </div>
+    </AdminPage>
   );
 }

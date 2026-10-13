@@ -1,23 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import type { AdminTeacherSummary } from "@/features/admin/types/teacher";
 import { getCompleteness } from "@/features/admin/utils/teacherCompleteness";
-import TeacherStatusBadge from "@/features/admin/components/TeacherStatusBadge";
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function initials(teacher: AdminTeacherSummary) {
-  return `${teacher.firstName?.[0] ?? ""}${teacher.lastName?.[0] ?? ""}`.toUpperCase();
-}
+import {
+  AdminAvatar,
+  AdminPill,
+  AdminTableCard,
+  adminButtonClass,
+  adminRowClass,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+  formatAdminDate,
+} from "@/features/admin/components/ui/primitives";
 
 interface Props {
   teachers: AdminTeacherSummary[];
@@ -27,17 +24,16 @@ interface Props {
 
 export default function TeacherApplicationsTable({ teachers, dateLabel }: Props) {
   return (
-    <div className="bg-white rounded-xl border shadow-sm overflow-hidden overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-100 text-left text-gray-600">
+    <AdminTableCard>
+      <table className={`${adminTableClass} min-w-[820px]`}>
+        <thead>
           <tr>
-            <th className="px-4 py-3">Teacher</th>
-            <th className="px-4 py-3">Location</th>
-            <th className="px-4 py-3">Experience</th>
-            <th className="px-4 py-3">Documents</th>
-            <th className="px-4 py-3">{dateLabel}</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3 text-right">Action</th>
+            <th className={adminThClass}>Teacher</th>
+            <th className={adminThClass}>Location</th>
+            <th className={adminThClass}>Experience</th>
+            <th className={adminThClass}>Documents</th>
+            <th className={adminThClass}>{dateLabel}</th>
+            <th className={`${adminThClass} text-right`}>Action</th>
           </tr>
         </thead>
 
@@ -45,69 +41,53 @@ export default function TeacherApplicationsTable({ teachers, dateLabel }: Props)
           {teachers.map((teacher) => {
             const { missingRequired } = getCompleteness(teacher.fileTypes, teacher.hasPan);
             const location = [teacher.city, teacher.country].filter(Boolean).join(", ");
+            const name = `${teacher.firstName ?? ""} ${teacher.lastName ?? ""}`.trim();
 
             return (
-              <tr key={teacher.id} className="border-t hover:bg-gray-50">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-semibold text-purple-700">
-                      {initials(teacher)}
-                    </div>
+              <tr key={teacher.id} className={adminRowClass}>
+                <td className={adminTdClass}>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <AdminAvatar name={name} />
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-800">
-                        {teacher.firstName} {teacher.lastName}
-                      </p>
-                      <p className="truncate text-xs text-gray-500">{teacher.email}</p>
+                      <p className="truncate text-base font-extrabold">{name}</p>
+                      <p className="truncate text-sm text-admin-muted">{teacher.email}</p>
                     </div>
                   </div>
                 </td>
 
-                <td className="px-4 py-3 text-gray-600">{location || "—"}</td>
+                <td className={adminTdClass}>{location || "—"}</td>
 
-                <td className="px-4 py-3 text-gray-600">
+                <td className={adminTdClass}>
                   <p>{teacher.qualifications || "—"}</p>
                   {teacher.overallExperience && (
-                    <p className="text-xs text-gray-400">{teacher.overallExperience} yrs</p>
+                    <p className="text-sm text-admin-muted">{teacher.overallExperience} yrs</p>
                   )}
                 </td>
 
-                <td className="px-4 py-3">
-                  {missingRequired === 0 ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
-                      <CheckCircle2 className="size-4" />
-                      Complete
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700">
-                      <AlertTriangle className="size-4" />
-                      {missingRequired} missing
-                    </span>
-                  )}
+                <td className={adminTdClass}>
+                  <div className="flex flex-col items-start gap-1">
+                    <AdminPill tone={missingRequired === 0 ? "brand" : "warn"}>
+                      {missingRequired === 0 ? "Complete" : `${missingRequired} missing`}
+                    </AdminPill>
+                    {teacher.approvalStatus === "PENDING" && teacher.interviewScheduledAt && (
+                      <span className="text-[13px] font-bold text-brand-dark">
+                        Interview {formatAdminDate(teacher.interviewScheduledAt)}
+                      </span>
+                    )}
+                    {teacher.appealCount > 0 && (
+                      <span className="text-[13px] font-bold text-brand-dark">
+                        Appeal #{teacher.appealCount}
+                      </span>
+                    )}
+                  </div>
                 </td>
 
-                <td className="px-4 py-3 whitespace-nowrap text-gray-600">
-                  {formatDate(teacher.updatedAt)}
+                <td className={`${adminTdClass} whitespace-nowrap`}>
+                  {formatAdminDate(teacher.updatedAt)}
                 </td>
 
-                <td className="px-4 py-3">
-                  <TeacherStatusBadge status={teacher.approvalStatus} />
-                  {teacher.approvalStatus === "PENDING" && teacher.interviewScheduledAt && (
-                    <p className="mt-1 text-[11px] font-medium text-purple-700">
-                      Interview {formatDate(teacher.interviewScheduledAt)}
-                    </p>
-                  )}
-                  {teacher.appealCount > 0 && (
-                    <p className="mt-1 text-[11px] text-amber-700">
-                      Appeal #{teacher.appealCount}
-                    </p>
-                  )}
-                </td>
-
-                <td className="px-4 py-3 text-right">
-                  <Link
-                    href={`/admin/teachers/${teacher.id}`}
-                    className="inline-block rounded-lg bg-purple-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
-                  >
+                <td className={`${adminTdClass} text-right`}>
+                  <Link href={`/admin/teachers/${teacher.id}`} className={adminButtonClass("primary")}>
                     Review
                   </Link>
                 </td>
@@ -116,6 +96,6 @@ export default function TeacherApplicationsTable({ teachers, dateLabel }: Props)
           })}
         </tbody>
       </table>
-    </div>
+    </AdminTableCard>
   );
 }

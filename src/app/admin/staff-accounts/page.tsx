@@ -1,8 +1,17 @@
 "use client";
 
+import { Plus } from "lucide-react";
+
 import { useStaffAccounts } from "@/features/admin/hooks/useStaffAccounts";
 import StaffAccountsTable from "@/features/admin/components/StaffAccountsTable";
 import CreateStaffAccountForm from "@/features/admin/components/CreateStaffAccountForm";
+import {
+  AdminError,
+  AdminLoading,
+  AdminPage,
+  AdminPageHeader,
+  adminButtonClass,
+} from "@/features/admin/components/ui/primitives";
 
 export default function AdminStaffAccountsPage() {
   const {
@@ -17,36 +26,36 @@ export default function AdminStaffAccountsPage() {
   } = useStaffAccounts();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="flex items-center justify-between mb-1">
-        <h1 className="text-2xl font-bold text-purple-600">Staff Accounts</h1>
-        {!showCreateForm && (
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-          >
-            + New Staff Account
-          </button>
-        )}
-      </div>
-      <p className="text-sm text-gray-500 mb-6">
-        Create and manage HR, IT and Accounts logins. Each gets a simple dashboard on first login
-        — full profile details for these roles aren&apos;t built yet.
-      </p>
+    <AdminPage>
+      <AdminPageHeader
+        crumbs={[{ label: "Overview", href: "/admin" }, { label: "People" }]}
+        title="Staff accounts"
+        description="Create and manage HR, IT and Accounts logins. Each gets a simple dashboard on first login."
+        actions={
+          !showCreateForm && (
+            <button
+              type="button"
+              onClick={() => setShowCreateForm(true)}
+              className={adminButtonClass("primary")}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              New staff account
+            </button>
+          )
+        }
+      />
 
       {showCreateForm && (
         <CreateStaffAccountForm onCreated={handleCreated} onCancel={() => setShowCreateForm(false)} />
       )}
 
-      {error && (
-        <div className="mb-4 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm">{error}</div>
-      )}
+      <AdminError>{error}</AdminError>
 
       {loading ? (
-        <p className="text-gray-500">Loading staff accounts…</p>
+        <AdminLoading message="Loading staff accounts…" />
       ) : (
         <StaffAccountsTable accounts={accounts} deletingId={deletingId} onDelete={handleDelete} />
       )}
-    </div>
+    </AdminPage>
   );
 }

@@ -5,9 +5,10 @@ import AccountAccessManager from "@/features/shared/components/AccountAccessMana
 export default function AdminAccountAccessPage() {
   return (
     <AccountAccessManager
-      heading="Account Access"
-      subheading="Reset a login's password, or change the email/phone Cognito has on file — Teacher, Parent, Accounts, HR, IT and other Admin logins."
+      heading="Account access"
+      subheading="Reset a login's password, or change the email/phone Cognito has on file, for Teacher, Parent, Accounts, HR, IT and other Admin logins."
       apiBasePath="/api/admin/account-access"
+      embedded
     />
   );
 }

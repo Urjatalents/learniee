@@ -21,13 +21,15 @@ export default function UserDetailPanel({ email, role, onClose }: UserDetailPane
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-admin-ink/40" onClick={onClose} />
       <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white">
-          <h2 className="text-lg font-semibold text-gray-800">User Details</h2>
+          <h2 className="font-heading text-xl font-bold text-admin-ink">User details</h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            aria-label="Close"
+            className="flex size-11 items-center justify-center rounded-xl text-2xl leading-none text-admin-muted hover:bg-admin-hover"
           >
             ×
           </button>
@@ -42,22 +44,22 @@ export default function UserDetailPanel({ email, role, onClose }: UserDetailPane
               <div className="space-y-3">
                 {flatEntries.map(([key, value]) => (
                   <div key={key}>
-                    <div className="text-xs uppercase tracking-wide text-gray-400">
+                    <div className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-admin-muted">
                       {formatDetailLabel(key)}
                     </div>
-                    <div className="text-sm text-gray-800">{formatDetailValue(value)}</div>
+                    <div className="text-[15px] font-bold text-admin-ink">{formatDetailValue(value)}</div>
                   </div>
                 ))}
               </div>
 
               {arrayEntries.map(([key, value]) => (
                 <div key={key}>
-                  <h3 className="text-sm font-semibold text-gray-800 mb-2">
+                  <h3 className="text-base font-extrabold text-admin-ink mb-2">
                     {formatDetailLabel(key)}
                   </h3>
                   <div className="space-y-3">
                     {(value as Record<string, unknown>[]).map((item, i) => (
-                      <div key={i} className="border rounded-lg p-3 bg-gray-50 space-y-1">
+                      <div key={i} className="border border-admin-line rounded-[14px] p-3 bg-admin-surface space-y-1">
                         {Object.entries(item)
                           .filter(isDisplayableEntry)
                           .map(([k, v]) => (
@@ -74,10 +76,10 @@ export default function UserDetailPanel({ email, role, onClose }: UserDetailPane
 
               {objectEntries.map(([key, value]) => (
                 <div key={key}>
-                  <h3 className="text-sm font-semibold text-gray-800 mb-2">
+                  <h3 className="text-base font-extrabold text-admin-ink mb-2">
                     {formatDetailLabel(key)}
                   </h3>
-                  <div className="border rounded-lg p-3 bg-gray-50 space-y-1">
+                  <div className="border border-admin-line rounded-[14px] p-3 bg-admin-surface space-y-1">
                     {Object.entries(value as Record<string, unknown>)
                       .filter(isDisplayableEntry)
                       .map(([k, v]) => (

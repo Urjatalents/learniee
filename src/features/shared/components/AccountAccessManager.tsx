@@ -3,6 +3,23 @@
 import { useState } from "react";
 
 import {
+  AdminAvatar,
+  AdminError,
+  AdminLoading,
+  AdminPage,
+  AdminPageHeader,
+  AdminPill,
+  AdminSearch,
+  AdminTableCard,
+  adminButtonClass,
+  adminInputClass,
+  adminLabelClass,
+  adminRowClass,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+} from "@/features/admin/components/ui/primitives";
+import {
   useAccountAccess,
   type ManagedAccount,
 } from "@/features/shared/hooks/useAccountAccess";
@@ -20,6 +37,8 @@ interface AccountAccessManagerProps {
   heading: string;
   subheading: string;
   apiBasePath: string;
+  /** True inside the Admin shell (adds the breadcrumb, drops page padding). */
+  embedded?: boolean;
 }
 
 /**
@@ -32,6 +51,7 @@ export default function AccountAccessManager({
   heading,
   subheading,
   apiBasePath,
+  embedded = false,
 }: AccountAccessManagerProps) {
   const {
     accounts,
@@ -48,69 +68,79 @@ export default function AccountAccessManager({
     submit,
   } = useAccountAccess(apiBasePath);
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <h1 className="text-2xl font-bold text-purple-600 mb-1">{heading}</h1>
-      <p className="text-sm text-gray-500 mb-6 max-w-2xl">{subheading}</p>
-
-      <input
-        type="text"
-        placeholder="Search by name, email or role..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-md mb-4 px-4 py-2 border rounded-lg"
+  const content = (
+    <AdminPage>
+      <AdminPageHeader
+        crumbs={embedded ? [{ label: "Overview", href: "/admin" }, { label: "People" }] : undefined}
+        title={heading}
+        description={subheading}
       />
 
-      {loadError && (
-        <div className="mb-4 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm">
-          {loadError}
-        </div>
-      )}
+      <div>
+        <AdminSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Search by name, email or role"
+        />
+      </div>
+
+      <AdminError>{loadError}</AdminError>
 
       {loading ? (
-        <p className="text-gray-500">Loading accounts…</p>
+        <AdminLoading message="Loading accounts…" />
       ) : (
-        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-left">
+        <AdminTableCard>
+          <table className={adminTableClass}>
+            <thead>
               <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3" />
+                <th className={adminThClass}>Name</th>
+                <th className={adminThClass}>Role</th>
+                <th className={adminThClass}>Phone</th>
+                <th className={`${adminThClass} text-right`}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {accounts.map((a) => (
-                <tr key={`${a.role}-${a.id}`} className="border-t">
-                  <td className="px-4 py-3">
-                    {a.firstName} {a.lastName}
-                  </td>
-                  <td className="px-4 py-3">{ROLE_LABELS[a.role]}</td>
-                  <td className="px-4 py-3">{a.email}</td>
-                  <td className="px-4 py-3">{a.phone || "—"}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => openTarget(a)}
-                      className="text-purple-600 hover:text-purple-800 font-medium"
-                    >
-                      Manage access
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {accounts.map((a) => {
+                const name = `${a.firstName} ${a.lastName}`.trim();
+
+                return (
+                  <tr key={`${a.role}-${a.id}`} className={adminRowClass}>
+                    <td className={adminTdClass}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <AdminAvatar name={name || a.email} />
+                        <div className="min-w-0">
+                          <p className="truncate font-extrabold">{name || "—"}</p>
+                          <p className="truncate text-sm text-admin-muted">{a.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className={adminTdClass}>
+                      <AdminPill>{ROLE_LABELS[a.role]}</AdminPill>
+                    </td>
+                    <td className={adminTdClass}>{a.phone || "—"}</td>
+                    <td className={`${adminTdClass} text-right`}>
+                      <button
+                        type="button"
+                        onClick={() => openTarget(a)}
+                        aria-label={`Manage access for ${name || a.email}`}
+                        className={adminButtonClass("primary")}
+                      >
+                        Manage access
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
               {accounts.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={4} className="px-5 py-10 text-center text-admin-muted">
                     No accounts match.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
+        </AdminTableCard>
       )}
 
       {target && (
@@ -123,8 +153,12 @@ export default function AccountAccessManager({
           onSubmit={submit}
         />
       )}
-    </div>
+    </AdminPage>
   );
+
+  if (embedded) return content;
+
+  return <div className="mx-auto min-h-screen max-w-5xl bg-admin-surface p-8 text-admin-ink">{content}</div>;
 }
 
 function AccountAccessModal({
@@ -170,69 +204,86 @@ function AccountAccessModal({
 
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white">
-          <h2 className="text-lg font-semibold text-gray-800">
-            Manage access — {account.firstName} {account.lastName}
+      <div className="absolute inset-0 bg-admin-ink/40" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Manage access"
+        className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto bg-white shadow-xl"
+      >
+        <div className="sticky top-0 flex items-center justify-between border-b border-admin-line bg-white px-6 py-4">
+          <h2 className="font-heading text-xl font-bold">
+            Manage access: {account.firstName} {account.lastName}
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            aria-label="Close"
+            className="flex size-11 items-center justify-center rounded-xl text-2xl leading-none text-admin-muted hover:bg-admin-hover"
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {formError && (
-            <div className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm">{formError}</div>
-          )}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6 p-6">
+          <AdminError>{formError}</AdminError>
           {successMessage && (
-            <div className="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm">
+            <div
+              role="status"
+              className="rounded-[14px] border border-green-200 bg-green-50 px-4 py-3 text-[15px] font-semibold text-green-800"
+            >
               {successMessage}
             </div>
           )}
 
-          <section className="space-y-3">
-            <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+          <section className="flex flex-col gap-3">
+            <label className="flex min-h-11 items-center gap-2.5 text-[15px] font-extrabold">
               <input
                 type="checkbox"
                 checked={resetPassword}
                 onChange={(e) => setResetPassword(e.target.checked)}
+                className="size-5 accent-brand"
               />
               Reset password
             </label>
 
             {resetPassword && (
-              <div className="space-y-3 pl-6">
-                <input
-                  type="text"
-                  placeholder="New password (min. 8 characters)"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                />
-                {newPassword.length > 0 && newPassword.length < 8 && (
-                  <p className="text-xs text-red-500">Must be at least 8 characters.</p>
-                )}
+              <div className="flex flex-col gap-3 pl-1">
+                <div>
+                  <label htmlFor="aa-password" className={adminLabelClass}>
+                    New password
+                  </label>
+                  <input
+                    id="aa-password"
+                    type="text"
+                    placeholder="At least 8 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className={adminInputClass}
+                  />
+                  {newPassword.length > 0 && newPassword.length < 8 && (
+                    <p className="mt-1 text-sm font-bold text-red-700">Must be at least 8 characters.</p>
+                  )}
+                </div>
 
-                <div className="flex gap-4 text-sm text-gray-700">
-                  <label className="flex items-center gap-1.5">
+                <div className="flex flex-col gap-1 text-[15px]">
+                  <label className="flex min-h-11 items-center gap-2.5">
                     <input
                       type="radio"
                       name="passwordMode"
                       checked={passwordMode === "temporary"}
                       onChange={() => setPasswordMode("temporary")}
+                      className="accent-brand"
                     />
-                    Temporary — must be reset on next login
+                    Temporary, must be reset on next login
                   </label>
-                  <label className="flex items-center gap-1.5">
+                  <label className="flex min-h-11 items-center gap-2.5">
                     <input
                       type="radio"
                       name="passwordMode"
                       checked={passwordMode === "permanent"}
                       onChange={() => setPasswordMode("permanent")}
+                      className="accent-brand"
                     />
                     Permanent
                   </label>
@@ -241,40 +292,44 @@ function AccountAccessModal({
             )}
           </section>
 
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-800">Contact details</h3>
+          <section className="flex flex-col gap-3">
+            <h3 className="text-base font-extrabold">Contact details</h3>
             <div>
-              <label className="text-xs uppercase tracking-wide text-gray-400">
-                New email (leave blank to keep {account.email})
+              <label htmlFor="aa-email" className={adminLabelClass}>
+                New email{" "}
+                <span className="font-semibold text-admin-muted">
+                  (leave blank to keep {account.email})
+                </span>
               </label>
               <input
+                id="aa-email"
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-lg text-sm"
+                className={adminInputClass}
               />
             </div>
             {account.role !== "admin" && (
               <div>
-                <label className="text-xs uppercase tracking-wide text-gray-400">
-                  New phone (leave blank to keep {account.phone || "unset"})
+                <label htmlFor="aa-phone" className={adminLabelClass}>
+                  New phone{" "}
+                  <span className="font-semibold text-admin-muted">
+                    (leave blank to keep {account.phone || "unset"})
+                  </span>
                 </label>
                 <input
+                  id="aa-phone"
                   type="tel"
                   placeholder="+91XXXXXXXXXX"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border rounded-lg text-sm"
+                  className={adminInputClass}
                 />
               </div>
             )}
           </section>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg font-medium"
-          >
+          <button type="submit" disabled={saving} className={adminButtonClass("primary", "w-full")}>
             {saving ? "Saving…" : "Save changes"}
           </button>
         </form>

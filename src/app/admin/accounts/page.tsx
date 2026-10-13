@@ -23,15 +23,14 @@ export default async function AdminAccountsPage() {
   const summary = await getAccountsSummary(ledgerRows, demoRows);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AccountsDashboardShell
+    <AccountsDashboardShell
         heading="Accounts"
-        subheading="Same ledger the Accounts team sees — tuition + demo revenue, exportable as Excel."
+        subheading="Tuition and demo revenue, the same ledger the Accounts team sees. Export it as Excel."
         summary={summary}
         ongoingCycleRows={ongoingCycleRows}
         ledgerRows={ledgerRows}
         demoRows={demoRows}
+        embedded
       />
-    </div>
   );
 }

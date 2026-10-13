@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  AdminError,
+  AdminPanel,
+  adminButtonClass,
+  adminInputClass,
+  adminLabelClass,
+} from "@/features/admin/components/ui/primitives";
 import { useCreateStaffAccount } from "@/features/admin/hooks/useCreateStaffAccount";
 import type { StaffAccount } from "@/features/admin/types/staffAccount";
 
@@ -30,70 +37,93 @@ export default function CreateStaffAccountForm({ onCreated, onCancel }: CreateSt
   } = useCreateStaffAccount(onCreated);
 
   return (
-    <div className="bg-white rounded-xl border shadow-sm p-6 mb-6 max-w-lg">
+    <AdminPanel padded className="max-w-lg">
       {step === "details" && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-800">Create Staff Account</h3>
+        <div className="flex flex-col gap-4">
+          <h2 className="font-heading text-xl font-bold">Create staff account</h2>
 
           <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="staff-first" className={adminLabelClass}>
+                First name
+              </label>
+              <input
+                id="staff-first"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className={adminInputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="staff-last" className={adminLabelClass}>
+                Last name
+              </label>
+              <input
+                id="staff-last"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className={adminInputClass}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="staff-email" className={adminLabelClass}>
+              Email
+            </label>
             <input
-              type="text"
-              placeholder="First name"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="border rounded-lg p-2 w-full outline-none"
-            />
-            <input
-              type="text"
-              placeholder="Last name"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="border rounded-lg p-2 w-full outline-none"
+              id="staff-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={adminInputClass}
             />
           </div>
 
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border rounded-lg p-2 w-full outline-none"
-          />
+          <div>
+            <label htmlFor="staff-phone" className={adminLabelClass}>
+              Phone
+            </label>
+            <input
+              id="staff-phone"
+              type="tel"
+              placeholder="+91XXXXXXXXXX"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className={adminInputClass}
+            />
+          </div>
 
-          <input
-            type="tel"
-            placeholder="Phone (+91XXXXXXXXXX)"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="border rounded-lg p-2 w-full outline-none"
-          />
+          <div>
+            <label htmlFor="staff-role" className={adminLabelClass}>
+              Role
+            </label>
+            <select
+              id="staff-role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as "HR" | "ACCOUNTS" | "IT")}
+              className={adminInputClass}
+            >
+              <option value="HR">HR</option>
+              <option value="ACCOUNTS">Accounts</option>
+              <option value="IT">IT</option>
+            </select>
+          </div>
 
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as "HR" | "ACCOUNTS" | "IT")}
-            className="border rounded-lg p-2 w-full outline-none"
-          >
-            <option value="HR">HR</option>
-            <option value="ACCOUNTS">Accounts</option>
-            <option value="IT">IT</option>
-          </select>
+          <AdminError>{error}</AdminError>
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
               type="button"
               onClick={handleCreateAccount}
               disabled={loading}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg disabled:opacity-60"
+              className={adminButtonClass("primary")}
             >
-              {loading ? "Creating account…" : "Create Account"}
+              {loading ? "Creating account…" : "Create account"}
             </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="text-gray-500 px-5 py-2 rounded-lg hover:bg-gray-100"
-            >
+            <button type="button" onClick={onCancel} className={adminButtonClass("secondary")}>
               Cancel
             </button>
           </div>
@@ -101,28 +131,26 @@ export default function CreateStaffAccountForm({ onCreated, onCancel }: CreateSt
       )}
 
       {step === "done" && result && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-green-700">Account Created</h3>
-          <p className="text-sm text-gray-600">
+        <div className="flex flex-col gap-4">
+          <h2 className="font-heading text-xl font-bold text-brand-dark">Account created</h2>
+          <p className="text-[15px]">
             {result.account.firstName} {result.account.lastName} ({result.account.email}) can now log
             in with the temporary password below. They&apos;ll be asked to set a new password on
             first login.
           </p>
-          <div className="bg-gray-50 border rounded-lg p-3 font-mono text-sm select-all">
+          <div className="select-all rounded-[14px] border border-admin-line bg-admin-surface p-3 font-mono text-sm">
             {result.tempPassword}
           </div>
-          <p className="text-xs text-gray-400">
+          <p className="text-sm text-admin-muted">
             This was also emailed to {result.account.email}. It won&apos;t be shown again.
           </p>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-          >
-            Done
-          </button>
+          <div>
+            <button type="button" onClick={onCancel} className={adminButtonClass("primary")}>
+              Done
+            </button>
+          </div>
         </div>
       )}
-    </div>
+    </AdminPanel>
   );
 }

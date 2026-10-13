@@ -36,6 +36,7 @@ export default function AdminChatRoomPage({
           : undefined
       }
       backPath="/admin/chat"
+      pageHeightClass="h-[calc(100vh-11rem)] min-h-[420px] overflow-hidden rounded-[18px] border border-admin-line"
       messages={messages}
       loading={loading}
       error={error}

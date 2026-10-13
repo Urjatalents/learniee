@@ -1,94 +1,31 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { useTeacherStrikes, type AdminTeacherStrike } from "@/features/admin/hooks/useTeacherStrikes";
-import ErrorBanner from "@/features/shared/components/ErrorBanner";
+import StrikeWaiveDialog, {
+  STRIKE_REASON_LABEL,
+} from "@/features/admin/components/StrikeWaiveDialog";
+import {
+  AdminEmpty,
+  AdminError,
+  AdminLoading,
+  AdminPage,
+  AdminPageHeader,
+  AdminPill,
+  AdminStatCard,
+  AdminTableCard,
+  adminButtonClass,
+  adminRowClass,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+} from "@/features/admin/components/ui/primitives";
 import { formatPlatformTime } from "@/lib/platformTime";
-
-const REASON_LABEL: Record<AdminTeacherStrike["reason"], string> = {
-  TEACHER_NO_SHOW: "Did not join",
-  TEACHER_CANCELLED: "Cancelled the class",
-};
-
-const WAIVE_REASON_MIN = 5;
-const WAIVE_REASON_MAX = 500;
 
 function at(iso: string | null) {
   return iso ? formatPlatformTime(new Date(iso), true) : "—";
-}
-
-function WaiveModal({
-  strike,
-  onCancel,
-  onSubmit,
-}: {
-  strike: AdminTeacherStrike;
-  onCancel: () => void;
-  onSubmit: (reason: string) => Promise<string | null>;
-}) {
-  const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  const length = reason.trim().length;
-  const canSubmit = !busy && length >= WAIVE_REASON_MIN && length <= WAIVE_REASON_MAX;
-
-  async function submit() {
-    setBusy(true);
-    setError("");
-
-    const message = await onSubmit(reason.trim());
-
-    if (message) {
-      setError(message);
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
-        <h2 className="text-lg font-semibold text-gray-800">Waive this strike</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          {strike.teacherName} · {REASON_LABEL[strike.reason]} · {at(strike.classStartsAt)}. The
-          strike stays on the record but no longer counts.
-        </p>
-
-        {error && <ErrorBanner size="compact">{error}</ErrorBanner>}
-
-        <label className="block text-xs font-bold text-gray-600 mt-4 mb-1">
-          Reason (required, e.g. emergency leave)
-        </label>
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={3}
-          maxLength={WAIVE_REASON_MAX}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-400 resize-none"
-        />
-
-        <div className="flex justify-end gap-3 mt-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className="text-sm font-semibold text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={!canSubmit}
-            className="text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-40 px-4 py-2 rounded-lg"
-          >
-            {busy ? "Saving…" : "Waive strike"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function AdminTeacherStrikesPage() {
@@ -97,6 +34,7 @@ export default function AdminTeacherStrikesPage() {
   const [waiving, setWaiving] = useState<AdminTeacherStrike | null>(null);
 
   const active = strikes.filter((s) => !s.waivedAt);
+  const waivedCount = strikes.length - active.length;
   const visible = showWaived ? strikes : active;
 
   // Active strikes per teacher, for the badge next to each name.
@@ -104,83 +42,98 @@ export default function AdminTeacherStrikesPage() {
   for (const s of active) activeCount.set(s.teacherId, (activeCount.get(s.teacherId) ?? 0) + 1);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-8 flex items-start justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-purple-600">Teacher Strikes</h1>
-            <p className="text-gray-500 mt-1">
-              {active.length} active strike{active.length === 1 ? "" : "s"}. Waive one for a good
-              reason (for example an emergency) and it stops counting.
-            </p>
-          </div>
+    <AdminPage>
+      <AdminPageHeader
+        crumbs={[{ label: "Overview", href: "/admin" }, { label: "Classes and safety" }]}
+        title="Teacher strikes"
+        description={`${active.length} active strike${active.length === 1 ? "" : "s"}. Waive one for a good reason, for example an emergency, and it stops counting.`}
+      />
 
-          <button
-            onClick={() => setShowWaived((v) => !v)}
-            className="text-sm font-semibold text-purple-600 border border-purple-200 rounded-lg px-4 py-2 hover:bg-purple-50"
-          >
-            {showWaived ? "Hide waived" : "Show waived too"}
-          </button>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <AdminStatCard label="Active" value={active.length} />
+          <AdminStatCard label="Waived" value={waivedCount} />
         </div>
 
-        {error && <ErrorBanner>{error}</ErrorBanner>}
-
-        {loading ? (
-          <p className="text-gray-500">Loading strikes...</p>
-        ) : visible.length === 0 ? (
-          <div className="bg-white border rounded-xl p-8 text-center">
-            <p className="text-gray-500">No strikes to show.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {visible.map((s) => (
-              <div key={s.id} className="bg-white border rounded-xl p-5">
-                <div className="flex items-start justify-between flex-wrap gap-3">
-                  <div>
-                    <p className="font-semibold text-gray-800">
-                      {s.teacherName}
-                      <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">
-                        {activeCount.get(s.teacherId) ?? 0} active
-                      </span>
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {REASON_LABEL[s.reason]}
-                      {s.courseTitle ? ` · ${s.courseTitle}` : ""}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Class {at(s.classStartsAt)} · recorded {at(s.recordedAt)}
-                    </p>
-                  </div>
-
-                  {s.waivedAt ? (
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-600">
-                      Waived
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setWaiving(s)}
-                      className="text-sm font-semibold text-purple-600 border border-purple-200 rounded-lg px-4 py-2 hover:bg-purple-50"
-                    >
-                      Waive
-                    </button>
-                  )}
-                </div>
-
-                {s.waivedAt && (
-                  <p className="text-xs text-gray-500 mt-3">
-                    Waived {at(s.waivedAt)}
-                    {s.waivedByName ? ` by ${s.waivedByName}` : ""}: {s.waiveReason}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <button
+          type="button"
+          aria-pressed={showWaived}
+          onClick={() => setShowWaived((v) => !v)}
+          className={adminButtonClass("secondary")}
+        >
+          {showWaived ? (
+            <EyeOff className="size-4" aria-hidden="true" />
+          ) : (
+            <Eye className="size-4" aria-hidden="true" />
+          )}
+          {showWaived ? "Waived strikes shown. Hide waived" : "Show waived too"}
+        </button>
       </div>
 
+      <AdminError>{error}</AdminError>
+
+      {loading ? (
+        <AdminLoading message="Loading strikes…" />
+      ) : visible.length === 0 ? (
+        <AdminEmpty message="No strikes to show." />
+      ) : (
+        <AdminTableCard>
+          <table className={`${adminTableClass} min-w-[820px]`}>
+            <thead>
+              <tr>
+                <th className={adminThClass}>Teacher</th>
+                <th className={adminThClass}>What happened</th>
+                <th className={adminThClass}>Class time</th>
+                <th className={adminThClass}>Recorded</th>
+                <th className={`${adminThClass} text-right`}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((s) => (
+                <tr key={s.id} className={adminRowClass}>
+                  <td className={adminTdClass}>
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-base font-extrabold">{s.teacherName}</span>
+                      <AdminPill tone="warn">{activeCount.get(s.teacherId) ?? 0} active</AdminPill>
+                    </div>
+                  </td>
+                  <td className={adminTdClass}>
+                    <div className="flex flex-col">
+                      <span className="font-bold">{STRIKE_REASON_LABEL[s.reason]}</span>
+                      {s.courseTitle && <span className="text-sm text-admin-muted">{s.courseTitle}</span>}
+                      {s.waivedAt && (
+                        <span className="mt-1 text-sm text-admin-muted">
+                          Waived {at(s.waivedAt)}
+                          {s.waivedByName ? ` by ${s.waivedByName}` : ""}: {s.waiveReason}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className={`${adminTdClass} whitespace-nowrap`}>{at(s.classStartsAt)}</td>
+                  <td className={`${adminTdClass} whitespace-nowrap`}>{at(s.recordedAt)}</td>
+                  <td className={`${adminTdClass} text-right`}>
+                    {s.waivedAt ? (
+                      <AdminPill tone="neutral">Waived</AdminPill>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setWaiving(s)}
+                        aria-label={`Waive strike for ${s.teacherName}`}
+                        className={adminButtonClass("primary")}
+                      >
+                        Waive
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </AdminTableCard>
+      )}
+
       {waiving && (
-        <WaiveModal
+        <StrikeWaiveDialog
           strike={waiving}
           onCancel={() => setWaiving(null)}
           onSubmit={async (reason) => {
@@ -194,6 +147,6 @@ export default function AdminTeacherStrikesPage() {
           }}
         />
       )}
-    </div>
+    </AdminPage>
   );
 }

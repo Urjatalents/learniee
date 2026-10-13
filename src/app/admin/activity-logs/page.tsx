@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 import {
   useActivityLogs,
@@ -10,7 +9,24 @@ import {
   type ActivityLogFiltersState,
   EMPTY_FILTERS,
 } from "@/features/admin/hooks/useActivityLogs";
-import ErrorBanner from "@/features/shared/components/ErrorBanner";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+
+import {
+  AdminEmpty,
+  AdminError,
+  AdminLoading,
+  AdminPage,
+  AdminPageHeader,
+  AdminPanel,
+  AdminTableCard,
+  adminButtonClass,
+  adminInputClass,
+  adminLabelClass,
+  adminRowClass,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+} from "@/features/admin/components/ui/primitives";
 
 const ACTION_LABELS: Record<ActivityAction, string> = {
   AUTH_LOGIN: "Logged in",
@@ -83,7 +99,6 @@ function formatDateTime(value: string) {
 }
 
 export default function AdminActivityLogsPage() {
-  const router = useRouter();
   const {
     filters,
     applyFilters,
@@ -114,193 +129,188 @@ export default function AdminActivityLogsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8 flex items-start justify-between flex-wrap gap-4">
-          <div>
-            <button
-              onClick={() => router.push("/admin")}
-              className="text-sm text-gray-500 hover:text-purple-600 mb-2"
-            >
-              ← Back to Dashboard
-            </button>
-            <h1 className="text-3xl font-bold text-purple-600">Activity Log</h1>
-            <p className="text-gray-500 mt-1">
-              Major platform events — logins, payments, approvals, and more. {total} total.
-            </p>
-          </div>
-
-          <a
-            href={downloadUrl()}
-            className="text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg px-4 py-2 h-fit"
-          >
+    <AdminPage>
+      <AdminPageHeader
+        crumbs={[{ label: "Overview", href: "/admin" }, { label: "Records" }]}
+        title="Activity log"
+        description={`Major platform events: logins, payments, approvals, and more. ${total} total.`}
+        actions={
+          <a href={downloadUrl()} className={adminButtonClass("primary")}>
+            <Download className="size-4" aria-hidden="true" />
             Download CSV
           </a>
-        </div>
+        }
+      />
 
-        {/* Filters */}
-        <form
-          onSubmit={handleApply}
-          className="bg-white border rounded-xl p-5 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
-        >
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-500">Action</label>
-            <select
-              value={draft.action}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, action: e.target.value as ActivityAction | "" }))
-              }
-              className="border rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">All actions</option>
-              {(Object.keys(ACTION_LABELS) as ActivityAction[]).map((action) => (
-                <option key={action} value={action}>
-                  {ACTION_LABELS[action]}
-                </option>
-              ))}
-            </select>
+      <AdminPanel padded>
+        <form onSubmit={handleApply} aria-label="Filter activity" className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div>
+              <label htmlFor="fAction" className={adminLabelClass}>
+                Action
+              </label>
+              <select
+                id="fAction"
+                value={draft.action}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, action: e.target.value as ActivityAction | "" }))
+                }
+                className={adminInputClass}
+              >
+                <option value="">All actions</option>
+                {(Object.keys(ACTION_LABELS) as ActivityAction[]).map((action) => (
+                  <option key={action} value={action}>
+                    {ACTION_LABELS[action]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="fRole" className={adminLabelClass}>
+                Role
+              </label>
+              <select
+                id="fRole"
+                value={draft.actorRole}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, actorRole: e.target.value as ActivityActorRole | "" }))
+                }
+                className={adminInputClass}
+              >
+                <option value="">All roles</option>
+                {(Object.keys(ACTOR_ROLE_LABELS) as ActivityActorRole[]).map((role) => (
+                  <option key={role} value={role}>
+                    {ACTOR_ROLE_LABELS[role]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="fFrom" className={adminLabelClass}>
+                From
+              </label>
+              <input
+                id="fFrom"
+                type="date"
+                value={draft.from}
+                onChange={(e) => setDraft((d) => ({ ...d, from: e.target.value }))}
+                className={adminInputClass}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="fTo" className={adminLabelClass}>
+                To
+              </label>
+              <input
+                id="fTo"
+                type="date"
+                value={draft.to}
+                onChange={(e) => setDraft((d) => ({ ...d, to: e.target.value }))}
+                className={adminInputClass}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="fQ" className={adminLabelClass}>
+                Search
+              </label>
+              <input
+                id="fQ"
+                type="text"
+                placeholder="Name, email, description…"
+                value={draft.q}
+                onChange={(e) => setDraft((d) => ({ ...d, q: e.target.value }))}
+                className={adminInputClass}
+              />
+            </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-500">Role</label>
-            <select
-              value={draft.actorRole}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, actorRole: e.target.value as ActivityActorRole | "" }))
-              }
-              className="border rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="">All roles</option>
-              {(Object.keys(ACTOR_ROLE_LABELS) as ActivityActorRole[]).map((role) => (
-                <option key={role} value={role}>
-                  {ACTOR_ROLE_LABELS[role]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-500">From</label>
-            <input
-              type="date"
-              value={draft.from}
-              onChange={(e) => setDraft((d) => ({ ...d, from: e.target.value }))}
-              className="border rounded-lg px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-500">To</label>
-            <input
-              type="date"
-              value={draft.to}
-              onChange={(e) => setDraft((d) => ({ ...d, to: e.target.value }))}
-              className="border rounded-lg px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-500">Search</label>
-            <input
-              type="text"
-              placeholder="Name, email, description..."
-              value={draft.q}
-              onChange={(e) => setDraft((d) => ({ ...d, q: e.target.value }))}
-              className="border rounded-lg px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="sm:col-span-2 lg:col-span-5 flex gap-3 justify-end">
-            <button
-              type="button"
-              onClick={handleReset}
-              className="text-sm font-semibold text-gray-500 border rounded-lg px-4 py-2 hover:bg-gray-50"
-            >
+          <div className="flex flex-wrap justify-end gap-3">
+            <button type="button" onClick={handleReset} className={adminButtonClass("secondary")}>
               Reset
             </button>
-            <button
-              type="submit"
-              className="text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg px-5 py-2"
-            >
+            <button type="submit" className={adminButtonClass("primary")}>
               Apply filters
             </button>
           </div>
         </form>
+      </AdminPanel>
 
-        {error && <ErrorBanner>{error}</ErrorBanner>}
+      <AdminError>{error}</AdminError>
 
-        <div className="bg-white border rounded-xl overflow-hidden">
-          {loading ? (
-            <p className="text-gray-500 p-8 text-center">Loading activity log...</p>
-          ) : items.length === 0 ? (
-            <p className="text-gray-500 p-8 text-center">No activity matches these filters.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-left text-gray-500">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold">Date / Time</th>
-                    <th className="px-4 py-3 font-semibold">Action</th>
-                    <th className="px-4 py-3 font-semibold">Actor</th>
-                    <th className="px-4 py-3 font-semibold">Description</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {items.map((row) => (
-                    <tr key={row.id}>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                        {formatDateTime(row.createdAt)}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span
-                          className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                            ACTION_BADGE_STYLES[row.action] || "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {ACTION_LABELS[row.action] || row.action}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="font-medium text-gray-800">
-                          {row.actorName || "—"}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {ACTOR_ROLE_LABELS[row.actorRole]}
-                          {row.actorEmail ? ` · ${row.actorEmail}` : ""}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">{row.description}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+      {loading ? (
+        <AdminLoading message="Loading activity log…" />
+      ) : items.length === 0 ? (
+        <AdminEmpty message="No activity matches these filters." />
+      ) : (
+        <AdminTableCard>
+          <table className={`${adminTableClass} min-w-[760px]`}>
+            <thead>
+              <tr>
+                <th className={adminThClass}>Date and time</th>
+                <th className={adminThClass}>Action</th>
+                <th className={adminThClass}>Actor</th>
+                <th className={adminThClass}>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((row) => (
+                <tr key={row.id} className={adminRowClass}>
+                  <td className={`${adminTdClass} whitespace-nowrap text-admin-muted`}>
+                    {formatDateTime(row.createdAt)}
+                  </td>
+                  <td className={`${adminTdClass} whitespace-nowrap`}>
+                    <span
+                      className={`rounded-full px-2.5 py-[3px] text-sm font-extrabold ${
+                        ACTION_BADGE_STYLES[row.action] || "bg-admin-surface text-admin-muted"
+                      }`}
+                    >
+                      {ACTION_LABELS[row.action] || row.action}
+                    </span>
+                  </td>
+                  <td className={adminTdClass}>
+                    <div className="font-extrabold">{row.actorName || "—"}</div>
+                    <div className="text-sm text-admin-muted">
+                      {ACTOR_ROLE_LABELS[row.actorRole]}
+                      {row.actorEmail ? ` · ${row.actorEmail}` : ""}
+                    </div>
+                  </td>
+                  <td className={adminTdClass}>{row.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </AdminTableCard>
+      )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-4 mt-6">
-            <button
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={page <= 1}
-              className="text-sm font-semibold text-purple-600 disabled:text-gray-300 border rounded-lg px-4 py-2"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-gray-500">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
-              disabled={page >= totalPages}
-              className="text-sm font-semibold text-purple-600 disabled:text-gray-300 border rounded-lg px-4 py-2"
-            >
-              Next
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+      {totalPages > 1 && (
+        <nav aria-label="Pagination" className="flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => setPage(Math.max(1, page - 1))}
+            disabled={page <= 1}
+            className={adminButtonClass("secondary")}
+          >
+            <ChevronLeft className="size-4" aria-hidden="true" />
+            Previous
+          </button>
+          <span className="text-[15px] font-bold text-admin-muted">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage(Math.min(totalPages, page + 1))}
+            disabled={page >= totalPages}
+            className={adminButtonClass("secondary")}
+          >
+            Next
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </button>
+        </nav>
+      )}
+    </AdminPage>
   );
 }

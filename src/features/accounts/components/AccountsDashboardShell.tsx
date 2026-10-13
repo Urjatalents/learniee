@@ -9,6 +9,7 @@ import {
   Users,
   AlertTriangle,
   Landmark,
+  ChevronRight,
 } from "lucide-react";
 
 import type {
@@ -38,6 +39,8 @@ interface AccountsDashboardShellProps {
   ongoingCycleRows: OngoingCycleRow[];
   ledgerRows: TuitionLedgerRow[];
   demoRows: DemoBookingRow[];
+  /** Rendered inside the Admin shell: adds the breadcrumb, drops page padding. */
+  embedded?: boolean;
 }
 
 type TabId =
@@ -89,7 +92,9 @@ export default function AccountsDashboardShell({
   ongoingCycleRows,
   ledgerRows,
   demoRows,
+  embedded = false,
 }: AccountsDashboardShellProps) {
+  const complaintsHref = embedded ? "/admin/complaints" : "/accounts/complaints";
   const [tab, setTab] = useState<TabId>("cycles");
   const ledger = useTuitionLedger();
 
@@ -118,7 +123,7 @@ export default function AccountsDashboardShell({
       icon: Landmark,
       iconBg: "bg-violet-50",
       iconColor: "text-brand",
-      valueColor: "text-gray-800",
+      valueColor: "text-admin-ink",
     },
     {
       label: "Demo Revenue",
@@ -126,7 +131,7 @@ export default function AccountsDashboardShell({
       icon: Video,
       iconBg: "bg-blue-50",
       iconColor: "text-blue-600",
-      valueColor: "text-gray-800",
+      valueColor: "text-admin-ink",
     },
     {
       label: "Enrollments",
@@ -134,7 +139,7 @@ export default function AccountsDashboardShell({
       icon: Users,
       iconBg: "bg-emerald-50",
       iconColor: "text-emerald-600",
-      valueColor: "text-gray-800",
+      valueColor: "text-admin-ink",
     },
     {
       label: "Due Within 5 Days",
@@ -142,56 +147,67 @@ export default function AccountsDashboardShell({
       icon: AlertTriangle,
       iconBg: summary.dueSoonCount > 0 ? "bg-amber-50" : "bg-gray-50",
       iconColor: summary.dueSoonCount > 0 ? "text-amber-600" : "text-gray-400",
-      valueColor: summary.dueSoonCount > 0 ? "text-amber-600" : "text-gray-800",
+      valueColor: summary.dueSoonCount > 0 ? "text-[#8a6500]" : "text-admin-ink",
     },
   ];
 
   return (
-    <div className="max-w-[1400px] mx-auto p-8">
-      <div className="flex items-start justify-between mb-8 flex-wrap gap-4">
-        <div className="flex items-start gap-3">
-          <div className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
-            <Wallet size={22} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{heading}</h1>
-            <p className="text-sm text-gray-500 mt-1">{subheading}</p>
-          </div>
+    <div className={embedded ? "flex flex-col gap-6" : "mx-auto max-w-[1400px] p-8 flex flex-col gap-6"}>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          {embedded && (
+            <nav
+              aria-label="Breadcrumb"
+              className="flex items-center gap-1.5 text-sm font-bold text-admin-muted"
+            >
+              <a href="/admin" className="text-brand-dark hover:underline">
+                Overview
+              </a>
+              <ChevronRight className="size-3.5" aria-hidden="true" />
+              <span>Money</span>
+            </nav>
+          )}
+          <h1 className="font-heading text-3xl font-bold leading-tight text-admin-ink sm:text-4xl">
+            {heading}
+          </h1>
+          <p className="text-[17px] text-admin-muted">{subheading}</p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-        <a
-          href="/accounts/complaints"
-          className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-brand border border-brand/30 px-5 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
-        >
-          Complaints
-        </a>
-        <a
-          href="/api/accounts/export"
-          className="inline-flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
-        >
-          <Download size={16} />
-          Download Excel (.xlsx)
-        </a>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={complaintsHref}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-admin-line bg-white px-[18px] text-[15px] font-extrabold text-admin-ink transition-colors hover:bg-admin-hover"
+          >
+            Complaints
+          </a>
+          <a
+            href="/api/accounts/export"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand px-[18px] text-[15px] font-extrabold text-white transition-colors hover:bg-[#6a1fd6]"
+          >
+            <Download size={16} aria-hidden="true" />
+            Download Excel (.xlsx)
+          </a>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {kpis.map((k) => {
           const Icon = k.icon;
           return (
-            <div key={k.label} className="bg-white rounded-xl border shadow-sm p-5">
-              <div className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${k.iconBg} ${k.iconColor} mb-3`}>
-                <Icon size={18} />
-              </div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">{k.label}</p>
-              <p className={`text-2xl font-bold mt-1 tabular-nums ${k.valueColor}`}>{k.value}</p>
+            <div key={k.label} className="flex flex-col gap-2 rounded-[18px] border border-admin-line bg-white p-5">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-admin-tint text-brand-dark">
+                <Icon size={20} aria-hidden="true" />
+              </span>
+              <span className="text-sm font-bold text-admin-muted">{k.label}</span>
+              <span className={`font-heading text-2xl font-extrabold tabular-nums sm:text-3xl ${k.valueColor}`}>
+                {k.value}
+              </span>
             </div>
           );
         })}
       </div>
 
       <nav
-        className="flex flex-wrap gap-1 p-1 mb-6 rounded-xl bg-gray-100 w-fit max-w-full overflow-x-auto"
+        className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-[14px] border border-admin-line bg-white p-1"
         aria-label="Accounts dashboard sections"
       >
         {tabs.map((t) => {
@@ -201,18 +217,18 @@ export default function AccountsDashboardShell({
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex min-h-11 shrink-0 items-center gap-2 rounded-[10px] px-[18px] text-[15px] transition-colors ${
                 active
-                  ? "bg-white text-brand shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-brand font-extrabold text-white"
+                  : "font-bold text-admin-ink hover:bg-admin-hover"
               }`}
               aria-current={active ? "page" : undefined}
             >
               {t.label}
               {!!t.badge && (
                 <span
-                  className={`inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-semibold ${
-                    active ? "bg-yellow-100 text-yellow-700" : "bg-gray-200 text-gray-600"
+                  className={`rounded-full px-2 py-0.5 text-[13px] ${
+                    active ? "bg-brand-yellow text-admin-ink" : "bg-admin-tint text-brand-dark"
                   }`}
                 >
                   {t.badge}

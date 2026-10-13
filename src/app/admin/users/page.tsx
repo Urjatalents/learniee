@@ -1,8 +1,20 @@
 "use client";
 
+import { useState } from "react";
+
 import { useAdminUsers } from "@/features/admin/hooks/useAdminUsers";
 import UsersTable from "@/features/admin/components/UsersTable";
 import UserDetailPanel from "@/features/admin/components/UserDetailPanel";
+import {
+  AdminDialog,
+  AdminError,
+  AdminLoading,
+  AdminPage,
+  AdminPageHeader,
+  AdminSearch,
+  adminButtonClass,
+} from "@/features/admin/components/ui/primitives";
+import type { AdminUser } from "@/features/admin/types/user";
 
 export default function AdminUsersPage() {
   const {
@@ -16,34 +28,42 @@ export default function AdminUsersPage() {
     viewingUser,
     setViewingUser,
   } = useAdminUsers();
+  const [confirming, setConfirming] = useState<AdminUser | null>(null);
+
+  async function confirmDelete() {
+    if (!confirming) return;
+
+    const target = confirming;
+    setConfirming(null);
+    await handleDelete(target);
+  }
+
+  const confirmName = confirming ? `${confirming.firstName} ${confirming.lastName}`.trim() : "";
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <h1 className="text-2xl font-bold text-purple-600 mb-1">Manage Users</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Delete a user&apos;s account and all their data from Cognito and the database.
-      </p>
-
-      <input
-        type="text"
-        placeholder="Search by name or email..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-md mb-4 px-4 py-2 border rounded-lg"
+    <AdminPage>
+      <AdminPageHeader
+        crumbs={[{ label: "Overview", href: "/admin" }, { label: "People" }]}
+        title="Manage users"
+        description="Delete a user's account and all their data from Cognito and the database."
       />
 
-      {error && (
-        <div className="mb-4 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm">{error}</div>
-      )}
+      <div className="flex flex-wrap items-center gap-4">
+        <AdminSearch value={search} onChange={setSearch} placeholder="Search by name or email" label="Find a user" />
+        <span className="text-[15px] font-bold text-admin-muted">{users.length} users shown</span>
+      </div>
+
+      <AdminError>{error}</AdminError>
 
       {loading ? (
-        <p className="text-gray-500">Loading users…</p>
+        <AdminLoading message="Loading users…" />
       ) : (
         <UsersTable
           users={users}
           deletingEmail={deletingEmail}
+          confirmingEmail={confirming?.email}
           onView={setViewingUser}
-          onDelete={handleDelete}
+          onDelete={setConfirming}
         />
       )}
 
@@ -54,6 +74,32 @@ export default function AdminUsersPage() {
           onClose={() => setViewingUser(null)}
         />
       )}
-    </div>
+
+      {confirming && (
+        <AdminDialog
+          title={`Permanently delete ${confirmName || confirming.email}?`}
+          subtitle={confirming.email}
+          onClose={() => setConfirming(null)}
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setConfirming(null)}
+                className={adminButtonClass("secondary")}
+              >
+                Keep user
+              </button>
+              <button type="button" onClick={confirmDelete} className={adminButtonClass("danger")}>
+                Delete permanently
+              </button>
+            </>
+          }
+        >
+          <p className="text-[15px]">
+            This removes them from Cognito and the database. This cannot be undone.
+          </p>
+        </AdminDialog>
+      )}
+    </AdminPage>
   );
 }

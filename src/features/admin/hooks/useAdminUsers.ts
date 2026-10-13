@@ -31,12 +31,8 @@ export function useAdminUsers() {
     loadUsers();
   }, []);
 
+  /** Deletes immediately. The page asks for confirmation first (in-page dialog). */
   async function handleDelete(user: AdminUser) {
-    const confirmed = window.confirm(
-      `Permanently delete ${user.firstName} ${user.lastName} (${user.email})? This removes them from Cognito and the database. This cannot be undone.`,
-    );
-    if (!confirmed) return;
-
     setDeletingEmail(user.email);
     setError(null);
 

@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
 import { useTeacherApplication } from "@/features/admin/hooks/useTeacherApplication";
 import TeacherStatusBadge from "@/features/admin/components/TeacherStatusBadge";
@@ -12,7 +10,13 @@ import TeacherDecisionBar from "@/features/admin/components/TeacherDecisionBar";
 import TeacherPersonalSection from "@/features/admin/components/TeacherPersonalSection";
 import TeacherProfessionalSection from "@/features/admin/components/TeacherProfessionalSection";
 import TeacherDocumentsStatusSection from "@/features/admin/components/TeacherDocumentsStatusSection";
-import ErrorBanner from "@/features/shared/components/ErrorBanner";
+import {
+  AdminError,
+  AdminLoading,
+  AdminPage,
+  AdminPageHeader,
+  AdminPanel,
+} from "@/features/admin/components/ui/primitives";
 
 export default function AdminTeacherApplicationPage() {
   const { teacherId } = useParams<{ teacherId: string }>();
@@ -28,100 +32,96 @@ export default function AdminTeacherApplicationPage() {
     cancelInterview,
   } = useTeacherApplication(teacherId);
 
+  const fullName = teacher ? `${teacher.firstName} ${teacher.lastName}`.trim() : "Application";
+
   return (
-    <div className="min-h-screen bg-gray-50 px-8 pt-8">
-      <div className="mx-auto max-w-5xl">
-        <Link
-          href="/admin/teachers"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-purple-600"
+    <AdminPage>
+      <AdminPageHeader
+        crumbs={[
+          { label: "Overview", href: "/admin" },
+          { label: "Teacher applications", href: "/admin/teachers" },
+          { label: fullName },
+        ]}
+        title={fullName}
+        description={teacher?.email}
+      />
+
+      {loading && <AdminLoading message="Loading application…" />}
+
+      <AdminError>{error}</AdminError>
+
+      {notice && (
+        <div
+          role="status"
+          className="rounded-[14px] border border-green-200 bg-green-50 px-4 py-3 text-[15px] font-semibold text-green-800"
         >
-          <ArrowLeft className="size-4" />
-          Back to applications
-        </Link>
+          {notice}
+        </div>
+      )}
 
-        {loading && (
-          <div className="bg-white border rounded-xl p-8 text-center">
-            <p className="text-gray-500">Loading application...</p>
-          </div>
-        )}
-
-        {error && <ErrorBanner>{error}</ErrorBanner>}
-
-        {notice && (
-          <div className="mb-6 rounded-lg bg-green-100 p-4 text-green-700">{notice}</div>
-        )}
-
-        {teacher && (
-          <>
-            <div className="bg-white border rounded-2xl shadow-sm p-8">
-              {/* HEADER */}
-              <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-6">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-800">
-                    {teacher.firstName} {teacher.lastName}
-                  </h1>
-                  <p className="text-gray-500">{teacher.email}</p>
-                  {teacher.visibleName && (
-                    <p className="mt-1 text-sm text-gray-400">
-                      Visible name: {teacher.visibleName}
-                    </p>
-                  )}
-                </div>
-
-                <TeacherStatusBadge
-                  status={teacher.approvalStatus as "PENDING" | "APPROVED" | "REJECTED"}
-                />
+      {teacher && (
+        <div>
+          <AdminPanel padded>
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-admin-line-soft pb-6">
+              <div>
+                {teacher.visibleName && (
+                  <p className="text-[15px] text-admin-muted">Visible name: {teacher.visibleName}</p>
+                )}
               </div>
 
-              {teacher.approvalStatus === "PENDING" && (
-                <div className="mt-6">
-                  <TeacherInterviewPanel
-                    interviewScheduledAt={teacher.interviewScheduledAt}
-                    interviewDetails={teacher.interviewDetails}
-                    busy={schedulingInterview}
-                    onSchedule={scheduleInterview}
-                    onCancel={cancelInterview}
-                  />
-                </div>
-              )}
-
-              {teacher.approvalStatus === "REJECTED" && teacher.reapplyAvailableAt && (
-                <p className="mt-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Can appeal after{" "}
-                  {new Date(teacher.reapplyAvailableAt).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                  .
-                </p>
-              )}
-
-              {teacher.appealCount > 0 && (
-                <p className="mt-3 text-xs text-gray-500">
-                  This teacher has appealed {teacher.appealCount} time
-                  {teacher.appealCount === 1 ? "" : "s"}.
-                </p>
-              )}
-
-              <div className="mt-6">
-                <TeacherCompletenessPanel teacher={teacher} />
-              </div>
-
-              <TeacherPersonalSection teacher={teacher} />
-              <TeacherProfessionalSection teacher={teacher} />
-              <TeacherDocumentsStatusSection teacher={teacher} />
+              <TeacherStatusBadge
+                status={teacher.approvalStatus as "PENDING" | "APPROVED" | "REJECTED"}
+              />
             </div>
 
-            <TeacherDecisionBar
-              teacherName={`${teacher.firstName} ${teacher.lastName}`}
-              status={teacher.approvalStatus as "PENDING" | "APPROVED" | "REJECTED"}
-              deciding={deciding}
-              onDecide={decide}
-            />
-          </>
-        )}
-      </div>
-    </div>
+            {teacher.approvalStatus === "PENDING" && (
+              <div className="mt-6">
+                <TeacherInterviewPanel
+                  interviewScheduledAt={teacher.interviewScheduledAt}
+                  interviewDetails={teacher.interviewDetails}
+                  busy={schedulingInterview}
+                  onSchedule={scheduleInterview}
+                  onCancel={cancelInterview}
+                />
+              </div>
+            )}
+
+            {teacher.approvalStatus === "REJECTED" && teacher.reapplyAvailableAt && (
+              <p className="mt-6 rounded-[14px] border border-[#f4c01e] bg-[#fff8dc] px-4 py-3 text-[15px]">
+                Can appeal after{" "}
+                {new Date(teacher.reapplyAvailableAt).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+                .
+              </p>
+            )}
+
+            {teacher.appealCount > 0 && (
+              <p className="mt-3 text-sm text-admin-muted">
+                This teacher has appealed {teacher.appealCount} time
+                {teacher.appealCount === 1 ? "" : "s"}.
+              </p>
+            )}
+
+            <div className="mt-6">
+              <TeacherCompletenessPanel teacher={teacher} />
+            </div>
+
+            <TeacherPersonalSection teacher={teacher} />
+            <TeacherProfessionalSection teacher={teacher} />
+            <TeacherDocumentsStatusSection teacher={teacher} />
+          </AdminPanel>
+
+          <TeacherDecisionBar
+            teacherName={`${teacher.firstName} ${teacher.lastName}`}
+            status={teacher.approvalStatus as "PENDING" | "APPROVED" | "REJECTED"}
+            deciding={deciding}
+            onDecide={decide}
+          />
+        </div>
+      )}
+    </AdminPage>
   );
 }

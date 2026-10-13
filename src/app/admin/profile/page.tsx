@@ -66,7 +66,7 @@ export default function AdminProfilePage() {
   const displayName = profile ? `${profile.firstName} ${profile.lastName}` : "";
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div>
       <div className="max-w-2xl mx-auto">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">

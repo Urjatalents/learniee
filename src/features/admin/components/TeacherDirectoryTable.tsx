@@ -3,98 +3,100 @@
 import { Star } from "lucide-react";
 
 import type { TeacherDirectoryRow } from "@/features/admin/hooks/useTeacherDirectory";
+import {
+  AdminAvatar,
+  AdminPill,
+  AdminTableCard,
+  adminRowClass,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+  formatAdminDate,
+  type PillTone,
+} from "@/features/admin/components/ui/primitives";
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+const APPROVAL: Record<TeacherDirectoryRow["approvalStatus"], { label: string; tone: PillTone }> = {
+  APPROVED: { label: "Approved", tone: "brand" },
+  PENDING: { label: "Pending", tone: "warn" },
+  REJECTED: { label: "Rejected", tone: "dark" },
+};
 
-function approvalBadgeStyle(status: TeacherDirectoryRow["approvalStatus"]) {
-  switch (status) {
-    case "APPROVED":
-      return "bg-green-100 text-green-700";
-    case "REJECTED":
-      return "bg-red-100 text-red-700";
-    default:
-      return "bg-yellow-100 text-yellow-700";
-  }
-}
-
-interface TeacherDirectoryTableProps {
-  teachers: TeacherDirectoryRow[];
-}
-
-export default function TeacherDirectoryTable({ teachers }: TeacherDirectoryTableProps) {
+export default function TeacherDirectoryTable({ teachers }: { teachers: TeacherDirectoryRow[] }) {
   return (
-    <div className="bg-white rounded-xl border shadow-sm overflow-hidden overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-100 text-left text-gray-600">
+    <AdminTableCard>
+      <table className={`${adminTableClass} min-w-[1000px]`}>
+        <thead>
           <tr>
-            <th className="px-4 py-3">Name</th>
-            <th className="px-4 py-3">Email</th>
-            <th className="px-4 py-3">Location</th>
-            <th className="px-4 py-3">Approval</th>
-            <th className="px-4 py-3">Onboarding</th>
-            <th className="px-4 py-3 text-right">Courses</th>
-            <th className="px-4 py-3 text-right">Active Enrollments</th>
-            <th className="px-4 py-3 text-right">Rating</th>
-            <th className="px-4 py-3 text-right">Strikes</th>
-            <th className="px-4 py-3">Joined</th>
+            <th className={adminThClass}>Teacher</th>
+            <th className={adminThClass}>Location</th>
+            <th className={adminThClass}>Approval</th>
+            <th className={adminThClass}>Onboarding</th>
+            <th className={`${adminThClass} text-right`}>Courses</th>
+            <th className={`${adminThClass} text-right`}>Active</th>
+            <th className={`${adminThClass} text-right`}>Rating</th>
+            <th className={`${adminThClass} text-right`}>Strikes</th>
+            <th className={adminThClass}>Joined</th>
           </tr>
         </thead>
         <tbody>
-          {teachers.map((t) => (
-            <tr key={t.id} className="border-t">
-              <td className="px-4 py-3 font-medium text-gray-800">{t.name}</td>
-              <td className="px-4 py-3">{t.email}</td>
-              <td className="px-4 py-3">
-                {[t.city, t.country].filter(Boolean).join(", ") || "—"}
-              </td>
-              <td className="px-4 py-3">
-                <span
-                  className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${approvalBadgeStyle(t.approvalStatus)}`}
-                >
-                  {t.approvalStatus}
-                </span>
-              </td>
-              <td className="px-4 py-3 text-gray-600">
-                {t.onboardingStatus === "COMPLETED" ? "Completed" : "In progress"}
-              </td>
-              <td className="px-4 py-3 text-right">{t.coursesCount}</td>
-              <td className="px-4 py-3 text-right">{t.activeEnrollmentsCount}</td>
-              <td className="px-4 py-3 text-right">
-                {t.averageRating === null ? (
-                  <span className="text-gray-400">—</span>
-                ) : (
-                  <span className="inline-flex items-center justify-end gap-1">
-                    <Star size={13} className="text-amber-400 fill-amber-400" />
-                    <span className="font-semibold text-gray-800">
-                      {t.averageRating.toFixed(1)}
+          {teachers.map((t) => {
+            const approval = APPROVAL[t.approvalStatus] ?? APPROVAL.REJECTED;
+
+            return (
+              <tr key={t.id} className={adminRowClass}>
+                <td className={adminTdClass}>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <AdminAvatar name={t.name} />
+                    <div className="min-w-0">
+                      <p className="truncate font-extrabold">{t.name}</p>
+                      <p className="truncate text-sm text-admin-muted">{t.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className={adminTdClass}>
+                  {[t.city, t.country].filter(Boolean).join(", ") || "—"}
+                </td>
+                <td className={adminTdClass}>
+                  <AdminPill tone={approval.tone}>{approval.label}</AdminPill>
+                </td>
+                <td className={adminTdClass}>
+                  <AdminPill tone={t.onboardingStatus === "COMPLETED" ? "brand" : "warn"}>
+                    {t.onboardingStatus === "COMPLETED" ? "Completed" : "In progress"}
+                  </AdminPill>
+                </td>
+                <td className={`${adminTdClass} text-right`}>{t.coursesCount}</td>
+                <td className={`${adminTdClass} text-right`}>{t.activeEnrollmentsCount}</td>
+                <td className={`${adminTdClass} text-right`}>
+                  {t.averageRating === null ? (
+                    <span className="text-admin-muted">No reviews</span>
+                  ) : (
+                    <span className="inline-flex items-center justify-end gap-1">
+                      <Star size={14} className="fill-brand-yellow text-brand-yellow" aria-hidden="true" />
+                      <span className="font-extrabold">{t.averageRating.toFixed(1)}</span>
+                      <span className="text-sm text-admin-muted">({t.reviewCount})</span>
                     </span>
-                    <span className="text-xs text-gray-400">({t.reviewCount})</span>
-                  </span>
-                )}
-              </td>
-              <td
-                className={`px-4 py-3 text-right ${t.strikesCount > 0 ? "font-semibold text-red-600" : ""}`}
-              >
-                {t.strikesCount}
-              </td>
-              <td className="px-4 py-3 text-gray-500">{formatDate(t.createdAt)}</td>
-            </tr>
-          ))}
+                  )}
+                </td>
+                <td className={`${adminTdClass} text-right`}>
+                  {t.strikesCount > 0 ? (
+                    <AdminPill tone="bad">{t.strikesCount}</AdminPill>
+                  ) : (
+                    t.strikesCount
+                  )}
+                </td>
+                <td className={`${adminTdClass} whitespace-nowrap`}>{formatAdminDate(t.createdAt)}</td>
+              </tr>
+            );
+          })}
           {teachers.length === 0 && (
             <tr>
-              <td colSpan={10} className="px-4 py-6 text-center text-gray-400">
+              <td colSpan={9} className="px-5 py-10 text-center text-admin-muted">
                 No teachers found.
               </td>
             </tr>
           )}
         </tbody>
       </table>
-    </div>
+    </AdminTableCard>
   );
 }

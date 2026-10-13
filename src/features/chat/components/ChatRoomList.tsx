@@ -81,7 +81,11 @@ export default function ChatRoomList({
             key={room.id}
             type="button"
             onClick={() => router.push(`${basePath}/${room.id}`)}
-            className="w-full text-left bg-white border rounded-xl p-4 hover:border-purple-300 hover:shadow-sm transition flex items-center justify-between gap-4"
+            className={
+              viewerRole === "admin"
+                ? "flex min-h-11 w-full items-center justify-between gap-4 rounded-[18px] border border-admin-line bg-white p-4 text-left transition hover:border-[#c9a8fa] hover:shadow-[0_6px_18px_rgba(126,43,241,0.10)]"
+                : "w-full text-left bg-white border rounded-xl p-4 hover:border-purple-300 hover:shadow-sm transition flex items-center justify-between gap-4"
+            }
           >
             <div className="min-w-0">
               <p className="font-semibold text-gray-800 truncate">{title}</p>

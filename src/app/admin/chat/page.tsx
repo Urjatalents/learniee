@@ -5,6 +5,12 @@ import { useMemo, useState } from "react";
 import { useChatRooms } from "@/features/chat/hooks/useChatRooms";
 import { displayName } from "@/features/chat/types/chat";
 import ChatRoomList from "@/features/chat/components/ChatRoomList";
+import {
+  AdminPage,
+  AdminPageHeader,
+  AdminPill,
+  AdminSearch,
+} from "@/features/admin/components/ui/primitives";
 
 export default function AdminChatPage() {
   const { rooms, loading, error } = useChatRooms("/api/admin/chat");
@@ -18,9 +24,8 @@ export default function AdminChatPage() {
 
   // Client-side search over the already-loaded room list — the
   // `/api/admin/chat` route also accepts teacherId/parentId/courseId
-  // query params for programmatic filtering (e.g. a future "view
-  // this teacher's chats" link from /admin/teachers), but a free-text
-  // name search is what's actually useful from this page directly.
+  // query params for programmatic filtering, but a free-text name
+  // search is what's actually useful from this page directly.
   const filteredRooms = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -42,54 +47,46 @@ export default function AdminChatPage() {
   }, [rooms, search, flaggedOnly]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-purple-600">Chat Monitor</h1>
-          <p className="text-gray-500 mt-1">
-            View any parent ↔ teacher conversation on the platform. Read-only —
-            Admin can oversee messages but not send as either party.
-          </p>
-        </div>
+    <AdminPage>
+      <AdminPageHeader
+        crumbs={[{ label: "Overview", href: "/admin" }, { label: "Classes and safety" }]}
+        title="Chat monitor"
+        description="View any parent ↔ teacher conversation. Read-only: Admin can oversee messages but not send as either party."
+      />
 
-        <input
-          type="text"
+      <div className="flex flex-wrap items-center gap-4">
+        <AdminSearch
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by parent, teacher, child, or course…"
-          className="w-full mb-4 border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300"
+          onChange={setSearch}
+          placeholder="Search by parent, teacher, child or course"
         />
 
-        <label className="flex items-center gap-2 mb-6 text-sm text-gray-600">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-[15px] font-bold">
           <input
             type="checkbox"
             checked={flaggedOnly}
             onChange={(e) => setFlaggedOnly(e.target.checked)}
-            className="rounded border-gray-300 text-amber-600 focus:ring-amber-400"
+            className="size-5 rounded accent-brand"
           />
           Show flagged conversations only
-          {flaggedCount > 0 && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-              {flaggedCount}
-            </span>
-          )}
+          {flaggedCount > 0 && <AdminPill tone="warn">{flaggedCount}</AdminPill>}
         </label>
-
-        <ChatRoomList
-          rooms={filteredRooms}
-          loading={loading}
-          error={error}
-          viewerRole="admin"
-          basePath="/admin/chat"
-          emptyMessage={
-            flaggedOnly
-              ? "No flagged conversations."
-              : search
-                ? "No conversations match that search."
-                : "No conversations exist yet."
-          }
-        />
       </div>
-    </div>
+
+      <ChatRoomList
+        rooms={filteredRooms}
+        loading={loading}
+        error={error}
+        viewerRole="admin"
+        basePath="/admin/chat"
+        emptyMessage={
+          flaggedOnly
+            ? "No flagged conversations."
+            : search
+              ? "No conversations match that search."
+              : "No conversations exist yet."
+        }
+      />
+    </AdminPage>
   );
 }

@@ -1,7 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+import {
+  AdminEmpty,
+  AdminError,
+  AdminLoading,
+  AdminPage,
+  AdminPageHeader,
+  AdminPanel,
+  AdminPill,
+  AdminTabs,
+  adminButtonClass,
+} from "@/features/admin/components/ui/primitives";
 
 interface ChatReportRow {
   id: string;
@@ -36,7 +48,6 @@ function formatDateTime(value: string) {
 }
 
 export default function AdminChatReportsPage() {
-  const router = useRouter();
   const [reports, setReports] = useState<ChatReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -92,108 +103,94 @@ export default function AdminChatReportsPage() {
   const visible = reports.filter((report) => report.status === tab);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-purple-600">Reported Messages</h1>
-          <p className="text-gray-500 mt-1">
-            Chat messages a parent or teacher reported. The person reported is not told.
-          </p>
-        </div>
+    <AdminPage>
+      <AdminPageHeader
+        crumbs={[{ label: "Overview", href: "/admin" }, { label: "Classes and safety" }]}
+        title="Reported messages"
+        description="Chat messages a parent or teacher reported. The person reported is not told."
+      />
 
-        <div className="flex gap-2 mb-6">
-          {(["OPEN", "REVIEWED"] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setTab(value)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                tab === value
-                  ? "bg-purple-600 text-white"
-                  : "bg-white border text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              {value === "OPEN" ? `Open${openCount > 0 ? ` (${openCount})` : ""}` : "Reviewed"}
-            </button>
-          ))}
-        </div>
+      <div>
+        <AdminTabs
+          label="Report status"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { value: "OPEN", label: "Open", count: openCount },
+            { value: "REVIEWED", label: "Reviewed" },
+          ]}
+        />
+      </div>
 
-        {error && <div className="bg-red-100 text-red-700 text-sm px-4 py-2 rounded-lg mb-4">{error}</div>}
+      <AdminError>{error}</AdminError>
 
-        {loading ? (
-          <p className="text-gray-400 text-sm">Loading…</p>
-        ) : visible.length === 0 ? (
-          <p className="text-gray-400 text-sm">
-            {tab === "OPEN" ? "No open reports." : "No reviewed reports yet."}
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {visible.map((report) => (
-              <div key={report.id} className="bg-white rounded-xl border shadow-sm p-5">
-                <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
-                  <p className="text-sm text-gray-600">
-                    <span className="font-semibold text-gray-800">{report.reporterName}</span> (
+      {loading ? (
+        <AdminLoading />
+      ) : visible.length === 0 ? (
+        <AdminEmpty message={tab === "OPEN" ? "No open reports." : "No reviewed reports yet."} />
+      ) : (
+        <div className="flex flex-col gap-4">
+          {visible.map((report) => (
+            <AdminPanel key={report.id} padded>
+              <article className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-[15px] text-admin-muted">
+                    <span className="font-extrabold text-admin-ink">{report.reporterName}</span> (
                     {roleLabel(report.reporterRole)}) reported a message ·{" "}
                     {formatDateTime(report.createdAt)}
                   </p>
-                  {report.courseTitle && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
-                      {report.courseTitle}
-                    </span>
-                  )}
+                  {report.courseTitle && <AdminPill>{report.courseTitle}</AdminPill>}
                 </div>
 
-                <div className="bg-gray-50 border rounded-lg px-4 py-3 mb-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
+                <div className="flex flex-col gap-1 rounded-[14px] bg-admin-surface px-4 py-3">
+                  <span className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-admin-muted">
                     {report.message.senderName} ({roleLabel(report.message.senderRole)}) ·{" "}
                     {formatDateTime(report.message.createdAt)}
-                  </p>
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                    {report.message.body}
-                  </p>
+                  </span>
+                  <p className="whitespace-pre-wrap break-words text-base">{report.message.body}</p>
                   {report.message.originalBody && (
-                    <p className="text-xs text-amber-800 whitespace-pre-wrap break-words mt-2 border-t border-amber-200 pt-2">
-                      Original (phone number hidden from the other party): {report.message.originalBody}
+                    <p className="mt-1 whitespace-pre-wrap break-words border-t border-admin-line pt-2 text-sm font-bold text-[#8a6500]">
+                      Original (phone number hidden from the other party):{" "}
+                      {report.message.originalBody}
                     </p>
                   )}
                 </div>
 
                 {report.reason && (
-                  <p className="text-sm text-gray-600 mb-3">
-                    <span className="font-semibold text-gray-700">Reason:</span> {report.reason}
+                  <p className="text-[15px]">
+                    <span className="font-extrabold">Reason:</span> {report.reason}
                   </p>
                 )}
 
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/admin/chat/${report.chatRoomId}`)}
-                    className="text-sm font-semibold text-purple-600 hover:text-purple-700"
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    href={`/admin/chat/${report.chatRoomId}`}
+                    className={adminButtonClass("secondary")}
                   >
                     Open conversation
-                  </button>
+                  </Link>
                   {report.status === "OPEN" ? (
                     <button
                       type="button"
                       onClick={() => markReviewed(report.id)}
                       disabled={busyId === report.id}
-                      className="bg-purple-600 hover:bg-purple-700 text-white text-sm px-4 py-1.5 rounded-lg disabled:opacity-50"
+                      className={adminButtonClass("primary")}
                     >
                       {busyId === report.id ? "Saving…" : "Mark reviewed"}
                     </button>
                   ) : (
                     report.reviewedAt && (
-                      <span className="text-xs text-gray-400">
+                      <span className="text-sm text-admin-muted">
                         Reviewed {formatDateTime(report.reviewedAt)}
                       </span>
                     )
                   )}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+              </article>
+            </AdminPanel>
+          ))}
+        </div>
+      )}
+    </AdminPage>
   );
 }

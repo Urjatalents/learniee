@@ -1,9 +1,10 @@
 import type { TeacherApprovalState } from "@/features/admin/types/teacher";
+import { AdminPill, type PillTone } from "@/features/admin/components/ui/primitives";
 
-const STYLES: Record<TeacherApprovalState, string> = {
-  PENDING: "bg-yellow-100 text-yellow-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
+const TONES: Record<TeacherApprovalState, PillTone> = {
+  PENDING: "warn",
+  APPROVED: "brand",
+  REJECTED: "dark",
 };
 
 const LABELS: Record<TeacherApprovalState, string> = {
@@ -13,11 +14,5 @@ const LABELS: Record<TeacherApprovalState, string> = {
 };
 
 export default function TeacherStatusBadge({ status }: { status: TeacherApprovalState }) {
-  return (
-    <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${STYLES[status] ?? STYLES.REJECTED}`}
-    >
-      {LABELS[status] ?? status}
-    </span>
-  );
+  return <AdminPill tone={TONES[status] ?? "dark"}>{LABELS[status] ?? status}</AdminPill>;
 }

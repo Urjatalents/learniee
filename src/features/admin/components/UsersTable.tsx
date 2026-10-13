@@ -1,60 +1,102 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
+
 import type { AdminUser } from "@/features/admin/types/user";
+import {
+  AdminAvatar,
+  AdminPill,
+  AdminTableCard,
+  adminButtonClass,
+  adminRowClass,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+} from "@/features/admin/components/ui/primitives";
 
 interface UsersTableProps {
   users: AdminUser[];
   deletingEmail: string | null;
+  confirmingEmail?: string | null;
   onView: (user: AdminUser) => void;
   onDelete: (user: AdminUser) => void;
 }
 
-export default function UsersTable({ users, deletingEmail, onView, onDelete }: UsersTableProps) {
+export default function UsersTable({
+  users,
+  deletingEmail,
+  confirmingEmail,
+  onView,
+  onDelete,
+}: UsersTableProps) {
   return (
-    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-gray-100 text-left text-gray-600">
+    <AdminTableCard>
+      <table className={adminTableClass}>
+        <thead>
           <tr>
-            <th className="px-4 py-3">Name</th>
-            <th className="px-4 py-3">Email</th>
-            <th className="px-4 py-3">Role</th>
-            <th className="px-4 py-3"></th>
+            <th className={adminThClass}>User</th>
+            <th className={adminThClass}>Role</th>
+            <th className={`${adminThClass} text-right`}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((u) => (
-            <tr key={u.email} className="border-t">
-              <td className="px-4 py-3">
-                {u.firstName} {u.lastName}
-              </td>
-              <td className="px-4 py-3">{u.email}</td>
-              <td className="px-4 py-3 capitalize">{u.role}</td>
-              <td className="px-4 py-3 text-right space-x-4">
-                <button
-                  onClick={() => onView(u)}
-                  className="text-purple-600 hover:text-purple-700 font-medium"
-                >
-                  View
-                </button>
-                <button
-                  onClick={() => onDelete(u)}
-                  disabled={deletingEmail === u.email}
-                  className="text-red-600 hover:text-red-700 disabled:opacity-50 font-medium"
-                >
-                  {deletingEmail === u.email ? "Deleting…" : "Delete"}
-                </button>
-              </td>
-            </tr>
-          ))}
+          {users.map((u) => {
+            const name = `${u.firstName} ${u.lastName}`.trim();
+
+            return (
+              <tr key={u.email} className={adminRowClass}>
+                <td className={adminTdClass}>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <AdminAvatar name={name || u.email} />
+                    <div className="min-w-0">
+                      <p className="truncate font-extrabold">{name || "—"}</p>
+                      <p className="truncate text-sm text-admin-muted">{u.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className={adminTdClass}>
+                  <AdminPill className="capitalize">{u.role}</AdminPill>
+                </td>
+                <td className={`${adminTdClass} text-right`}>
+                  {confirmingEmail === u.email ? (
+                    <span className="text-sm font-extrabold text-admin-muted">
+                      Awaiting confirmation
+                    </span>
+                  ) : (
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onView(u)}
+                        aria-label={`View ${name || u.email}`}
+                        className={adminButtonClass("secondary")}
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDelete(u)}
+                        disabled={deletingEmail === u.email}
+                        aria-label={`Delete ${name || u.email}`}
+                        className={adminButtonClass("secondary", "text-red-700")}
+                      >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                        {deletingEmail === u.email ? "Deleting…" : "Delete"}
+                      </button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
           {users.length === 0 && (
             <tr>
-              <td colSpan={4} className="px-4 py-6 text-center text-gray-400">
+              <td colSpan={3} className="px-5 py-10 text-center text-admin-muted">
                 No users found.
               </td>
             </tr>
           )}
         </tbody>
       </table>
-    </div>
+    </AdminTableCard>
   );
 }

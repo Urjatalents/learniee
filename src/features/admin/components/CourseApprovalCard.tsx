@@ -1,4 +1,11 @@
+import { ImageOff, TriangleAlert } from "lucide-react";
+
 import type { AdminCourse } from "@/features/admin/types/course";
+import {
+  AdminPanel,
+  AdminPill,
+  adminButtonClass,
+} from "@/features/admin/components/ui/primitives";
 
 interface Props {
   course: AdminCourse;
@@ -6,137 +13,120 @@ interface Props {
   onReject: (courseId: string) => void;
 }
 
-export default function CourseApprovalCard({
-  course,
-  onApprove,
-  onReject,
-}: Props) {
+export default function CourseApprovalCard({ course, onApprove, onReject }: Props) {
+  const fields: Array<{ label: string; value: string }> = [
+    { label: "Subject", value: course.subject || "-" },
+    { label: "Grade", value: course.grade || "-" },
+    { label: "Board", value: course.board || "-" },
+    { label: "Type", value: course.type || "-" },
+    { label: "Duration", value: course.duration || "-" },
+    { label: "Language", value: course.language || "-" },
+    { label: "Frequency", value: course.frequency || "-" },
+    {
+      label: "Price",
+      value: `${course.price || "-"}${course.isIITian ? " (IITian)" : ""}`,
+    },
+  ];
+
   return (
-    <div className="bg-white border rounded-2xl shadow-sm p-8">
-      {/* HEADER */}
-      <div className="flex justify-between items-start border-b pb-6">
-        <div className="flex gap-5">
-          <div className="w-28 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+    <AdminPanel padded>
+      <article className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-admin-surface">
             {course.thumbnailUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={course.thumbnailUrl}
                 alt={course.courseTitle || "Course thumbnail"}
-                className="w-full h-full object-cover"
+                className="size-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <p className="text-xs text-gray-400">No thumbnail</p>
+              <div className="flex flex-col items-center gap-1 text-admin-muted">
+                <ImageOff className="size-5" aria-hidden="true" />
+                <span className="text-xs font-bold">No thumbnail</span>
               </div>
             )}
           </div>
 
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <h2 className="font-heading text-2xl font-bold">
               {course.courseTitle || "Untitled Course"}
             </h2>
-
-            <p className="text-gray-500">
-              {course.teacher.firstName} {course.teacher.lastName} ·{" "}
-              {course.teacher.email}
-            </p>
+            <span className="text-[15px] text-admin-muted">
+              {course.teacher.firstName} {course.teacher.lastName}{" "}
+              <span aria-hidden="true">·</span> {course.teacher.email}
+            </span>
           </div>
+
+          <AdminPill tone="warn">Under review</AdminPill>
         </div>
 
-        <span className="px-4 py-2 rounded-full text-sm font-medium bg-yellow-100 text-yellow-700">
-          {course.status}
-        </span>
-      </div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-admin-line-soft py-5 md:grid-cols-4">
+          {fields.map((field) => (
+            <div key={field.label} className="flex min-w-0 flex-col gap-0.5">
+              <dt className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-admin-muted">
+                {field.label}
+              </dt>
+              <dd className="text-base font-bold break-words">{field.value}</dd>
+            </div>
+          ))}
+        </dl>
 
-      {/* DETAILS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 text-sm">
-        <div>
-          <p className="font-medium text-gray-700">Subject</p>
-          <p className="text-gray-500">{course.subject || "-"}</p>
-        </div>
+        {course.isPriceCustomized && (
+          <div
+            role="note"
+            className="flex gap-3 rounded-[14px] border border-[#f4c01e] bg-[#fff8dc] px-4 py-3"
+          >
+            <TriangleAlert className="mt-0.5 size-5 shrink-0 text-[#8a6500]" aria-hidden="true" />
+            <div className="flex flex-col">
+              <span className="text-[15px] font-extrabold">Non-standard price</span>
+              <span className="text-sm text-admin-muted">
+                The standard rate for this course{course.isIITian ? " (IITian listing)" : ""} is ₹
+                {course.standardPrice} a session, but the teacher has set it to ₹{course.price} a
+                session.
+              </span>
+            </div>
+          </div>
+        )}
 
-        <div>
-          <p className="font-medium text-gray-700">Grade</p>
-          <p className="text-gray-500">{course.grade || "-"}</p>
-        </div>
-
-        <div>
-          <p className="font-medium text-gray-700">Board</p>
-          <p className="text-gray-500">{course.board || "-"}</p>
-        </div>
-
-        <div>
-          <p className="font-medium text-gray-700">Type</p>
-          <p className="text-gray-500">{course.type || "-"}</p>
-        </div>
-
-        <div>
-          <p className="font-medium text-gray-700">Duration</p>
-          <p className="text-gray-500">{course.duration || "-"}</p>
-        </div>
-
-        <div>
-          <p className="font-medium text-gray-700">Language</p>
-          <p className="text-gray-500">{course.language || "-"}</p>
-        </div>
-
-        <div>
-          <p className="font-medium text-gray-700">Frequency</p>
-          <p className="text-gray-500">{course.frequency || "-"}</p>
-        </div>
-
-        <div>
-          <p className="font-medium text-gray-700">Price</p>
-          <p className="text-gray-500">
-            {course.price || "-"}
-            {course.isIITian && (
-              <span className="ml-2 text-xs text-violet-600 font-medium">IITian</span>
+        {(course.objective || course.description) && (
+          <div className="flex flex-col gap-4">
+            {course.objective && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-admin-muted">
+                  Objective
+                </span>
+                <span className="text-base">{course.objective}</span>
+              </div>
             )}
-          </p>
+            {course.description && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[13px] font-extrabold uppercase tracking-[0.06em] text-admin-muted">
+                  Description
+                </span>
+                <span className="text-base">{course.description}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-3 border-t border-admin-line-soft pt-5">
+          <button
+            type="button"
+            onClick={() => onApprove(course.id)}
+            className={adminButtonClass("primary")}
+          >
+            Approve course
+          </button>
+          <button
+            type="button"
+            onClick={() => onReject(course.id)}
+            className={adminButtonClass("secondary", "text-red-700")}
+          >
+            Reject
+          </button>
         </div>
-      </div>
-
-      {course.isPriceCustomized && (
-        <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
-          <p className="text-sm font-medium text-amber-800">Non-standard price</p>
-          <p className="text-xs text-amber-700 mt-1">
-            The standard rate for this course{course.isIITian ? " (IITian listing)" : ""} is ₹
-            {course.standardPrice}/session, but the teacher has set it to ₹{course.price}
-            /session.
-          </p>
-        </div>
-      )}
-
-      {course.objective && (
-        <div className="mt-4">
-          <p className="font-medium text-gray-700 text-sm">Objective</p>
-          <p className="text-gray-500 text-sm mt-1">{course.objective}</p>
-        </div>
-      )}
-
-      {course.description && (
-        <div className="mt-4">
-          <p className="font-medium text-gray-700 text-sm">Description</p>
-          <p className="text-gray-500 text-sm mt-1">{course.description}</p>
-        </div>
-      )}
-
-      {/* ACTIONS */}
-      <div className="flex gap-4 mt-8 pt-6 border-t">
-        <button
-          onClick={() => onApprove(course.id)}
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
-        >
-          Approve
-        </button>
-
-        <button
-          onClick={() => onReject(course.id)}
-          className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg"
-        >
-          Reject
-        </button>
-      </div>
-    </div>
+      </article>
+    </AdminPanel>
   );
 }

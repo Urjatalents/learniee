@@ -33,6 +33,8 @@ interface ChatWindowProps {
    * no back arrow, a fixed height.
    */
   embedded?: boolean;
+  /** Tailwind height classes for the full-page layout (default fits the Parent/Teacher navbar). */
+  pageHeightClass?: string;
   /**
    * When given, messages from the other person get a "Report" button
    * that sends them to Admin. Left off for Admin's read-only view.
@@ -53,6 +55,7 @@ export default function ChatWindow({
   onSend,
   disabledReason,
   embedded = false,
+  pageHeightClass,
   onReport,
 }: ChatWindowProps) {
   const router = useRouter();
@@ -103,7 +106,7 @@ export default function ChatWindow({
       className={
         embedded
           ? "flex flex-col h-[32rem] max-h-[70vh] bg-gray-50 border border-violet-100 rounded-2xl overflow-hidden"
-          : "flex flex-col h-[calc(100vh-3.5rem)] bg-gray-50"
+          : `flex flex-col bg-gray-50 ${pageHeightClass ?? "h-[calc(100vh-3.5rem)]"}`
       }
     >
       {!embedded && (

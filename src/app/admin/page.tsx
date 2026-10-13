@@ -1,429 +1,159 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { User } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 
-import NotificationBell from "@/features/shared/components/NotificationBell";
+import DashboardActivity from "@/features/admin/components/DashboardActivity";
+import { useAdminCounts } from "@/features/admin/components/ui/AdminCountsContext";
+import {
+  AdminPanel,
+  AdminSectionTitle,
+} from "@/features/admin/components/ui/primitives";
+import {
+  ADMIN_NAV_ITEMS,
+  type AdminCountKey,
+  type AdminNavItem,
+} from "@/features/admin/config/adminNav";
+
+interface QueueDef {
+  countKey: AdminCountKey;
+  note: string;
+}
+
+// Four queues that get the large cards. Order is the order Admin sees.
+const PRIORITY: QueueDef[] = [
+  { countKey: "teachers", note: "Teachers waiting for approval" },
+  { countKey: "refunds", note: "Parents asking for a wallet credit" },
+  { countKey: "payouts", note: "Held or rejected by Accounts" },
+  { countKey: "chatReports", note: "Flagged by a parent or teacher" },
+];
+
+const OTHER: QueueDef[] = [
+  { countKey: "courses", note: "Courses teachers have submitted for review" },
+  { countKey: "enrollments", note: "Enrollments the teacher has already approved" },
+  { countKey: "classReviews", note: "Reported classes and ones that need an outcome" },
+  { countKey: "complaints", note: "Parent and teacher issues awaiting a response" },
+  { countKey: "leave", note: "Teacher leave to approve or reject" },
+  { countKey: "classRequests", note: "Custom classes parents asked for" },
+  { countKey: "bankAccounts", note: "Teacher payout bank details to approve" },
+  { countKey: "strikes", note: "Recent missed or late-cancelled classes, waive if needed" },
+  { countKey: "blogs", note: "Teacher posts to review before they go live" },
+];
+
+function itemFor(key: AdminCountKey): AdminNavItem {
+  const item = ADMIN_NAV_ITEMS.find((candidate) => candidate.countKey === key);
+
+  if (!item) throw new Error(`No admin nav item for count key "${key}"`);
+
+  return item;
+}
+
+function greeting() {
+  const hour = new Date().getHours();
+
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 export default function AdminDashboard() {
-  const router = useRouter();
-  const [openChatReports, setOpenChatReports] = useState<number | null>(null);
+  const { counts } = useAdminCounts();
 
-  // Badge on the Reported Messages card. Best-effort: a failure just
-  // leaves the badge off, the card still opens the queue.
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch("/api/admin/chat-reports", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data && typeof data.openCount === "number") {
-          setOpenChatReports(data.openCount);
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const queueCount = PRIORITY.length + OTHER.length;
+  const totalWaiting = counts
+    ? [...PRIORITY, ...OTHER].reduce((sum, queue) => sum + counts[queue.countKey], 0)
+    : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b px-8 py-5 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-purple-600">
-            Learniee Admin Dashboard
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage teachers, courses and approvals
-          </p>
-        </div>
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-1.5">
+        <h1 className="font-heading text-3xl font-bold leading-tight sm:text-4xl">
+          <span suppressHydrationWarning>{greeting()}</span>, Admin
+        </h1>
+        <p className="text-[17px] text-admin-muted">
+          {totalWaiting === null
+            ? "Checking what is waiting for you…"
+            : `${totalWaiting} ${totalWaiting === 1 ? "item is" : "items are"} waiting for a decision across ${queueCount} queues.`}
+        </p>
+      </div>
 
-        {/* Only this dashboard page has a shared header today — the
-            other Admin pages (teachers, courses, users, chat,
-            enrollments) each render their own, since there's no
-            shared AdminShell yet (01-PROJECT-STATUS.md §1). The bell
-            is only reachable from here until that's built. Same
-            reasoning for the new Profile link (Sep 10, 2026) — no
-            sidebar to attach a menu item to, so it lives here too. */}
-        <div className="flex items-center gap-3">
-          <NotificationBell />
-          <button
-            type="button"
-            onClick={() => router.push("/admin/profile")}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-purple-600 transition"
-            aria-label="Your profile"
-          >
-            <User size={18} />
-            <span className="hidden sm:inline">Profile</span>
-          </button>
-        </div>
-      </header>
+      <section aria-labelledby="h-review" className="flex flex-col gap-3.5">
+        <AdminSectionTitle id="h-review">Needs your review first</AdminSectionTitle>
 
-      <main className="p-8">
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Welcome, Admin 👋
-          </h2>
-          <p className="text-gray-500 mt-1">
-            Manage the Learniee platform from here.
-          </p>
-        </div>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-4">
+          {PRIORITY.map((queue) => {
+            const item = itemFor(queue.countKey);
+            const Icon = item.icon;
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Teacher Approvals
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Review teachers waiting for approval.
-            </p>
-            <button
-              onClick={() => router.push("/admin/teachers")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Teachers
-            </button>
-          </div>
-    
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Course Approvals
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Review courses submitted by teachers.
-            </p>
-            <button
-              onClick={() => router.push("/admin/courses")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Courses
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Enrollment Approvals
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Review enrollments the teacher has already approved.
-            </p>
-            <button
-              onClick={() => router.push("/admin/enrollments")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Enrollments
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Chat Monitor
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              View any parent ↔ teacher conversation, read-only.
-            </p>
-            <button
-              onClick={() => router.push("/admin/chat")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Chats
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Reported Messages
-              {openChatReports !== null && openChatReports > 0 && (
-                <span className="ml-2 align-middle text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                  {openChatReports}
+            return (
+              <Link
+                key={queue.countKey}
+                href={item.href}
+                className="flex flex-col gap-4 rounded-[18px] border border-admin-line bg-white p-5 transition hover:border-[#c9a8fa] hover:shadow-[0_6px_18px_rgba(126,43,241,0.10)]"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="flex size-11 items-center justify-center rounded-[13px] bg-admin-tint text-brand-dark">
+                    <Icon className="size-[22px]" aria-hidden="true" />
+                  </span>
+                  <span className="font-heading text-[44px] font-extrabold leading-none">
+                    {counts ? counts[queue.countKey] : "–"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[17px] font-extrabold">{item.label}</span>
+                  <span className="text-sm text-admin-muted">{queue.note}</span>
+                </div>
+                <span className="inline-flex items-center gap-1 text-sm font-extrabold text-brand-dark">
+                  Open queue
+                  <ChevronRight className="size-4" aria-hidden="true" />
                 </span>
-              )}
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Chat messages a parent or teacher reported.
-            </p>
-            <button
-              onClick={() => router.push("/admin/chat-reports")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Reports
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Leave Requests
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Approve or reject teacher leave requests.
-            </p>
-            <button
-              onClick={() => router.push("/admin/leave-requests")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Leave Requests
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Complaints
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Parent/Teacher issues waiting for a response.
-            </p>
-            <button
-              onClick={() => router.push("/admin/complaints")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Complaints
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Class Requests / Vacancy
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Custom classes parents asked for — review and share with teachers.
-            </p>
-            <button
-              onClick={() => router.push("/admin/class-requests")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Class Requests
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Refund Requests
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Parents asking for a refund — approve to credit their wallet, or reject.
-            </p>
-            <button
-              onClick={() => router.push("/admin/refund-requests")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Refund Requests
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Payout Review
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Teacher payouts Accounts held or rejected — release, send back, or confirm.
-            </p>
-            <button
-              onClick={() => router.push("/admin/payout-review")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Payout Review
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Class Reviews
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Classes a parent reported or that need an outcome — decide, or override a past decision.
-            </p>
-            <button
-              onClick={() => router.push("/admin/session-reviews")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Class Reviews
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Teacher Strikes
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Strikes for missed and late-cancelled classes — review them, or waive one (for example an emergency).
-            </p>
-            <button
-              onClick={() => router.push("/admin/teacher-strikes")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Teacher Strikes
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Resource Library
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Everything a teacher has shared with a student — see who shared what, to whom.
-            </p>
-            <button
-              onClick={() => router.push("/admin/resources")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Resources
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Blog Posts
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Review teacher-written blog posts before they go live on the public blog.
-            </p>
-            <button
-              onClick={() => router.push("/admin/blogs")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              Review Blog Posts
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Bank Account Approvals
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Approve or reject teacher-submitted payout bank details.
-            </p>
-            <button
-              onClick={() => router.push("/admin/bank-accounts")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Bank Accounts
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Teacher Directory
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Every teacher, approval/onboarding status, and activity at a glance.
-            </p>
-            <button
-              onClick={() => router.push("/admin/teacher-directory")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Teacher Directory
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Parent Directory
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Every parent, onboarding status, and activity at a glance.
-            </p>
-            <button
-              onClick={() => router.push("/admin/parent-directory")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Parent Directory
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Manage Users
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Delete a parent or teacher account completely.
-            </p>
-            <button
-              onClick={() => router.push("/admin/users")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              Manage Users
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Staff Accounts
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Create and manage HR / Accounts logins.
-            </p>
-            <button
-              onClick={() => router.push("/admin/staff-accounts")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              Manage Staff Accounts
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Account Access
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Reset a login&apos;s password, or update the email/phone connected to it.
-            </p>
-            <button
-              onClick={() => router.push("/admin/account-access")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              Manage Account Access
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Accounts
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Export transactions and sessions as Excel.
-            </p>
-            <button
-              onClick={() => router.push("/admin/accounts")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Accounts
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Activity Log
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Logins, payments, approvals — every major event, filterable and downloadable.
-            </p>
-            <button
-              onClick={() => router.push("/admin/activity-logs")}
-              className="mt-5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg"
-            >
-              View Activity Log
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Platform
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Manage Learniee platform information.
-            </p>
-            <button
-              className="mt-5 bg-gray-200 text-gray-500 px-5 py-2 rounded-lg cursor-not-allowed"
-              disabled
-            >
-              Coming Soon
-            </button>
-          </div>
+              </Link>
+            );
+          })}
         </div>
-      </main>
+      </section>
+
+      <div className="flex flex-wrap items-start gap-6">
+        <section
+          aria-labelledby="h-queues"
+          className="flex min-w-0 basis-[460px] flex-[999_1_460px] flex-col gap-3.5"
+        >
+          <AdminSectionTitle id="h-queues">Other queues</AdminSectionTitle>
+
+          <AdminPanel className="flex flex-col overflow-hidden">
+            {OTHER.map((queue, index) => {
+              const item = itemFor(queue.countKey);
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={queue.countKey}
+                  href={item.href}
+                  className={`flex min-h-11 items-center gap-3.5 px-5 py-3.5 hover:bg-admin-hover ${
+                    index > 0 ? "border-t border-admin-line-soft" : ""
+                  }`}
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-admin-surface text-brand-dark">
+                    <Icon className="size-5" aria-hidden="true" />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-base font-extrabold">{item.label}</span>
+                    <span className="text-sm text-admin-muted">{queue.note}</span>
+                  </span>
+                  <span className="min-w-7 shrink-0 rounded-full bg-admin-tint px-2.5 py-[3px] text-center text-sm font-extrabold text-brand-dark">
+                    {counts ? counts[queue.countKey] : "–"}
+                  </span>
+                  <ChevronRight className="size-[18px] shrink-0 text-admin-muted" aria-hidden="true" />
+                </Link>
+              );
+            })}
+          </AdminPanel>
+        </section>
+
+        <div className="min-w-0 basis-[300px] flex-1">
+          <DashboardActivity />
+        </div>
+      </div>
     </div>
   );
 }
