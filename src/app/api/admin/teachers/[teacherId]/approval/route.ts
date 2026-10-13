@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 import { TeacherApprovalStatus } from "@prisma/client";
 import { notifyTeacherApprovalStatus } from "@/features/shared/server/notificationTriggers.service";
 import { computeReapplyAvailableAt } from "@/features/teacher/utils/teacherAppeal";
@@ -26,7 +26,7 @@ export async function PATCH(
     // -----------------------------------------
     // Auth + admin role check
     // -----------------------------------------
-    const auth = requireAdminAuth(req);
+    const auth = await requireVerifiedAdminAuth(req);
 
     if ("error" in auth) {
       return auth.error;

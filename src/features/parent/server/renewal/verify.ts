@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getRazorpayClient, verifyCheckoutSignature } from "@/lib/razorpay";
 import "server-only";
-import { applyPaidRenewal, findCycleForPayment } from './apply';
+import { applyPaidRenewal, ensureRenewalInvoice, findCycleForPayment } from './apply';
 import { VerifyRenewalPaymentInput } from './order';
 import { RenewalError } from './plan';
 
@@ -40,6 +40,13 @@ export async function verifyRenewalPayment(
   const existing = await findCycleForPayment(input.razorpayPaymentId);
 
   if (existing && existing.enrollmentId === enrollmentId) {
+    // Repairs a missing invoice if the original attempt failed.
+    await ensureRenewalInvoice({
+      cycle: existing,
+      orderId: input.razorpayOrderId,
+      paymentId: input.razorpayPaymentId,
+    });
+
     return { cycle: existing };
   }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 import { getParentDirectory } from "@/features/shared/server/directory.service";
 
 /**
@@ -11,7 +11,7 @@ import { getParentDirectory } from "@/features/shared/server/directory.service";
  */
 export async function GET(req: Request) {
   try {
-    const auth = requireAdminAuth(req);
+    const auth = await requireVerifiedAdminAuth(req);
 
     if ("error" in auth) {
       return auth.error;

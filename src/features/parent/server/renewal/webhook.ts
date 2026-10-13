@@ -1,6 +1,6 @@
 import { getRazorpayClient } from "@/lib/razorpay";
 import "server-only";
-import { applyPaidRenewal, findCycleForPayment } from './apply';
+import { applyPaidRenewal, ensureRenewalInvoice, findCycleForPayment } from './apply';
 import { RenewalError } from './plan';
 
 /**
@@ -29,6 +29,8 @@ import { RenewalError } from './plan';
  *    so Razorpay gets a 200 and stops retrying.
  *  - Anything else (DB blip, Razorpay API timeout) is rethrown so the
  *    webhook route answers 500 and Razorpay retries later.
+ *  - The same applies if the cycle was created but its Invoice could
+ *    not be: the retry's fast path re-runs invoice generation.
  */
 export async function reconcileRenewalFromWebhook(
   orderId: string,
@@ -39,6 +41,14 @@ export async function reconcileRenewalFromWebhook(
   const existing = await findCycleForPayment(paymentId);
 
   if (existing) {
+    const invoiceOk = await ensureRenewalInvoice({ cycle: existing, orderId, paymentId });
+
+    if (!invoiceOk) {
+      throw new Error(
+        `Renewal invoice still missing for order ${orderId} — failing so Razorpay redelivers.`,
+      );
+    }
+
     return existing;
   }
 
@@ -66,12 +76,20 @@ export async function reconcileRenewalFromWebhook(
   }
 
   try {
-    const { cycle } = await applyPaidRenewal({
+    const { cycle, invoiceOk } = await applyPaidRenewal({
       order,
       paymentId,
       parentId,
       enrollmentId,
     });
+
+    if (!invoiceOk) {
+      // The cycle is safely created; failing here only makes Razorpay
+      // redeliver the webhook, whose fast path above retries the invoice.
+      throw new Error(
+        `Renewal invoice not generated for order ${orderId} — failing so Razorpay redelivers.`,
+      );
+    }
 
     return cycle;
   } catch (error) {

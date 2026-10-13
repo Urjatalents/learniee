@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 
 /**
  * GET/PATCH `/api/admin/profile` — new (Sep 10, 2026), backs the new
@@ -8,15 +8,13 @@ import { requireAdminAuth } from "@/lib/api-auth";
  * fields like Parent/Teacher — see `03-DATA-MODEL.md`), so this only
  * ever has name to show/edit plus a read-only email + join date.
  *
- * Decode-only auth (`requireAdminAuth`), matching the same convention
- * every other non-money Admin route already uses (e.g.
- * `/api/admin/courses`) — this isn't a financial route, so it doesn't
- * need the signature-verified `requireAdmin()`/`requireAdminOrAccounts()`
- * pair reserved for Ledger/Wallet-credit (06-OPEN-DECISIONS.md #21).
+ * Signature-verified auth (`requireVerifiedAdminAuth`) — same JWT
+ * signature/expiry/role checks as the money routes, so a forged
+ * token can't read or edit an Admin's profile.
  */
 export async function GET(req: Request) {
   try {
-    const auth = requireAdminAuth(req);
+    const auth = await requireVerifiedAdminAuth(req);
 
     if ("error" in auth) {
       return auth.error;
@@ -57,7 +55,7 @@ type ProfileUpdateBody = Partial<Record<EditableField, string>>;
 
 export async function PATCH(req: Request) {
   try {
-    const auth = requireAdminAuth(req);
+    const auth = await requireVerifiedAdminAuth(req);
 
     if ("error" in auth) {
       return auth.error;

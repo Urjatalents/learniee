@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 import { listActivityLogs } from "@/features/shared/server/activityLog.service";
 import { ActivityAction, ActivityActorRole } from "@prisma/client";
 
@@ -14,7 +14,7 @@ import { ActivityAction, ActivityActorRole } from "@prisma/client";
  * in `to`'s case, see below).
  */
 export async function GET(req: Request) {
-  const auth = requireAdminAuth(req);
+  const auth = await requireVerifiedAdminAuth(req);
 
   if ("error" in auth) {
     return auth.error;

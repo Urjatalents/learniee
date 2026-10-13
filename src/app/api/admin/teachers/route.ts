@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { TeacherApprovalStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 
 const STATUSES = Object.values(TeacherApprovalStatus);
 
@@ -15,7 +15,7 @@ const STATUSES = Object.values(TeacherApprovalStatus);
  */
 export async function GET(req: Request) {
   try {
-    const auth = requireAdminAuth(req);
+    const auth = await requireVerifiedAdminAuth(req);
 
     if ("error" in auth) {
       return auth.error;

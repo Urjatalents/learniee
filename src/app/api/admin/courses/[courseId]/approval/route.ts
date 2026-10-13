@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { CourseStatus } from "@prisma/client";
 
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 
 import {
   getCourseByIdForAdmin,
@@ -29,7 +29,7 @@ export async function PATCH(
     // -----------------------------------------
     // Auth + admin role check
     // -----------------------------------------
-    const auth = requireAdminAuth(req);
+    const auth = await requireVerifiedAdminAuth(req);
 
     if ("error" in auth) {
       return auth.error;

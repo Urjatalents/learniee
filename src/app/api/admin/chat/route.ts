@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 import { getChatRoomsForAdmin } from "@/features/chat/server/chat.service";
 
 /**
@@ -12,7 +12,7 @@ import { getChatRoomsForAdmin } from "@/features/chat/server/chat.service";
  */
 export async function GET(req: Request) {
   try {
-    const admin = requireAdminAuth(req);
+    const admin = await requireVerifiedAdminAuth(req);
 
     if ("error" in admin) {
       return admin.error;

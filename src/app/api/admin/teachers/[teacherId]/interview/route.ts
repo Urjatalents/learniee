@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { TeacherApprovalStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 import { notifyTeacherInterviewScheduled } from "@/features/shared/server/notificationTriggers.service";
 import { logActivity, actorFromTokenPayload } from "@/features/shared/server/activityLog.service";
 
@@ -21,7 +21,7 @@ export async function POST(
   { params }: { params: Promise<{ teacherId: string }> },
 ) {
   try {
-    const auth = requireAdminAuth(req);
+    const auth = await requireVerifiedAdminAuth(req);
     if ("error" in auth) return auth.error;
 
     const { teacherId } = await params;
@@ -85,7 +85,7 @@ export async function DELETE(
   { params }: { params: Promise<{ teacherId: string }> },
 ) {
   try {
-    const auth = requireAdminAuth(req);
+    const auth = await requireVerifiedAdminAuth(req);
     if ("error" in auth) return auth.error;
 
     const { teacherId } = await params;

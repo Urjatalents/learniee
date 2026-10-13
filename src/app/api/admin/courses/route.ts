@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 import { createPresignedDownloadUrl } from "@/lib/s3";
 
 import { getCoursesUnderReview } from "@/features/admin/server/course.service";
@@ -9,7 +9,7 @@ type CourseUnderReview = Awaited<ReturnType<typeof getCoursesUnderReview>>[numbe
 
 export async function GET(req: Request) {
   try {
-    const auth = requireAdminAuth(req);
+    const auth = await requireVerifiedAdminAuth(req);
 
     if ("error" in auth) {
       return auth.error;

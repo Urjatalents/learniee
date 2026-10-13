@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireTeacherId } from "@/features/teacher/server/auth";
+import { requireVerifiedTeacherId } from "@/features/teacher/server/verifiedAuth";
 import {
   setEnrollmentSchedule,
   EnrollmentApprovalError,
@@ -32,7 +32,7 @@ export async function PATCH(
       );
     }
 
-    const teacher = await requireTeacherId(req);
+    const teacher = await requireVerifiedTeacherId(req);
 
     if ("error" in teacher) {
       return teacher.error;

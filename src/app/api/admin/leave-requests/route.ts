@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminAuth } from "@/lib/api-auth";
+import { requireVerifiedAdminAuth } from "@/lib/verifiedAdminAuth";
 import { listLeaveRequestsForAdmin } from "@/features/shared/server/leaveRequest.service";
 
 /** GET — every leave request across every Teacher, newest first (pending + resolved). */
 export async function GET(req: Request) {
   try {
-    const auth = requireAdminAuth(req);
+    const auth = await requireVerifiedAdminAuth(req);
 
     if ("error" in auth) {
       return auth.error;

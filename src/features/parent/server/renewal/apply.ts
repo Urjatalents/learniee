@@ -35,6 +35,85 @@ export async function findCycleForPayment(paymentId: string) {
   });
 }
 
+/**
+ * Makes sure the renewal's Invoice exists — creating it if it doesn't.
+ * Returns `true` when an invoice is in place afterwards.
+ *
+ * Invoice generation is deliberately non-fatal (a receipt must never
+ * roll back money that already moved), which used to mean a failed
+ * invoice was simply lost. Now every re-entry point — `/renew/verify`
+ * retries, webhook redeliveries, a lost `/verify`-vs-webhook race —
+ * calls this, so the invoice gets repaired the next time anything
+ * touches that payment. Idempotent on `razorpayOrderId`.
+ */
+export async function ensureRenewalInvoice(args: {
+  cycle: { id: string; enrollmentId: string; cycleNumber: number };
+  orderId: string;
+  paymentId: string;
+  /** Pass when already fetched, to skip a Razorpay round-trip. */
+  order?: RazorpayOrder;
+}): Promise<boolean> {
+  const { cycle, orderId, paymentId } = args;
+
+  const invoiceExists = async () =>
+    Boolean(
+      await prisma.invoice.findUnique({
+        where: { razorpayOrderId: orderId },
+        select: { id: true },
+      }),
+    );
+
+  try {
+    if (await invoiceExists()) {
+      return true;
+    }
+
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { id: cycle.enrollmentId },
+      select: { parentId: true, subject: true },
+    });
+
+    if (!enrollment) {
+      throw new Error(`Enrollment ${cycle.enrollmentId} not found`);
+    }
+
+    const order = args.order ?? (await getRazorpayClient().orders.fetch(orderId));
+
+    await generateInvoiceForPayment({
+      type: InvoiceType.CYCLE_RENEWAL_PAYMENT,
+      payerId: enrollment.parentId,
+      // What Razorpay actually charged (already checked against the
+      // expected price before the cycle was created).
+      amount: Number(order.amount) / 100,
+      description: `Cycle ${cycle.cycleNumber} renewal${
+        enrollment.subject ? ` — ${enrollment.subject}` : ""
+      }`,
+      referenceType: "ENROLLMENT_CYCLE",
+      referenceId: cycle.id,
+      razorpayOrderId: orderId,
+      razorpayPaymentId: paymentId,
+    });
+
+    return true;
+  } catch (err) {
+    // A concurrent caller may have created it between our check and insert.
+    try {
+      if (await invoiceExists()) {
+        return true;
+      }
+    } catch {
+      // fall through to the log below
+    }
+
+    console.error(
+      `[renewal-invoice] NEEDS REPAIR: invoice not generated for cycle ${cycle.id} (order ${orderId}, payment ${paymentId}):`,
+      err,
+    );
+
+    return false;
+  }
+}
+
 function isUniqueViolation(err: unknown) {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
 }
@@ -86,7 +165,14 @@ export async function applyPaidRenewal(args: {
   const existingCycle = await findCycleForPayment(paymentId);
 
   if (existingCycle) {
-    return { cycle: existingCycle, created: false };
+    const invoiceOk = await ensureRenewalInvoice({
+      cycle: existingCycle,
+      orderId: order.id,
+      paymentId,
+      order,
+    });
+
+    return { cycle: existingCycle, created: false, invoiceOk };
   }
 
   // The order's own notes are the source of truth for the schedule
@@ -189,7 +275,8 @@ export async function applyPaidRenewal(args: {
       const winner = await findCycleForPayment(paymentId);
 
       if (winner) {
-        return { cycle: winner, created: false };
+        // The winning call owns invoice generation.
+        return { cycle: winner, created: false, invoiceOk: true };
       }
 
       // Unique violation but not for this payment: the next cycle was
@@ -203,22 +290,14 @@ export async function applyPaidRenewal(args: {
     throw err;
   }
 
-  try {
-    await generateInvoiceForPayment({
-      type: InvoiceType.CYCLE_RENEWAL_PAYMENT,
-      payerId: parentId,
-      amount: amountPayable,
-      description: `Cycle ${cycleNumber} renewal${
-        enrollment.subject ? ` — ${enrollment.subject}` : ""
-      }`,
-      referenceType: "ENROLLMENT_CYCLE",
-      referenceId: cycle.id,
-      razorpayOrderId: order.id,
-      razorpayPaymentId: paymentId,
-    });
-  } catch (err) {
-    console.error("Renewal invoice generation failed (renewal still succeeded):", err);
-  }
+  // Non-fatal for the renewal itself; `invoiceOk` lets the webhook ask
+  // Razorpay to redeliver so the invoice gets repaired on the retry.
+  const invoiceOk = await ensureRenewalInvoice({
+    cycle,
+    orderId: order.id,
+    paymentId,
+    order,
+  });
 
   try {
     await notifyCycleRenewed(enrollmentId, cycleNumber);
@@ -234,5 +313,5 @@ export async function applyPaidRenewal(args: {
     console.error("Post-renewal notify/log failed (renewal still succeeded):", err);
   }
 
-  return { cycle, created: true };
+  return { cycle, created: true, invoiceOk };
 }

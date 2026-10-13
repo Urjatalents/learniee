@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireTeacherId } from "@/features/teacher/server/auth";
+import { requireVerifiedTeacherId } from "@/features/teacher/server/verifiedAuth";
 import { endSession } from "@/features/shared/server/sessionFlow.service";
 import { sessionFlowErrorResponse } from "@/features/shared/server/sessionFlowRoute";
 
@@ -16,7 +16,7 @@ export async function POST(
   try {
     const { sessionId } = await params;
 
-    const teacher = await requireTeacherId(req);
+    const teacher = await requireVerifiedTeacherId(req);
     if ("error" in teacher) return teacher.error;
 
     const session = await endSession(sessionId, teacher.teacherId);
