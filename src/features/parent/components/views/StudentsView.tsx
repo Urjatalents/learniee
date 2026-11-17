@@ -1,51 +1,82 @@
 "use client";
 
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 
+import { PD_BTN_PRI_SM, PD_BTN_SEC_SM, PdEmpty } from "@/features/parent/components/courses/pdUi";
+import { KidAvatar } from "@/features/parent/components/home/HomeBits";
+import { PD_CARD_FLUSH, PdBanner, PdSkeleton } from "@/features/parent/components/payments/paymentsUi";
 import { useStudents } from "@/features/parent/hooks/useStudents";
-import StudentCard from "@/features/parent/components/StudentCard";
-import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 /** "Students" tab of Account — the child profiles on this parent account. */
 export default function StudentsView() {
   const { students, loading, error } = useStudents();
 
   return (
-    <div className="p-5 sm:p-8">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-purple-600 sm:text-3xl">Students</h1>
-            <p className="mt-1 text-gray-500">
-              Your children&apos;s profiles. Open one to see details or remove it.
-            </p>
-          </div>
-          <Link
-            href="/parent/students/new"
-            className="inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-dark"
-          >
-            <Plus size={15} />
-            Add a learner
-          </Link>
-        </div>
-
-        {error && <ErrorBanner>{error}</ErrorBanner>}
-
-        {loading ? (
-          <p className="text-gray-600">Loading students…</p>
-        ) : students.length === 0 ? (
-          <div className="rounded-xl border bg-white p-8 text-center">
-            <p className="text-gray-500">You haven&apos;t added a child profile yet.</p>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {students.map((student) => (
-              <StudentCard key={student.id} student={student} />
-            ))}
-          </div>
-        )}
+    <div className="mt-6 max-w-[820px]">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <p className="text-[13px] text-pd-ink3">
+          Your children’s profiles. Open one to see details or remove it.
+        </p>
+        <Link href="/parent/students/new" className={`${PD_BTN_PRI_SM} shrink-0`}>
+          <Plus size={14} />
+          Add a learner
+        </Link>
       </div>
+
+      {error && (
+        <div className="mb-3">
+          <PdBanner tone="red">{error}</PdBanner>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex flex-col gap-3">
+          <PdSkeleton height={72} />
+          <PdSkeleton height={72} />
+        </div>
+      ) : students.length === 0 ? (
+        <div className={PD_CARD_FLUSH}>
+          <PdEmpty
+            icon={Users}
+            title="No learners yet"
+            text="You haven’t added a child profile yet. Add one to book demos and enroll."
+            action={
+              <Link href="/parent/students/new" className={PD_BTN_PRI_SM}>
+                <Plus size={14} />
+                Add a learner
+              </Link>
+            }
+          />
+        </div>
+      ) : (
+        <div className={PD_CARD_FLUSH}>
+          {students.map((s) => {
+            const name = s.visibleName || `${s.firstName} ${s.lastName}`.trim();
+            const meta = [s.standard, s.board, s.age != null ? `Age ${s.age}` : null]
+              .filter(Boolean)
+              .join(" · ");
+
+            return (
+              <div
+                key={s.id}
+                className="flex items-center gap-3 border-t border-pd-line px-5 py-3.5 first:border-t-0"
+              >
+                <KidAvatar name={s.firstName} color={null} size="lg" />
+                <div className="min-w-0 flex-1">
+                  <b className="block truncate text-sm font-medium text-pd-ink">{name}</b>
+                  <small className="block truncate text-[13px] text-pd-ink3">
+                    {meta || "Tap View profile to complete details"}
+                  </small>
+                </div>
+                <Link href={`/parent/students/${s.id}`} className={`${PD_BTN_SEC_SM} shrink-0`}>
+                  View profile
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

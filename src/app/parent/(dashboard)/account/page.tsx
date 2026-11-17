@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 
-import HubTabs from "@/features/shared/components/HubTabs";
+import PdHubTabs from "@/features/parent/components/PdHubTabs";
 import ProfileView from "@/features/parent/components/views/ProfileView";
 import StudentsView from "@/features/parent/components/views/StudentsView";
 import SettingsView from "@/features/parent/components/views/SettingsView";
@@ -10,7 +10,9 @@ import SettingsView from "@/features/parent/components/views/SettingsView";
 export default function ParentAccountHubPage() {
   return (
     <Suspense fallback={null}>
-      <HubTabs
+      <PdHubTabs
+        title="Account"
+        subtitle="Your profile, children and settings."
         defaultTab="profile"
         tabs={[
           { key: "profile", label: "Profile", content: <ProfileView /> },
