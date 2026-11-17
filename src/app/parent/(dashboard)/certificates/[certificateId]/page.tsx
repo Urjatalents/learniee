@@ -49,6 +49,14 @@ export default function ParentCertificateDetailPage() {
 
   useAutoRefresh(() => load(), { paths: [`/api/parent/certificates/${certificateId}`] });
 
+  // "Download" on the Library opens this page with ?print=1: show the print / save-as-PDF dialog once.
+  useEffect(() => {
+    if (!certificate) return;
+    if (new URLSearchParams(window.location.search).get("print") !== "1") return;
+    const t = setTimeout(() => window.print(), 300);
+    return () => clearTimeout(t);
+  }, [certificate?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="p-6 max-w-3xl mx-auto print:p-0 print:max-w-none">
       <div className="flex items-center justify-between mb-6 print:hidden">

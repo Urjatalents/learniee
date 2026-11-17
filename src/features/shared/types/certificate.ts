@@ -9,6 +9,8 @@ export type CertificateStatusValue = "ISSUED" | "DECLINED";
 export interface CertificateView {
   id: string;
   certificateNumber: string;
+  /** Learner the certificate was issued to (lets the Parent Library filter by child). */
+  studentId: string;
   status: CertificateStatusValue;
   sessionsCompleted: number;
   sessionsRequired: number;

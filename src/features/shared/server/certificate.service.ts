@@ -50,6 +50,7 @@ const certificateInclude = {
 
 type CertificateRow = {
   id: string;
+  studentId: string;
   status: CertificateStatus;
   sessionsCompleted: number;
   sessionsRequired: number;
@@ -65,6 +66,7 @@ function shapeCertificate(row: CertificateRow): CertificateView {
   return {
     id: row.id,
     certificateNumber: certificateNumberFor(row.id),
+    studentId: row.studentId,
     status: row.status,
     sessionsCompleted: row.sessionsCompleted,
     sessionsRequired: row.sessionsRequired,
@@ -229,6 +231,17 @@ export async function getCertificatesForStudent(
 
   const rows = await prisma.certificate.findMany({
     where: { studentId, status: CertificateStatus.ISSUED },
+    orderBy: { issuedAt: "desc" },
+    include: certificateInclude,
+  });
+
+  return rows.map(shapeCertificate);
+}
+
+/** Every issued certificate for all of this Parent's children, newest first — backs the Library page. */
+export async function getCertificatesForParent(parentId: string): Promise<CertificateView[]> {
+  const rows = await prisma.certificate.findMany({
+    where: { parentId, status: CertificateStatus.ISSUED },
     orderBy: { issuedAt: "desc" },
     include: certificateInclude,
   });

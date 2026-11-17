@@ -74,7 +74,17 @@ export default function ParentMyClassesHubPage() {
             },
             content: <FreeDemoView />,
           },
-          { key: "resources", label: "Library", hidden: true, content: <ResourcesView /> },
+          {
+            key: "resources",
+            label: "Library",
+            hidden: true,
+            standalone: true,
+            heading: {
+              title: "Library",
+              subtitle: "Files, links and certificates shared by your teachers.",
+            },
+            content: <ResourcesView />,
+          },
           { key: "certificates", label: "Certificates", content: <CertificatesView /> },
         ]}
       />

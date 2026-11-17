@@ -1,32 +1,37 @@
 "use client";
 
-import { useStudents } from "@/features/parent/hooks/useStudents";
-import StudentCertificates from "@/features/parent/components/StudentCertificates";
+import { GraduationCap } from "lucide-react";
 
-/**
- * "Certificates" tab of My Classes. Reuses the card from the student page,
- * one per child; a child with no issued certificate shows nothing.
- */
+import { PdEmpty } from "@/features/parent/components/courses/pdUi";
+import LibraryCertificateCard from "@/features/parent/components/library/LibraryCertificateCard";
+import { useParentCertificates } from "@/features/parent/hooks/useParentCertificates";
+import ErrorBanner from "@/features/shared/components/ErrorBanner";
+
+/** "Certificates" tab of My Classes: same cards as the Library page, one per issued certificate. */
 export default function CertificatesView() {
-  const { students, loading } = useStudents();
+  const { certificates, loading, error } = useParentCertificates();
 
   return (
-    <div className="p-5 sm:p-8">
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-bold text-purple-600 sm:text-3xl">Certificates</h1>
-        <p className="mb-6 mt-1 text-gray-500">
-          Certificates your children have earned appear here once a teacher
-          issues them.
-        </p>
+    <div className="mt-6">
+      {error && <ErrorBanner size="compact">{error}</ErrorBanner>}
 
-        {loading ? (
-          <p className="text-gray-600">Loading…</p>
-        ) : (
-          students.map((student) => (
-            <StudentCertificates key={student.id} studentId={student.id} />
-          ))
-        )}
-      </div>
+      {loading ? (
+        <div aria-busy="true" aria-label="Loading" className="h-40 animate-pulse rounded-2xl bg-[#eeeaf7]" />
+      ) : certificates.length ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {certificates.map((c) => (
+            <LibraryCertificateCard key={c.id} certificate={c} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-pd-line bg-white p-5">
+          <PdEmpty
+            icon={GraduationCap}
+            title="No certificates yet"
+            text="Certificates your children earn appear here once a teacher issues them."
+          />
+        </div>
+      )}
     </div>
   );
 }

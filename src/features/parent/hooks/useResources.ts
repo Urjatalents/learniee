@@ -6,6 +6,8 @@ import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export interface Resource {
   id: string;
+  /** Learner the resource was shared for. */
+  studentId: string;
   title: string;
   description: string | null;
   type: "FILE" | "LINK";
