@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
@@ -10,13 +11,15 @@ interface Props {
   subtitle?: string;
   tabs: HubTab[];
   defaultTab?: string;
+  /** Optional button(s) on the right of the heading. */
+  action?: ReactNode;
 }
 
 /**
  * Parent-design page: heading + pill tabs (driven by `?tab=`, so every tab is
  * linkable and Back works) + the active tab's content. Render inside <Suspense>.
  */
-export default function PdHubTabs({ title, subtitle, tabs, defaultTab }: Props) {
+export default function PdHubTabs({ title, subtitle, tabs, defaultTab, action }: Props) {
   const pathname = usePathname();
   const requested = useSearchParams().get("tab");
   const active =
@@ -26,11 +29,14 @@ export default function PdHubTabs({ title, subtitle, tabs, defaultTab }: Props) 
 
   return (
     <div className="mx-auto max-w-[1160px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8">
-      <header>
-        <h1 className="font-heading text-[26px] font-semibold leading-[1.15] text-pd-ink outline-none sm:text-[32px]">
-          {title}
-        </h1>
-        {subtitle && <p className="text-sm text-pd-ink3">{subtitle}</p>}
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-[26px] font-semibold leading-[1.15] text-pd-ink outline-none sm:text-[32px]">
+            {title}
+          </h1>
+          {subtitle && <p className="text-sm text-pd-ink3">{subtitle}</p>}
+        </div>
+        {action}
       </header>
 
       <div
@@ -38,7 +44,7 @@ export default function PdHubTabs({ title, subtitle, tabs, defaultTab }: Props) 
         aria-label={`${title} sections`}
         className="mt-4 flex w-max max-w-full gap-0.5 overflow-x-auto rounded-full bg-pd-b50 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {tabs.map((tab) => {
+        {tabs.filter((t) => !t.hidden || t.key === active.key).map((tab) => {
           const on = tab.key === active.key;
           return (
             <Link

@@ -10,6 +10,8 @@ export interface HubTab {
   label: string;
   /** Optional count shown next to the label (hidden when 0 / undefined). */
   badge?: number;
+  /** Reachable by `?tab=` (nav links, redirects) but not shown as a pill. */
+  hidden?: boolean;
   /** Only the active tab's content is mounted. */
   content: ReactNode;
 }
@@ -43,7 +45,7 @@ export default function HubTabs({ tabs, defaultTab }: Props) {
           aria-label="Sections"
           className="flex gap-1 overflow-x-auto border-b border-violet-100"
         >
-          {tabs.map((tab) => {
+          {tabs.filter((t) => !t.hidden || t.key === active.key).map((tab) => {
             const isActive = tab.key === active.key;
             return (
               <Link

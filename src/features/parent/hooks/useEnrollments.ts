@@ -36,7 +36,9 @@ export interface ParentEnrollment {
     lastName: string;
     visibleName: string | null;
   };
-  course: { id: string; courseTitle: string | null };
+  /** Free-text subject typed at enrollment; the course's own subject is the fallback. */
+  subject?: string | null;
+  course: { id: string; courseTitle: string | null; subject?: string | null };
   chatRoom: { id: string } | null;
   /**
    * Only on `/api/parent/my-classes` (Part 2C), and only for cycle-model

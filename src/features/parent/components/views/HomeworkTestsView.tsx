@@ -1,68 +1,80 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ClipboardList } from "lucide-react";
 
-import { useParentEnrollments } from "@/features/parent/hooks/useEnrollments";
-import { displayName } from "@/features/chat/types/chat";
-import {
-  getEnrollmentStatusLabel,
-  getEnrollmentStatusStyle,
-} from "@/features/shared/utils/enrollmentStatus";
+import type { ParentEnrollment } from "@/features/parent/hooks/useEnrollments";
+import { useOpenHomeworkCounts } from "@/features/parent/hooks/useClassListExtras";
+import { useStudents } from "@/features/parent/hooks/useStudents";
+import { KidAvatar, Tag } from "@/features/parent/components/home/HomeBits";
+import { kidColor } from "@/features/parent/components/home/homeLogic";
+import { toHomeKids, firstWord } from "@/features/parent/components/my-classes/pdClassesUi";
+import { GridSkeleton, PdEmpty } from "@/features/parent/components/courses/pdUi";
+import { displayName } from "@/features/shared/utils/displayName";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
 // Enrollments that can have homework: running or finished ones.
 const HOMEWORK_STATUSES = new Set(["ACTIVE", "COMPLETED", "LAPSED"]);
 
-export default function HomeworkTestsView() {
-  const { enrollments, loading, error } = useParentEnrollments();
+interface Props {
+  enrollments: ParentEnrollment[];
+  loading: boolean;
+  error: string;
+}
+
+/** My Classes > Homework tab: one row per course with how much is still due. */
+export default function HomeworkTestsView({ enrollments, loading, error }: Props) {
+  const { counts } = useOpenHomeworkCounts();
+  const { students } = useStudents();
+  const kids = toHomeKids(students);
   const list = enrollments.filter((e) => HOMEWORK_STATUSES.has(e.status));
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-violet-900">Homework</h1>
-        <p className="text-gray-500 mt-1">
-          Pick a course to see and submit your child&apos;s homework.
-        </p>
-      </div>
+    <div>
+      <p className="mb-3 mt-[22px] text-[13px] text-pd-ink3">
+        Pick a course to see and submit your child&apos;s homework.
+      </p>
+
+      {error && <ErrorBanner spacing={false}>{error}</ErrorBanner>}
 
       {loading ? (
-        <p className="text-gray-500">Loading…</p>
-      ) : error ? (
-        <ErrorBanner spacing={false}>{error}</ErrorBanner>
+        <GridSkeleton count={3} height={64} />
       ) : list.length === 0 ? (
-        <div className="bg-white border rounded-xl p-8 text-center">
-          <p className="text-gray-500">
-            No homework yet — it appears here once a class is active.
-          </p>
+        <div className="max-w-[820px] rounded-2xl border border-pd-line bg-white">
+          <PdEmpty
+            icon={ClipboardList}
+            title="No homework yet"
+            text="It appears here once a class is active."
+          />
         </div>
       ) : (
-        <div className="space-y-3">
-          {list.map((e) => (
-            <Link
-              key={e.id}
-              href={`/parent/enrollments/${e.id}/homework`}
-              className="bg-white border rounded-xl p-4 hover:border-purple-300 hover:shadow-sm transition flex items-center justify-between gap-4"
-            >
-              <div className="min-w-0">
-                <p className="font-semibold text-gray-800 truncate">
-                  {e.course.courseTitle ?? "Untitled course"}
-                </p>
-                <p className="text-sm text-gray-500 truncate">
-                  {displayName(e.student)} · {displayName(e.teacher)}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${getEnrollmentStatusStyle(e.status)}`}
-                >
-                  {getEnrollmentStatusLabel(e.status, "parent")}
-                </span>
-                <ChevronRight size={16} className="text-gray-400" />
-              </div>
-            </Link>
-          ))}
+        <div className="max-w-[820px] overflow-hidden rounded-2xl border border-pd-line bg-white">
+          {list.map((e) => {
+            const open = counts[e.id] ?? 0;
+            const kidName = firstWord(displayName(e.student));
+
+            return (
+              <Link
+                key={e.id}
+                href={`/parent/enrollments/${e.id}/homework`}
+                className="flex w-full items-center gap-3 border-t border-pd-line px-5 py-3.5 text-left transition-colors first:border-t-0 hover:bg-pd-b50"
+              >
+                <KidAvatar name={kidName} color={kidColor(kids, e.student.id)} />
+                <div className="min-w-0 flex-1">
+                  <b className="block truncate text-sm font-medium">{e.course.courseTitle ?? "Untitled course"}</b>
+                  <small className="block truncate text-[13px] text-pd-ink3">
+                    {kidName} · {displayName(e.teacher)}
+                  </small>
+                </div>
+                {open > 0 ? (
+                  <Tag tone="amber">{open} due</Tag>
+                ) : (
+                  <Tag tone="gray">{e.status === "COMPLETED" ? "Completed" : "All done"}</Tag>
+                )}
+                <ChevronRight size={18} className="text-pd-ink3" />
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

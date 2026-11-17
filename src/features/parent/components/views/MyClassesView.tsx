@@ -1,17 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { GraduationCap, Plus } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 
-import {
-  useParentEnrollments,
-  type ParentEnrollment,
-} from "@/features/parent/hooks/useEnrollments";
-import MyClassCard from "@/features/parent/components/my-classes/MyClassCard";
-import MyClassesSummary from "@/features/parent/components/my-classes/MyClassesSummary";
+import type { ParentEnrollment } from "@/features/parent/hooks/useEnrollments";
+import { useStudents } from "@/features/parent/hooks/useStudents";
+import HomeLearnerSwitcher from "@/features/parent/components/home/HomeLearnerSwitcher";
+import { inKid, type LearnerFilter } from "@/features/parent/components/home/homeLogic";
+import PdClassRow, { ClassRowsHeader } from "@/features/parent/components/my-classes/PdClassRow";
+import { toHomeKids } from "@/features/parent/components/my-classes/pdClassesUi";
 import EnrollmentStatusCard from "@/features/parent/components/enrollments/EnrollmentStatusCard";
+import { PD_BTN_PRI, PD_BTN_SEC_SM, GridSkeleton, PdEmpty } from "@/features/parent/components/courses/pdUi";
 import { usesClassView } from "@/features/parent/utils/classView";
 import ErrorBanner from "@/features/shared/components/ErrorBanner";
+
+/** Enrollments waiting for approval (shown as "Waiting for approval" rows). */
+const WAITING = new Set(["PENDING_APPROVAL", "PENDING_TEACHER_APPROVAL", "PENDING_ADMIN_APPROVAL", "APPROVED"]);
 
 /** Soonest next class first; courses with nothing scheduled go last. */
 function byNextClass(a: ParentEnrollment, b: ParentEnrollment) {
@@ -25,127 +30,142 @@ function byNextClass(a: ParentEnrollment, b: ParentEnrollment) {
   return 0;
 }
 
-function SectionTitle({ children, count }: { children: React.ReactNode; count: number }) {
+interface Props {
+  enrollments: ParentEnrollment[];
+  loading: boolean;
+  error: string;
+  onConfirmRevision: (id: string) => void;
+  onDeclineRevision: (id: string) => void;
+}
+
+function Group({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500">{children}</h2>
-      <span className="text-[11px] font-bold text-brand bg-violet-100 rounded-full px-2 py-0.5">
-        {count}
-      </span>
-    </div>
+    <section className="mt-6">
+      <h2 className="mb-3 font-heading text-[19px] font-semibold text-pd-ink">
+        {title} <span className="text-xs font-medium text-pd-ink3">{count}</span>
+      </h2>
+      {children}
+    </section>
   );
 }
 
 /**
- * My Classes (Part 2C) — one card per enrolled course, replacing the
- * separate Enrollments, Homework and Chat entries. Cycle-model
- * enrollments open the new class page; legacy enrollments (and
- * cycle ones still awaiting approval) keep the old status card.
- *
- * The list is grouped: running classes first (soonest next class on
- * top), then anything that still needs an answer or an approval, then
- * finished enrollments.
+ * My Classes > Classes tab (Parent design). Active classes, classes
+ * waiting for approval, and a toggle for completed ones. Enrollments
+ * that need the parent's answer (revised by the teacher) or that keep
+ * the old legacy view stay on the existing status card.
  */
-export default function MyClassesView() {
-  const { enrollments, loading, error, respondToRevision } = useParentEnrollments(
-    "/api/parent/my-classes",
+export default function MyClassesView({
+  enrollments,
+  loading,
+  error,
+  onConfirmRevision,
+  onDeclineRevision,
+}: Props) {
+  const { students } = useStudents();
+  const [filter, setFilter] = useState<LearnerFilter>("all");
+  const [showDone, setShowDone] = useState(false);
+  const [now] = useState(() => new Date());
+
+  const kids = toHomeKids(students);
+  const mine = enrollments.filter((e) => inKid(filter, e.student.id));
+
+  const active = mine.filter((e) => usesClassView(e) && e.status === "ACTIVE").sort(byNextClass);
+  const waiting = mine.filter((e) => !e.isLegacy && WAITING.has(e.status));
+  const done = mine.filter((e) => usesClassView(e) && e.status === "COMPLETED");
+  const others = mine.filter(
+    (e) => !usesClassView(e) && !(!e.isLegacy && WAITING.has(e.status)),
   );
 
-  const running = enrollments
-    .filter((e) => usesClassView(e) && e.status !== "COMPLETED")
-    .sort(byNextClass);
-  const finished = enrollments.filter((e) => usesClassView(e) && e.status === "COMPLETED");
-  const others = enrollments.filter((e) => !usesClassView(e));
-
   return (
-    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-        <div className="flex items-start gap-3">
-          <span className="w-11 h-11 rounded-2xl bg-violet-100 text-brand flex items-center justify-center flex-shrink-0">
-            <GraduationCap size={22} />
-          </span>
-          <div>
-            <h1 className="font-heading text-2xl font-bold text-violet-900">My Classes</h1>
-            <p className="text-sm text-gray-500 mt-0.5 max-w-xl">
-              Every course in one place — join classes, see how each cycle is going, check
-              homework and chat with your teacher.
-            </p>
-          </div>
+    <div>
+      <div className="mb-[18px] mt-[22px] flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[13px] text-pd-ink3">Everything your children are enrolled in.</p>
+        <div className="[&>div]:mt-0!">
+          <HomeLearnerSwitcher kids={kids} active={filter} onSelect={setFilter} />
         </div>
-
-        <Link
-          href="/parent/courses"
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-white bg-brand hover:bg-brand-dark px-4 py-2.5 rounded-full shadow-playful transition-colors"
-        >
-          <Plus size={15} />
-          Find a new course
-        </Link>
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {loading ? (
-        <div className="grid gap-5 md:grid-cols-2">
-          {[...Array(2)].map((_, i) => (
-            <div
-              key={i}
-              className="rounded-3xl border border-violet-100 bg-violet-50/60 animate-pulse h-72"
-            />
-          ))}
-        </div>
-      ) : enrollments.length === 0 ? (
-        <div className="bg-white border-2 border-dashed border-violet-200 rounded-3xl p-10 text-center">
-          <span className="w-14 h-14 rounded-2xl bg-violet-100 text-brand flex items-center justify-center mx-auto mb-3">
-            <GraduationCap size={26} />
-          </span>
-          <p className="font-heading font-bold text-gray-800">No classes yet</p>
-          <p className="text-sm text-gray-500 mt-1">
-            <Link href="/parent/courses" className="text-brand font-semibold hover:underline">
-              Browse courses
-            </Link>{" "}
-            and enroll your child to get started.
-          </p>
-        </div>
+        <GridSkeleton count={3} height={72} />
       ) : (
         <>
-          <MyClassesSummary enrollments={enrollments} />
-
-          {running.length > 0 && (
-            <section className="mb-8">
-              <SectionTitle count={running.length}>Your classes</SectionTitle>
-              <div className="grid gap-5 md:grid-cols-2">
-                {running.map((enrollment) => (
-                  <MyClassCard key={enrollment.id} enrollment={enrollment} />
+          {active.length > 0 && (
+            <Group title="Active" count={active.length}>
+              <div className="overflow-hidden rounded-2xl border border-pd-line bg-white">
+                <ClassRowsHeader />
+                {active.map((e) => (
+                  <PdClassRow key={e.id} enrollment={e} kind="enrolled" kids={kids} now={now} />
                 ))}
               </div>
-            </section>
+            </Group>
+          )}
+
+          {waiting.length > 0 && (
+            <Group title="Waiting for approval" count={waiting.length}>
+              <div className="overflow-hidden rounded-2xl border border-pd-line bg-white">
+                {active.length === 0 && <ClassRowsHeader />}
+                {waiting.map((e) => (
+                  <PdClassRow key={e.id} enrollment={e} kind="pending" kids={kids} now={now} />
+                ))}
+              </div>
+            </Group>
           )}
 
           {others.length > 0 && (
-            <section className="mb-8">
-              <SectionTitle count={others.length}>Enrollments &amp; approvals</SectionTitle>
-              <div className="space-y-4 max-w-3xl">
-                {others.map((enrollment) => (
+            <Group title="Other enrollments" count={others.length}>
+              <div className="max-w-3xl space-y-4">
+                {others.map((e) => (
                   <EnrollmentStatusCard
-                    key={enrollment.id}
-                    enrollment={enrollment}
-                    onConfirmRevision={(id) => respondToRevision(id, "CONFIRM")}
-                    onDeclineRevision={(id) => respondToRevision(id, "DECLINE")}
+                    key={e.id}
+                    enrollment={e}
+                    onConfirmRevision={onConfirmRevision}
+                    onDeclineRevision={onDeclineRevision}
                   />
                 ))}
               </div>
-            </section>
+            </Group>
           )}
 
-          {finished.length > 0 && (
-            <section>
-              <SectionTitle count={finished.length}>Completed</SectionTitle>
-              <div className="grid gap-5 md:grid-cols-2">
-                {finished.map((enrollment) => (
-                  <MyClassCard key={enrollment.id} enrollment={enrollment} />
-                ))}
-              </div>
-            </section>
+          {active.length === 0 && waiting.length === 0 && others.length === 0 && (
+            <div className="rounded-2xl border border-pd-line bg-white">
+              <PdEmpty
+                icon={BookOpen}
+                title="No active classes"
+                text="Find a course to get started."
+                action={
+                  <Link href="/parent/courses" className={PD_BTN_PRI}>
+                    Find a course
+                  </Link>
+                }
+              />
+            </div>
+          )}
+
+          {done.length > 0 && (
+            <div className="mt-6">
+              <button
+                type="button"
+                aria-expanded={showDone}
+                onClick={() => setShowDone((v) => !v)}
+                className={PD_BTN_SEC_SM}
+              >
+                {showDone ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+                {showDone ? "Hide" : "Show"} completed classes ({done.length})
+              </button>
+
+              {showDone && (
+                <Group title="Completed" count={done.length}>
+                  <div className="overflow-hidden rounded-2xl border border-pd-line bg-white">
+                    {done.map((e) => (
+                      <PdClassRow key={e.id} enrollment={e} kind="completed" kids={kids} now={now} />
+                    ))}
+                  </div>
+                </Group>
+              )}
+            </div>
           )}
         </>
       )}

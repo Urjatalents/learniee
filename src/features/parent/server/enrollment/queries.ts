@@ -29,7 +29,7 @@ export async function getEnrollmentsForParent(parentId: string) {
         },
       },
       course: {
-        select: { id: true, courseTitle: true },
+        select: { id: true, courseTitle: true, subject: true },
       },
       chatRoom: {
         select: { id: true },
