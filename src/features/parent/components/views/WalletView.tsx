@@ -1,138 +1,118 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { FileText, Plus, Wallet } from "lucide-react";
 
+import { PD_BTN_PRI, PdEmpty } from "@/features/parent/components/courses/pdUi";
+import { usePdToast } from "@/features/parent/components/courses/usePdToast";
+import AddMoneyDialog from "@/features/parent/components/payments/AddMoneyDialog";
+import {
+  PD_CARD,
+  PD_CARD_FLUSH,
+  PD_COL,
+  PD_PGRID,
+  PD_SECTION_H,
+  PdBanner,
+  PdSkeleton,
+  dTime,
+  inr2,
+} from "@/features/parent/components/payments/paymentsUi";
 import { useWallet } from "@/features/parent/hooks/useWallet";
-import ErrorBanner from "@/features/shared/components/ErrorBanner";
 
-const currency = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 2,
-});
-
-const dateFmt = new Intl.DateTimeFormat("en-IN", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
+/**
+ * Wallet tab — balance, "Add money" (Razorpay top-up with GST / UPI charge, via `useWallet().addMoney`)
+ * and the transaction history from /api/parent/wallet.
+ */
 export default function WalletView() {
   const { balance, transactions, loading, error, addingMoney, addMoney } = useWallet();
-  const [amountInput, setAmountInput] = useState("");
-  const [notice, setNotice] = useState("");
+  const { toast, toastNode } = usePdToast();
+  const [adding, setAdding] = useState(false);
+  const [failure, setFailure] = useState("");
 
-  async function handleAddMoney() {
-    const amount = Number(amountInput);
-    setNotice("");
-
+  async function pay(amount: number) {
+    // Close the dialog first: the payment-method prompt and Razorpay Checkout open on top of the page.
+    setAdding(false);
+    setFailure("");
     const result = await addMoney(amount);
 
-    setNotice(result.message);
-
-    if (result.ok) {
-      setAmountInput("");
-    }
+    if (result.ok) toast(result.message);
+    else setFailure(result.message);
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-violet-900">Wallet</h1>
-        <p className="text-gray-500 mt-1">
-          Credits issued to your account — refunds and adjustments land here, not back
-          on your original payment method.
-        </p>
-      </div>
-
-      {error && (
-        <ErrorBanner>{error}</ErrorBanner>
-      )}
-
-      <div className="bg-white border rounded-xl p-6 mb-6 shadow-sm">
-        <p className="text-xs text-gray-500">Available balance</p>
-        <p className="text-3xl font-bold text-violet-900 mt-1 mb-4">
-          {loading ? "…" : currency.format(balance)}
-        </p>
-
-        <div className="flex items-center gap-2 max-w-sm">
-          <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-              ₹
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              min={1}
-              placeholder="Amount to add"
-              value={amountInput}
-              onChange={(e) => setAmountInput(e.target.value)}
-              className="w-full h-10 rounded-full border-2 border-violet-100 bg-violet-50/50 pl-7 pr-3 text-sm outline-none focus:border-violet-400 focus:bg-white transition"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleAddMoney}
-            disabled={addingMoney || !amountInput}
-            className="flex items-center gap-1 h-10 px-4 rounded-full bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition active:scale-[0.97] disabled:opacity-60 flex-shrink-0"
-          >
-            <Plus size={15} />
-            {addingMoney ? "Please wait..." : "Add money"}
-          </button>
-        </div>
-
-        {notice && <p className="text-xs text-amber-600 mt-2">{notice}</p>}
-      </div>
-
-      <div className="bg-white border rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b">
-          <h2 className="text-sm font-semibold text-gray-800">Transaction history</h2>
-        </div>
-
-        {loading ? (
-          <p className="text-gray-500 text-center py-8">Loading…</p>
-        ) : transactions.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No wallet activity yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-left text-gray-500">
-                <tr>
-                  <th className="px-4 py-2">Date</th>
-                  <th className="px-4 py-2">Reason</th>
-                  <th className="px-4 py-2 text-right">Amount</th>
-                  <th className="px-4 py-2 text-right">Balance after</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((t) => (
-                  <tr key={t.id} className="border-t">
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">
-                      {dateFmt.format(new Date(t.createdAt))}
-                    </td>
-                    <td className="px-4 py-2">{t.reason}</td>
-                    <td
-                      className={`px-4 py-2 text-right font-medium whitespace-nowrap ${
-                        t.type === "CREDIT" ? "text-green-700" : "text-red-600"
+    <div className={PD_PGRID}>
+      <div className={PD_COL}>
+        <section>
+          <h2 className={PD_SECTION_H}>Transaction history</h2>
+          {(error || failure) && (
+            <div className="mb-3">
+              <PdBanner tone="red">{failure || error}</PdBanner>
+            </div>
+          )}
+          <div className={PD_CARD_FLUSH}>
+            {loading ? (
+              <div aria-busy="true" aria-label="Loading" className="flex flex-col gap-3 p-4">
+                <PdSkeleton />
+                <PdSkeleton />
+                <PdSkeleton />
+              </div>
+            ) : transactions.length === 0 ? (
+              <PdEmpty
+                icon={Wallet}
+                title="No wallet activity yet"
+                text="Top-ups, refunds and referral rewards will show up here."
+              />
+            ) : (
+              transactions.map((t) => {
+                const credit = t.type === "CREDIT";
+                return (
+                  <div
+                    key={t.id}
+                    className="flex items-center gap-3 border-t border-pd-line px-5 py-3 first:border-t-0"
+                  >
+                    <span
+                      className={`grid size-9 shrink-0 place-items-center rounded-[10px] ${
+                        credit ? "text-pd-green" : "text-pd-brand"
                       }`}
                     >
-                      {t.type === "CREDIT" ? "+" : "-"}
-                      {currency.format(t.amount)}
-                    </td>
-                    <td className="px-4 py-2 text-right text-gray-500 whitespace-nowrap">
-                      {currency.format(t.balanceAfter)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      {credit ? <Plus size={16} /> : <FileText size={16} />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <b className="block text-sm font-medium">{t.reason}</b>
+                      <small className="text-xs text-pd-ink3">
+                        {dTime(t.createdAt)} · Balance {inr2(t.balanceAfter)}
+                      </small>
+                    </div>
+                    <span className={`text-sm font-semibold ${credit ? "text-pd-green" : ""}`}>
+                      {credit ? "+" : "−"}
+                      {inr2(Math.abs(t.amount))}
+                    </span>
+                  </div>
+                );
+              })
+            )}
           </div>
-        )}
+        </section>
       </div>
+
+      <div className={PD_COL}>
+        <section className={`${PD_CARD} flex flex-col gap-3`}>
+          <p className="text-[13px] font-bold text-pd-ink3">Available balance</p>
+          <div className="font-heading text-[40px] font-semibold leading-none">
+            {loading ? "…" : inr2(balance)}
+          </div>
+          <button type="button" className={`${PD_BTN_PRI} w-full`} onClick={() => setAdding(true)} disabled={addingMoney}>
+            <Plus size={16} />
+            {addingMoney ? "Please wait…" : "Add money"}
+          </button>
+          <p className="text-[13px] text-pd-ink3">
+            Credits from refunds and adjustments land here, not back on your original payment method.
+          </p>
+        </section>
+      </div>
+
+      {adding && <AddMoneyDialog balance={balance} onPay={pay} onClose={() => setAdding(false)} />}
+      {toastNode}
     </div>
   );
 }

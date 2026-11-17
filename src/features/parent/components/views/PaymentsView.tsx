@@ -1,215 +1,212 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Receipt } from "lucide-react";
 
-import { Modal } from "@/components/ui/modal";
-import { useInvoices, type InvoiceView, type InvoiceType } from "@/features/parent/hooks/useInvoices";
-import { useParentRefundRequests } from "@/features/refunds/hooks/useRefundRequests";
-import ErrorBanner from "@/features/shared/components/ErrorBanner";
-import { REFUND_STATUS_LABELS, getRefundStatusStyle } from "@/features/shared/utils/refundStatus";
-
-const currency = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 2,
-});
-
-const dateFmt = new Intl.DateTimeFormat("en-IN", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-});
-
-const TYPE_LABEL: Record<InvoiceType, string> = {
-  ENROLLMENT_PAYMENT: "Enrollment",
-  DEMO_BOOKING_PAYMENT: "Demo booking",
-  WALLET_TOPUP: "Wallet top-up",
-};
+import { PD_BTN_TXT, PdEmpty } from "@/features/parent/components/courses/pdUi";
+import { Tag } from "@/features/parent/components/home/HomeBits";
+import { usePdToast } from "@/features/parent/components/courses/usePdToast";
+import InvoiceDialog from "@/features/parent/components/payments/InvoiceDialog";
+import RefundDialog from "@/features/parent/components/payments/RefundDialog";
+import {
+  INVOICE_TYPE_LABEL,
+  PD_CARD_FLUSH,
+  PdBanner,
+  PdSkeleton,
+  dLong,
+  inr2,
+} from "@/features/parent/components/payments/paymentsUi";
+import { useInvoices, type InvoiceView } from "@/features/parent/hooks/useInvoices";
+import { useParentRefundRequests, type ParentRefundRequest } from "@/features/refunds/hooks/useRefundRequests";
 
 /**
- * Invoices (Sep 11, 2026) — a receipt for every real payment this
- * Parent has made (Enrollment, paid Demo booking, Wallet top-up).
- * This is the "standalone Payments-history screen" the sidebar's
- * "Payments" link already pointed at with no page behind it yet
- * (05-MODULE-SPECS-INDEX.md) — filling that gap rather than adding
- * a new nav entry.
+ * Payments tab — every invoice for money the Parent has paid (Enrollment, renewal, paid demo,
+ * demo coupons, Wallet top-up) with the refund request flow. Data: /api/parent/invoices and
+ * /api/parent/refund-requests (both already live-refreshing hooks).
  */
 export default function PaymentsView() {
   const { invoices, loading, error } = useInvoices();
   const { requests, error: refundError, submitting, submit, cancel } = useParentRefundRequests();
+  const { toast, toastNode } = usePdToast();
+  const [viewing, setViewing] = useState<InvoiceView | null>(null);
   const [refundFor, setRefundFor] = useState<InvoiceView | null>(null);
-  const [reason, setReason] = useState("");
 
-  // Newest request per invoice (the list is newest first).
-  function requestFor(invoiceId: string) {
-    return requests.find((r) => r.invoiceId === invoiceId);
+  // The list is newest first, so find() gives the latest request per invoice.
+  const requestFor = (invoiceId: string) => requests.find((r) => r.invoiceId === invoiceId);
+
+  async function sendRefund(reason: string) {
+    if (!refundFor) return false;
+    const ok = await submit(refundFor.id, reason);
+    if (ok) toast("Refund request sent to admin");
+    return ok;
   }
 
-  async function sendRefundRequest() {
-    if (!refundFor || reason.trim().length < 10) return;
+  async function withdraw(r: ParentRefundRequest) {
+    await cancel(r.id);
+    toast("Refund request withdrawn");
+  }
 
-    if (await submit(refundFor.id, reason.trim())) {
-      setRefundFor(null);
-      setReason("");
+  /** Design `refTag`. */
+  function refundTag(inv: InvoiceView) {
+    const r = requestFor(inv.id);
+    if (!r || r.status === "CANCELLED") return null;
+    if (r.status === "APPROVED") {
+      return (
+        <Tag tone="green">
+          Refunded to wallet{r.approvedAmount != null ? ` (${inr2(r.approvedAmount)})` : ""}
+        </Tag>
+      );
     }
+    if (r.status === "REJECTED") return <Tag tone="red">Refund not approved</Tag>;
+    return <Tag tone="amber">Refund requested — awaiting admin</Tag>;
+  }
+
+  /** Design `refBtn`. */
+  function refundButton(inv: InvoiceView) {
+    if (inv.type === "WALLET_TOPUP") return null;
+    const r = requestFor(inv.id);
+
+    if (!r || r.status === "CANCELLED") {
+      return (
+        <button type="button" className={PD_BTN_TXT} onClick={() => setRefundFor(inv)}>
+          Request refund
+        </button>
+      );
+    }
+    if (r.status === "PENDING") {
+      return (
+        <button type="button" className={PD_BTN_TXT} onClick={() => withdraw(r)}>
+          Withdraw
+        </button>
+      );
+    }
+    if (r.status === "REJECTED") {
+      return (
+        <button type="button" className={PD_BTN_TXT} onClick={() => setRefundFor(inv)}>
+          Ask again
+        </button>
+      );
+    }
+    return null;
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-violet-900">Payments</h1>
-        <p className="text-gray-500 mt-1">
-          Every invoice for money you've paid — Enrollments, paid demos, and Wallet
-          top-ups.
-        </p>
-      </div>
+    <>
+      <p className="mb-3 mt-5 text-[13px] text-pd-ink3">
+        Every invoice for money you’ve paid — enrollments, paid demos, and wallet top-ups.
+      </p>
 
-      {error && <ErrorBanner>{error}</ErrorBanner>}
-      {refundError && <ErrorBanner>{refundError}</ErrorBanner>}
+      {(error || refundError) && (
+        <div className="mb-3">
+          <PdBanner tone="red">{error || refundError}</PdBanner>
+        </div>
+      )}
 
-      <div className="bg-white border rounded-xl overflow-hidden">
+      <div className={PD_CARD_FLUSH}>
         {loading ? (
-          <p className="text-gray-500 text-center py-8">Loading…</p>
+          <div aria-busy="true" aria-label="Loading" className="flex flex-col gap-3 p-4">
+            <PdSkeleton />
+            <PdSkeleton />
+            <PdSkeleton />
+          </div>
         ) : invoices.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <Receipt className="mx-auto mb-2 text-gray-300" size={32} />
-            No invoices yet.
-          </div>
+          <PdEmpty
+            icon={Receipt}
+            title="No invoices yet"
+            text="When you pay for a class, a demo or a wallet top-up, the invoice shows up here."
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-left text-gray-500">
-                <tr>
-                  <th className="px-4 py-2">Invoice #</th>
-                  <th className="px-4 py-2">Date</th>
-                  <th className="px-4 py-2">Type</th>
-                  <th className="px-4 py-2">Description</th>
-                  <th className="px-4 py-2 text-right">Amount</th>
-                  <th className="px-4 py-2 text-right">&nbsp;</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((inv) => (
-                  <tr key={inv.id} className="border-t">
-                    <td className="px-4 py-2 font-mono text-xs text-gray-600 whitespace-nowrap">
-                      {inv.invoiceNumber}
-                    </td>
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">
-                      {dateFmt.format(new Date(inv.issuedAt))}
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">{TYPE_LABEL[inv.type]}</td>
-                    <td className="px-4 py-2 text-gray-600">{inv.description}</td>
-                    <td className="px-4 py-2 text-right font-medium whitespace-nowrap">
-                      {currency.format(inv.amount)}
-                    </td>
-                    <td className="px-4 py-2 text-right whitespace-nowrap">
-                      <Link
-                        href={`/parent/payments/${inv.id}`}
-                        className="text-violet-700 hover:text-violet-900 font-medium"
-                      >
-                        View
-                      </Link>
-                      {inv.type !== "WALLET_TOPUP" && (() => {
-                        const refund = requestFor(inv.id);
-
-                        if (!refund || refund.status === "CANCELLED") {
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => setRefundFor(inv)}
-                              className="ml-4 text-gray-600 hover:text-gray-900 font-medium"
-                            >
-                              Request refund
-                            </button>
-                          );
-                        }
-
-                        return (
-                          <span className="ml-4 inline-flex items-center gap-2">
-                            <span
-                              title={refund.adminNote ?? undefined}
-                              className={`text-xs font-semibold px-2.5 py-1 rounded-full ${getRefundStatusStyle(refund.status)}`}
-                            >
-                              {REFUND_STATUS_LABELS[refund.status]}
-                              {refund.status === "APPROVED" && refund.approvedAmount != null
-                                ? ` (${currency.format(refund.approvedAmount)})`
-                                : ""}
-                            </span>
-                            {refund.status === "PENDING" && (
-                              <button
-                                type="button"
-                                onClick={() => cancel(refund.id)}
-                                className="text-xs text-gray-500 hover:text-gray-800 underline"
-                              >
-                                Withdraw
-                              </button>
-                            )}
-                            {refund.status === "REJECTED" && (
-                              <button
-                                type="button"
-                                onClick={() => setRefundFor(inv)}
-                                className="text-xs text-gray-500 hover:text-gray-800 underline"
-                              >
-                                Ask again
-                              </button>
-                            )}
-                          </span>
-                        );
-                      })()}
-                    </td>
+          <>
+            {/* Desktop table */}
+            <div className="overflow-x-auto max-[719px]:hidden">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    {["Invoice #", "Date", "Type", "Description"].map((h) => (
+                      <th key={h} className={TH}>
+                        {h}
+                      </th>
+                    ))}
+                    <th className={`${TH} text-right`}>Amount</th>
+                    <th className={TH} />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {invoices.map((inv) => {
+                    const tag = refundTag(inv);
+                    return (
+                      <tr key={inv.id} className="border-b border-pd-line last:border-b-0">
+                        <td className={`${TD} whitespace-nowrap`}>
+                          <b className="font-semibold">{inv.invoiceNumber}</b>
+                        </td>
+                        <td className={`${TD} whitespace-nowrap`}>{dLong(inv.issuedAt)}</td>
+                        <td className={TD}>{INVOICE_TYPE_LABEL[inv.type] ?? inv.type}</td>
+                        <td className={TD}>
+                          {inv.description}
+                          {tag && <div className="mt-1.5">{tag}</div>}
+                        </td>
+                        <td className={`${TD} text-right`}>
+                          <b className="font-semibold">{inr2(inv.amount)}</b>
+                        </td>
+                        <td className={`${TD} whitespace-nowrap`}>
+                          <button type="button" className={PD_BTN_TXT} onClick={() => setViewing(inv)}>
+                            View
+                          </button>
+                          {refundButton(inv)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Phones: one block per invoice */}
+            <div className="min-[720px]:hidden">
+              {invoices.map((inv) => {
+                const tag = refundTag(inv);
+                return (
+                  <div key={inv.id} className="flex flex-col gap-2 border-t border-pd-line p-4 first:border-t-0">
+                    <div className="flex justify-between gap-3 font-semibold">
+                      <span>{inv.invoiceNumber}</span>
+                      <span>{inr2(inv.amount)}</span>
+                    </div>
+                    <div className="text-[13px] text-pd-ink2">
+                      {dLong(inv.issuedAt)} · {INVOICE_TYPE_LABEL[inv.type] ?? inv.type}
+                      <br />
+                      {inv.description}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {tag}
+                      <button type="button" className={PD_BTN_TXT} onClick={() => setViewing(inv)}>
+                        View
+                      </button>
+                      {refundButton(inv)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
-      {refundFor && (
-        // Shared Modal: Escape closes the refund form, focus stays inside it, and the page behind can't scroll.
-        <Modal label="Request a refund" onClose={() => setRefundFor(null)} panelClassName="max-w-md rounded-xl bg-white p-6 shadow-lg">
-          <h2 className="text-lg font-semibold text-gray-800">Request a refund</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {refundFor.invoiceNumber} · {currency.format(refundFor.amount)}
-          </p>
-          <p className="text-xs text-gray-500 mt-3">
-            Nothing is refunded until an admin approves it. If approved, the admin sets the amount and it is added to
-            your Wallet. See the{" "}
-            <Link href="/refunds" className="text-violet-700 underline">
-              Refund Policy
-            </Link>
-            .
-          </p>
-          <label className="block text-sm text-gray-600 mt-4">
-            Why do you want a refund? (10 to 1000 characters)
-            <textarea
-              className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 outline-none text-sm text-gray-800 focus:border-violet-400 min-h-[110px]"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              maxLength={1000}
-            />
-          </label>
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setRefundFor(null)}
-              className="text-sm font-semibold text-gray-600 border px-4 py-2 rounded-lg hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={submitting || reason.trim().length < 10}
-              onClick={sendRefundRequest}
-              className="text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded-lg disabled:opacity-60"
-            >
-              {submitting ? "Sending…" : "Send to admin"}
-            </button>
-          </div>
-        </Modal>
+      {viewing && (
+        <InvoiceDialog invoice={viewing} refundTag={refundTag(viewing)} onClose={() => setViewing(null)} />
       )}
-    </div>
+      {refundFor && (
+        <RefundDialog
+          invoice={refundFor}
+          submitting={submitting}
+          onSubmit={sendRefund}
+          onClose={() => setRefundFor(null)}
+        />
+      )}
+      {toastNode}
+    </>
   );
 }
+
+/* Design `.tbl` cells */
+const TH = "whitespace-nowrap border-b border-pd-line px-4 py-3 text-left text-xs font-semibold text-pd-ink3";
+const TD = "px-4 py-3 align-top";

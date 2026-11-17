@@ -34,6 +34,8 @@ const ITEM_LABEL: Record<InvoiceType, string> = {
   ENROLLMENT_PAYMENT: "Course enrollment",
   DEMO_BOOKING_PAYMENT: "Demo session booking",
   WALLET_TOPUP: "Wallet top-up",
+  DEMO_COUPON_PURCHASE: "Demo coupons",
+  CYCLE_RENEWAL_PAYMENT: "Course renewal",
 };
 
 /** Printable single-invoice view — `window.print()` is the "download as PDF" path, no PDF-generation dependency needed. */
@@ -74,6 +76,14 @@ export default function ParentInvoiceDetailPage() {
   }, [load]);
 
   useAutoRefresh(() => load(), { paths: [`/api/parent/invoices/${invoiceId}`] });
+
+  // "Download PDF" on the Payments page opens this page with ?print=1: show the print / save-as-PDF dialog once.
+  useEffect(() => {
+    if (!invoice) return;
+    if (new URLSearchParams(window.location.search).get("print") !== "1") return;
+    const t = setTimeout(() => window.print(), 300);
+    return () => clearTimeout(t);
+  }, [invoice?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="p-6 max-w-3xl mx-auto print:p-0 print:max-w-none">

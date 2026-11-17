@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import { isBackgroundRefresh } from "@/lib/refreshBus";
 
-export type InvoiceType = "ENROLLMENT_PAYMENT" | "DEMO_BOOKING_PAYMENT" | "WALLET_TOPUP";
+export type InvoiceType =
+  | "ENROLLMENT_PAYMENT"
+  | "DEMO_BOOKING_PAYMENT"
+  | "WALLET_TOPUP"
+  | "DEMO_COUPON_PURCHASE"
+  | "CYCLE_RENEWAL_PAYMENT";
 
 export interface InvoiceView {
   id: string;

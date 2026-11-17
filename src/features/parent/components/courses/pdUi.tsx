@@ -12,6 +12,8 @@ export const PD_BTN_SEC = `${BTN} h-[42px] bg-pd-b50 px-4 text-sm text-pd-brand-
 export const PD_BTN_DNG = `${BTN} h-[42px] bg-pd-red px-4 text-sm text-white hover:bg-[#b91c1c]`;
 export const PD_BTN_PRI_SM = `${BTN} h-[34px] bg-pd-brand px-3 text-[13px] text-white hover:bg-pd-brand-d`;
 export const PD_BTN_SEC_SM = `${BTN} h-[34px] bg-pd-b50 px-3 text-[13px] text-pd-brand-d hover:bg-pd-b100`;
+/** Design `.btn.txt`: text-only action inside rows and tables. */
+export const PD_BTN_TXT = `${BTN} px-2 py-1 text-[13px] text-pd-brand hover:bg-pd-b50`;
 export const PD_BTN_DTXT_SM = `${BTN} h-[34px] px-3 text-[13px] text-pd-red hover:bg-pd-red-bg`;
 
 export const PD_INPUT =
