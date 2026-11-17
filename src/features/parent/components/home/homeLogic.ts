@@ -8,7 +8,7 @@ import type {
 
 export type LearnerFilter = "all" | string;
 
-const KID_PALETTE = ["#0f766e", "#c2410c", "#be185d", "#1d4ed8", "#4d7c0f", "#a16207"];
+export const KID_PALETTE = ["#0f766e", "#c2410c", "#be185d", "#1d4ed8", "#4d7c0f", "#a16207"];
 
 /** One colour per learner — the only categorical colour on the page. */
 export function kidColor(kids: HomeKid[], kidId: string): string | null {

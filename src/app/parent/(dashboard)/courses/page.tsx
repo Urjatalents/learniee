@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 
-import HubTabs from "@/features/shared/components/HubTabs";
+import PdHubTabs from "@/features/parent/components/PdHubTabs";
 import CoursesView from "@/features/parent/components/views/CoursesView";
 import TeachersView from "@/features/parent/components/views/TeachersView";
 import RequestClassView from "@/features/parent/components/views/RequestClassView";
@@ -10,7 +10,9 @@ import RequestClassView from "@/features/parent/components/views/RequestClassVie
 export default function ParentFindCourseHubPage() {
   return (
     <Suspense fallback={null}>
-      <HubTabs
+      <PdHubTabs
+        title="Find a course"
+        subtitle="Browse approved courses, meet teachers, or request something custom."
         defaultTab="courses"
         tabs={[
           { key: "courses", label: "Courses", content: <CoursesView /> },
