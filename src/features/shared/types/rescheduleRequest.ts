@@ -25,6 +25,8 @@ export interface RescheduleRequestRow {
     scheduledDate: string;
     scheduledTime: string | null;
     status: string;
+    /** The learner the class is for (lets the Parent page group and filter by child). */
+    studentId: string;
   };
   enrollment: {
     id: string;

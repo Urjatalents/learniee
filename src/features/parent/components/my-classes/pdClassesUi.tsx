@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import type { HomeKid } from "@/features/parent/components/home/homeTypes";
 import { SUBJECT_COLOR, kidColor } from "@/features/parent/components/home/homeLogic";
 import { parseGradeNumber } from "@/features/courses/utils/coursePricing";
@@ -40,3 +42,29 @@ export function toHomeKids(students: StudentProfile[]): HomeKid[] {
 export { kidColor };
 
 export const firstWord = (name: string) => name.trim().split(/\s+/)[0] || name;
+
+/**
+ * Rounded subject glyph (design: `.cglyph`). Colour comes from the subject unless
+ * overridden; position it with `className` (e.g. absolutely inside a row).
+ */
+export function SubjectGlyph({
+  subject,
+  color,
+  className = "",
+}: {
+  subject: string | null | undefined;
+  color?: string;
+  className?: string;
+}) {
+  const theme = subjectTheme(subject);
+
+  return (
+    <span
+      aria-hidden="true"
+      style={{ "--sc": color ?? theme.color } as CSSProperties}
+      className={`grid size-10 shrink-0 place-items-center rounded-xl bg-(--sc) text-[15px] font-bold tracking-[-0.02em] text-white ${className}`}
+    >
+      {theme.glyph}
+    </span>
+  );
+}

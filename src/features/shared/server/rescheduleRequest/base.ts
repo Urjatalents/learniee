@@ -291,7 +291,7 @@ export async function assertSlotStillFree(
 
 export const requestInclude = {
   classSession: {
-    select: { id: true, scheduledDate: true, scheduledTime: true, status: true },
+    select: { id: true, scheduledDate: true, scheduledTime: true, status: true, studentId: true },
   },
   enrollment: {
     select: {
