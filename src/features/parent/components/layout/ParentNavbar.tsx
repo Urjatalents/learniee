@@ -1,16 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Menu, Search } from "lucide-react";
+import { HelpCircle, LogOut, Search, User } from "lucide-react";
 
 import DemoCouponButton from "@/features/parent/components/layout/DemoCouponButton";
 import WalletBadge from "@/features/parent/components/layout/WalletBadge";
 import NotificationBell from "@/features/shared/components/NotificationBell";
 import { useAutoRefresh } from "@/features/shared/hooks/useAutoRefresh";
 import BrandLogo from "@/features/shared/components/BrandLogo";
-import { endSession } from "@/features/shared/utils/endSession";
-import { logClientActivity } from "@/features/shared/utils/logClientActivity";
 import { getInitial } from "@/lib/initials";
 
 interface Parent {
@@ -21,25 +19,22 @@ interface Parent {
 }
 
 interface ParentNavbarProps {
-  onMenuClick: () => void;
+  onLogout: () => void;
 }
 
-export default function ParentNavbar({ onMenuClick }: ParentNavbarProps) {
+export default function ParentNavbar({ onLogout }: ParentNavbarProps) {
   const router = useRouter();
 
   const [search, setSearch] = useState("");
   const [parent, setParent] = useState<Parent | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const fetchParent = useCallback(async () => {
     try {
       const res = await fetch("/api/parent/profile");
-
-      if (!res.ok) {
-        return;
-      }
-
+      if (!res.ok) return;
       const data = await res.json();
-
       setParent(data.parent);
     } catch (error) {
       console.error("Failed to load parent:", error);
@@ -53,111 +48,118 @@ export default function ParentNavbar({ onMenuClick }: ParentNavbarProps) {
   // Name changes made on the profile page show up here straight away.
   useAutoRefresh(() => fetchParent(), { paths: ["/api/parent/profile"] });
 
-  const handleLogout = async () => {
-    // Fire the log before ending the session — the endpoint needs
-    // the idToken cookie to identify who's logging out.
-    await logClientActivity("LOGOUT");
-
-    await endSession();
-
-    router.push("/login");
-  };
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   const parentName =
     parent?.visibleName ||
     `${parent?.firstName ?? ""} ${parent?.lastName ?? ""}`.trim();
-
   const parentInitial = getInitial(parentName, "P");
 
-  return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-white/90 backdrop-blur-sm border-b border-violet-100 shadow-sm flex items-center px-3 sm:px-5 gap-4 z-50">
-      {/* LEFT */}
-      <div className="flex items-center gap-3">
-        {/* Hamburger */}
-        <button
-          type="button"
-          onClick={onMenuClick}
-          aria-label="Open menu"
-          className="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center hover:bg-brand-dark shadow-playful transition active:scale-[0.97] lg:hidden"
-        >
-          <Menu size={18} />
-        </button>
+  const goTo = (path: string) => {
+    setMenuOpen(false);
+    router.push(path);
+  };
 
-        {/* Logo — clickable back to the dashboard, same as HOME */}
-        <button
-          type="button"
-          onClick={() => router.push("/parent")}
-          className="flex shrink-0 items-center gap-2"
-          aria-label="Go to dashboard"
-        >
-          <BrandLogo className="h-9 w-auto" priority />
-        </button>
+  return (
+    <header className="fixed inset-x-0 top-0 z-50 flex h-[60px] items-center gap-3 border-b border-pd-line bg-white px-4 sm:px-6">
+      <button
+        type="button"
+        onClick={() => router.push("/parent")}
+        className="flex shrink-0 items-center lg:w-50"
+        aria-label="Learniee home"
+      >
+        <BrandLogo className="h-8 w-auto" priority />
+      </button>
+
+      {/* Search — Enter jumps to the course catalogue with the query */}
+      <div className="relative hidden max-w-[400px] flex-1 md:block">
+        <Search
+          size={18}
+          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-pd-ink3"
+        />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              const q = search.trim();
+              router.push(q ? `/parent/courses?q=${encodeURIComponent(q)}` : "/parent/courses");
+            }
+          }}
+          placeholder="Find a course…"
+          aria-label="Find a course"
+          className="h-10 w-full rounded-[10px] border border-pd-line bg-pd-bg pl-[42px] pr-4 text-sm outline-none transition focus:border-pd-brand focus:bg-white focus:ring-4 focus:ring-pd-b100"
+        />
       </div>
 
-      {/* RIGHT */}
-      <div className="ml-auto flex items-center gap-2 sm:gap-4">
-        {/* Home */}
-        <button
-          type="button"
-          onClick={() => router.push("/parent")}
-          className="hidden sm:block text-sm font-bold tracking-wide text-brand hover:text-brand-dark transition"
-        >
-          HOME
-        </button>
-
-        {/* Search — visual only, not wired to a backend search yet */}
-        <div className="relative hidden md:block">
-          <input
-            type="text"
-            placeholder="Find a course..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-48 h-9 rounded-full border-2 border-violet-100 bg-violet-50/50 px-4 pr-9 text-sm outline-none focus:border-brand-light focus:bg-white transition"
-          />
-
-          <Search
-            size={15}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-brand"
-          />
-        </div>
-
-        {/* Demo coupons — balance, buy more, upcoming demos.
-            Moved here from the dashboard (Aug 30, 2026); see
-            DemoCouponButton.tsx. */}
+      <div className="ml-auto flex items-center gap-1">
         <DemoCouponButton />
-
-        {/* Wallet — balance + add-money, mirrors DemoCouponButton's
-            dropdown pattern. Added Sep 7, 2026, see WalletBadge.tsx. */}
         <WalletBadge />
+        <NotificationBell buttonClassName="relative grid size-11 place-items-center rounded-[10px] text-pd-ink2 transition-colors hover:bg-pd-b50 hover:text-pd-brand" />
 
-        {/* Notification — replaced the static placeholder (was
-            waiting on Notification Center, 06-OPEN-DECISIONS.md #32)
-            with a working dropdown, see NotificationBell.tsx. */}
-        <NotificationBell />
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-haspopup="true"
+            aria-expanded={menuOpen}
+            aria-label="Account menu"
+            className="flex items-center gap-2 rounded-full p-1 hover:bg-pd-b50"
+          >
+            <span className="grid size-9 place-items-center rounded-full bg-pd-b100 font-bold text-pd-brand-d">
+              {parentInitial}
+            </span>
+            <span className="hidden max-w-32 truncate pr-2 text-sm font-bold text-pd-ink sm:block">
+              {parentName || "Parent"}
+            </span>
+          </button>
 
-        <div className="hidden sm:block w-px h-8 bg-violet-100" />
-
-        {/* Parent Name + avatar */}
-        <div className="hidden sm:flex items-center gap-2">
-          <span className="max-w-28 truncate text-sm font-semibold text-gray-700">
-            {parentName || "Parent"}
-          </span>
-          <span className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-300 to-brand-yellow flex items-center justify-center text-sm font-bold text-violet-900 shadow-sm flex-shrink-0">
-            {parentInitial}
-          </span>
+          {menuOpen && (
+            <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-xl border border-pd-line bg-white py-1 shadow-[0_16px_40px_-12px_rgba(23,23,43,0.28)]">
+              <button
+                type="button"
+                onClick={() => goTo("/parent/account")}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-pd-ink hover:bg-pd-b50"
+              >
+                <User size={18} /> Account
+              </button>
+              <button
+                type="button"
+                onClick={() => goTo("/parent/complain")}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-pd-ink hover:bg-pd-b50"
+              >
+                <HelpCircle size={18} /> Help
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onLogout();
+                }}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-pd-ink hover:bg-pd-b50"
+              >
+                <LogOut size={18} /> Log out
+              </button>
+            </div>
+          )}
         </div>
-
-        {/* Logout */}
-        <button
-          type="button"
-          onClick={handleLogout}
-          // Icon-only 36px tap target on phones frees header width; full "Logout" label from sm up.
-          aria-label="Log out"
-          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-gray-500 hover:text-brand transition sm:size-auto"
-        >
-          <LogOut size={18} className="sm:hidden" />
-          <span className="hidden sm:inline">Logout</span>
-        </button>
       </div>
     </header>
   );

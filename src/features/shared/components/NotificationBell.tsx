@@ -28,7 +28,12 @@ function timeAgo(iso: string) {
  * doc-comment. Same dropdown/click-outside pattern as
  * `WalletBadge.tsx` / `DemoCouponButton.tsx` right next to it.
  */
-export default function NotificationBell() {
+export default function NotificationBell({
+  buttonClassName,
+}: {
+  /** Override the trigger button styling (Parent top bar uses its own look). */
+  buttonClassName?: string;
+} = {}) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -67,7 +72,10 @@ export default function NotificationBell() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Notifications"
-        className="relative w-9 h-9 rounded-full bg-violet-50 text-brand hover:bg-violet-100 flex items-center justify-center transition active:scale-[0.97]"
+        className={
+          buttonClassName ??
+          "relative w-9 h-9 rounded-full bg-violet-50 text-brand hover:bg-violet-100 flex items-center justify-center transition active:scale-[0.97]"
+        }
       >
         <Bell size={17} />
         {unreadCount > 0 && (

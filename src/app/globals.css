@@ -302,3 +302,28 @@ a {
     font-size: 16px;
   }
 }
+
+/* Parent dashboard redesign (Nov 2026): palette taken from the logo purple.
+   Namespaced `pd-*` so it never touches the shared brand tokens used by the
+   Teacher / Admin / landing pages. Usage: `bg-pd-brand`, `text-pd-ink2`, ... */
+@theme {
+  --color-pd-brand: #5931a2;
+  --color-pd-brand-d: #46257f;
+  --color-pd-b50: #f2eef9;
+  --color-pd-b100: #e5dcf3;
+  --color-pd-bg: #f4f4f7;
+  --color-pd-line: #e4e2ec;
+  --color-pd-line2: #d3d0de;
+  --color-pd-ink: #1f1a30;
+  --color-pd-ink2: #4d4960;
+  --color-pd-ink3: #67637c;
+  --color-pd-gold: #f2b53a;
+  --color-pd-gold-d: #e3a21c;
+  --color-pd-on-gold: #2a1b00;
+  --color-pd-green: #15803d;
+  --color-pd-green-bg: #e8f5ec;
+  --color-pd-amber: #9a5a06;
+  --color-pd-amber-bg: #fdf3dc;
+  --color-pd-red: #c2261f;
+  --color-pd-red-bg: #fdeceb;
+}

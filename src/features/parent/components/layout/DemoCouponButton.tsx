@@ -6,6 +6,7 @@ import { Ticket, Plus, Minus, CalendarClock, Sparkles } from "lucide-react";
 
 import { useDemoCoupons } from "@/features/parent/hooks/useDemoCoupons";
 import { useDemoBookings } from "@/features/parent/hooks/useDemoBookings";
+import { PD_PILL } from "@/features/parent/components/layout/pdStyles";
 
 /**
  * Navbar entry point for everything demo-coupon related: remaining
@@ -77,7 +78,7 @@ export default function DemoCouponButton() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Demo coupons"
-        className="relative flex items-center gap-1.5 h-9 pl-2.5 pr-3 rounded-full bg-violet-50 text-brand hover:bg-violet-100 transition active:scale-[0.97]"
+        className={PD_PILL}
       >
         <Ticket size={17} />
         <span className="text-sm font-bold">
