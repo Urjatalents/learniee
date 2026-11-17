@@ -57,7 +57,23 @@ export default function ParentMyClassesHubPage() {
           },
           { key: "chat", label: "Messages", content: <ChatListView /> },
           // Reached from the sidebar (Demos / Library); not part of this page's design.
-          { key: "demos", label: "Demos", hidden: true, content: <FreeDemoView /> },
+          {
+            key: "demos",
+            label: "Demos",
+            hidden: true,
+            standalone: true,
+            heading: {
+              title: "Demos",
+              subtitle:
+                "Your trial classes: what is booked, what you have attended, and your demo coupons.",
+              action: (
+                <Link href="/parent/courses" className={PD_BTN_PRI}>
+                  Book a demo
+                </Link>
+              ),
+            },
+            content: <FreeDemoView />,
+          },
           { key: "resources", label: "Library", hidden: true, content: <ResourcesView /> },
           { key: "certificates", label: "Certificates", content: <CertificatesView /> },
         ]}

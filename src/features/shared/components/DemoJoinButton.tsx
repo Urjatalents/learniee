@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Video } from "lucide-react";
+import { Loader2, Lock, Video } from "lucide-react";
 
 /**
  * Join button for a demo's Google Meet room (Oct 19, 2026). Used on the
@@ -57,7 +57,18 @@ interface DemoJoinButtonProps {
   /** Put on the clipboard at click time (the child's name, for Meet's guest-name box). */
   copyText?: string | null;
   className?: string;
+  /**
+   * "pd" = the Parent design: a small violet button with a one-line caption
+   * under it (countdown / "Link not ready yet"). Default keeps the old look
+   * (used by the Teacher pages).
+   */
+  variant?: "default" | "pd";
+  /** Caption text for the "pd" variant, e.g. "Tomorrow · 4:00 PM" or "Starts in 6 min". */
+  countdownText?: string;
 }
+
+const PD_JOIN_BTN =
+  "inline-flex h-[34px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-pd-brand px-3 text-[13px] font-semibold text-white transition-colors hover:bg-pd-brand-d active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-pd-b100 disabled:text-pd-brand-d disabled:opacity-75";
 
 function timeLabel(iso: string) {
   const d = new Date(iso);
@@ -79,6 +90,8 @@ export default function DemoJoinButton({
   skewMs,
   copyText,
   className = "",
+  variant = "default",
+  countdownText,
 }: DemoJoinButtonProps) {
   const nowMs = useServerClock(skewMs);
   const [busy, setBusy] = useState(false);
@@ -92,7 +105,9 @@ export default function DemoJoinButton({
 
   if (state === "CLOSED") return null;
 
-  if (!meetEnabled) {
+  const canOpen = state === "OPEN" && meetEnabled;
+
+  if (!meetEnabled && variant !== "pd") {
     return (
       <p className={`text-xs text-gray-400 ${className}`}>
         The video room isn&apos;t switched on yet — we&apos;ll let you know.
@@ -146,6 +161,58 @@ export default function DemoJoinButton({
     } finally {
       setBusy(false);
     }
+  }
+
+  if (variant === "pd") {
+    const caption =
+      state === "NOT_YET"
+        ? `Opens 10 min before${countdownText ? ` · ${countdownText}` : ""}`
+        : meetEnabled
+          ? (countdownText ?? "")
+          : "Link not ready yet";
+
+    return (
+      <div className={`flex flex-col items-end gap-0.5 ${className}`}>
+        <button
+          type="button"
+          onClick={handleJoin}
+          disabled={!canOpen || busy}
+          aria-disabled={!canOpen || busy}
+          className={PD_JOIN_BTN}
+        >
+          {busy ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : canOpen ? (
+            <Video size={16} />
+          ) : (
+            <Lock size={14} />
+          )}
+          Join demo
+        </button>
+
+        {caption && (
+          <small className="whitespace-nowrap text-[11px] font-bold text-pd-ink3 max-[520px]:hidden">
+            {caption}
+          </small>
+        )}
+
+        {error && <p className="max-w-[240px] text-right text-xs text-pd-red">{error}</p>}
+        {notice && <p className="max-w-[240px] text-right text-xs text-pd-amber">{notice}</p>}
+        {openedUri && !error && (
+          <p className="max-w-[240px] text-right text-xs text-pd-ink3">
+            Didn&apos;t open?{" "}
+            <a
+              href={openedUri}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-pd-brand hover:underline"
+            >
+              Open the Meet link
+            </a>
+          </p>
+        )}
+      </div>
+    );
   }
 
   return (
