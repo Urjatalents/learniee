@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 
 import { kcStyle } from "./HomeBits";
-import { kidColor, type LearnerFilter } from "./homeLogic";
+import { gradeLabel, kidColor, type LearnerFilter } from "./homeLogic";
 import type { HomeKid } from "./homeTypes";
 
 interface Props {
@@ -60,7 +60,7 @@ export default function HomeLearnerSwitcher({ kids, active, onSelect }: Props) {
             </span>
             {k.first}{" "}
             <small className={`font-semibold ${on ? "text-white/80" : "text-pd-ink3"}`}>
-              Gr {k.grade}
+              {gradeLabel(k)}
             </small>
           </button>
         );

@@ -101,7 +101,7 @@ export default function UpNextHero({ data, session, now }: Props) {
 
           {open ? (
             <Link
-              href={isDemo ? "/parent/my-classes?tab=demos" : "/parent/my-classes"}
+              href={session.href}
               aria-disabled={!session.hasLink}
               className={`inline-flex h-12 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-pd-gold px-4 text-[15px] font-bold text-pd-on-gold transition-colors hover:bg-pd-gold-d @max-[620px]:w-full ${
                 cd.live ? "ring-4 ring-pd-gold/40" : ""
@@ -113,7 +113,7 @@ export default function UpNextHero({ data, session, now }: Props) {
           ) : (
             <>
               <Link
-                href={isDemo ? "/parent/my-classes?tab=demos" : "/parent/my-classes"}
+                href={session.href}
                 className="rounded-lg px-0 py-0.5 text-[13px] font-semibold text-pd-brand hover:bg-pd-b50 @max-[620px]:self-start"
               >
                 {isDemo ? "View demos" : "View class"}

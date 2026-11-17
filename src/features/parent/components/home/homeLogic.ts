@@ -1,14 +1,12 @@
 import type {
   HomeClass,
-  HomeCourse,
   HomeData,
   HomeKid,
+  HomeRecommendation,
   HomeSession,
 } from "./homeTypes";
 
 export type LearnerFilter = "all" | string;
-
-export const SESSION_LIVE_MINUTES = 45;
 
 const KID_PALETTE = ["#0f766e", "#c2410c", "#be185d", "#1d4ed8", "#4d7c0f", "#a16207"];
 
@@ -67,12 +65,13 @@ export const whenLabel = (d: Date, now: Date) => `${dayLabel(d, now)}, ${fmtTime
 export const inKid = (filter: LearnerFilter, kidId: string) =>
   filter === "all" || kidId === filter;
 
-export const isLive = (s: HomeSession, now: Date) =>
-  s.start.getTime() + SESSION_LIVE_MINUTES * 6e4 > now.getTime();
+export const isLive = (s: HomeSession, now: Date) => s.end.getTime() > now.getTime();
+
+export const gradeLabel = (k: { grade: number | null }) => (k.grade ? `Gr ${k.grade}` : "");
 
 export function upcomingSessions(data: HomeData, filter: LearnerFilter, now: Date) {
   return data.sessions
-    .filter((s) => inKid(filter, s.kidId) && s.status === "confirmed" && isLive(s, now))
+    .filter((s) => inKid(filter, s.kidId) && isLive(s, now))
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 }
 
@@ -115,92 +114,52 @@ export interface AttentionItem {
 }
 
 export function attentionItems(data: HomeData, filter: LearnerFilter): AttentionItem[] {
-  const kidName = (id: string) => data.kids.find((k) => k.id === id)?.first ?? "";
-  const items: AttentionItem[] = [];
-
-  data.classes
-    .filter((c) => c.status === "enrolled" && c.left <= 5 && inKid(filter, c.kidId) && !c.renewed)
-    .forEach((c) => {
-      const gap = c.price * c.total - data.walletBalance;
-      items.push({
-        key: `renew-${c.id}`,
-        priority: 2,
-        days: c.left,
-        title: `Renew ${kidName(c.kidId)}’s ${c.subject} class`,
-        sub:
-          gap > 0
-            ? `Ends in ${c.left} day${c.left === 1 ? "" : "s"}. Your wallet is ${inr(gap)} short.`
-            : `Ends in ${c.left} day${c.left === 1 ? "" : "s"} — renew to keep the same weekly slots.`,
-        button: "Renew",
-        href: "/parent/my-classes",
-      });
-    });
-
-  data.rescheduleAsks
-    .filter((r) => inKid(filter, r.kidId))
-    .forEach((r) => {
-      items.push({
-        key: `resched-${r.id}`,
-        priority: 1,
-        title: "Reschedule needs your response",
-        sub: `${r.teacherName} proposed a new time for ${r.subject}.`,
-        button: "Respond",
-        href: "/parent/calendar?tab=reschedule",
-        primary: true,
-      });
-    });
-
-  return items.sort((x, y) => x.priority - y.priority || (x.days ?? 99) - (y.days ?? 99));
+  return data.attention
+    .filter((a) => a.kidId === null || inKid(filter, a.kidId))
+    .map((a) => ({
+      key: a.key,
+      priority: a.priority,
+      days: a.days ?? undefined,
+      title: a.title,
+      sub: a.sub,
+      button: a.button,
+      href: a.href,
+      primary: a.priority === 1,
+    }))
+    .sort((x, y) => x.priority - y.priority || (x.days ?? 99) - (y.days ?? 99));
 }
 
 export const renewalsDue = (data: HomeData): HomeClass[] =>
   data.classes
-    .filter((c) => c.status === "enrolled" && c.left <= 14 && !c.renewed)
-    .sort((a, b) => a.left - b.left);
+    .filter((c) => c.status === "enrolled" && c.left !== null && c.left <= 14)
+    .sort((a, b) => (a.left ?? 0) - (b.left ?? 0));
 
 export interface Recommendation {
-  course: HomeCourse;
+  rec: HomeRecommendation;
   kid: HomeKid;
-  score: number;
 }
 
-/** Sample scoring on grade, rating, subject mix and teacher familiarity. */
-export function recommendationsFor(data: HomeData, kid: HomeKid): Recommendation[] {
-  const mine = data.classes.filter((c) => c.kidId === kid.id);
-  const have = new Set(mine.map((c) => c.title));
-  const activeSubjects = new Set(mine.filter((c) => c.status !== "completed").map((c) => c.subject));
-
-  return data.courses
-    .filter((c) => !have.has(c.title) && kid.grade >= c.grades[0] && kid.grade <= c.grades[1])
-    .map((course) => {
-      let score = 20;
-      score += course.rating ? course.rating * 6 : 18;
-      if (mine.some((x) => data.classTeacherId[x.id] === course.teacherId)) score += 12;
-      score += activeSubjects.has(course.subject) ? 4 : 10;
-      if ((data.bookedDemoTitles[kid.id] ?? []).includes(course.title)) score += 5;
-      return { course, kid, score };
-    })
-    .sort((a, b) => b.score - a.score);
-}
-
-/** Round-robin across learners so "All" shows a mix. */
+/** Round-robin across learners so "All" shows a mix (the server ranks each learner's list). */
 export function pickRecommendations(
   data: HomeData,
   filter: LearnerFilter,
   limit = 3,
 ): Recommendation[] {
   const kids = data.kids.filter((k) => filter === "all" || k.id === filter);
-  const lists = kids.map((k) => recommendationsFor(data, k));
+  const lists = kids.map((kid) => ({
+    kid,
+    recs: data.recommendations.filter((r) => r.kidId === kid.id),
+  }));
   const used = new Set<string>();
   const out: Recommendation[] = [];
 
   for (let i = 0; out.length < limit && i < 8; i++) {
-    for (const list of lists) {
+    for (const { kid, recs } of lists) {
       if (out.length >= limit) break;
-      const r = list.find((x) => !used.has(x.course.id));
-      if (r) {
-        used.add(r.course.id);
-        out.push(r);
+      const rec = recs.find((x) => !used.has(x.courseId));
+      if (rec) {
+        used.add(rec.courseId);
+        out.push({ rec, kid });
       }
     }
   }

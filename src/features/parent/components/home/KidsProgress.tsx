@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { KidAvatar, Section, Tag, kcStyle } from "./HomeBits";
-import { dayDiff, dayLabel, kidColor, type LearnerFilter } from "./homeLogic";
+import { dayDiff, dayLabel, gradeLabel, kidColor, type LearnerFilter } from "./homeLogic";
 import type { HomeData } from "./homeTypes";
 
 export default function KidsProgress({
@@ -25,8 +25,8 @@ export default function KidsProgress({
           const classes = data.classes.filter((c) => c.kidId === k.id && c.status === "enrolled");
           const hw = data.homework
             .filter((h) => h.kidId === k.id && classes.some((c) => c.id === h.classId))
-            .sort((a, b) => a.due.getTime() - b.due.getTime());
-          const late = hw.filter((h) => dayDiff(h.due, now) < 0).length;
+            .sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
+          const late = hw.filter((h) => h.due && dayDiff(h.due, now) < 0).length;
           const shown = hw.slice(0, one ? 4 : 2);
 
           return (
@@ -40,7 +40,9 @@ export default function KidsProgress({
                 <div className="min-w-0 flex-[1_1_130px]">
                   <b className="block font-heading text-[17px] font-bold">{k.first}</b>
                   <small className="whitespace-nowrap text-[13px] text-pd-ink3">
-                    Gr {k.grade} · {classes.length} class{classes.length === 1 ? "" : "es"}
+                    {[gradeLabel(k), `${classes.length} class${classes.length === 1 ? "" : "es"}`]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </small>
                 </div>
                 <Tag tone={hw.length ? (late ? "red" : "gray") : "green"} className="ml-auto">
@@ -58,7 +60,7 @@ export default function KidsProgress({
                     <div className="h-2 overflow-hidden rounded-full bg-pd-b100">
                       <i
                         className="block h-full rounded-full bg-(--kc)"
-                        style={{ width: `${Math.round((c.done / c.total) * 100)}%` }}
+                        style={{ width: `${c.total ? Math.min(100, Math.round((c.done / c.total) * 100)) : 0}%` }}
                       />
                     </div>
                     <small className="text-right text-pd-ink3">
@@ -69,13 +71,14 @@ export default function KidsProgress({
 
               {shown.map((h) => (
                 <Link
-                  key={h.title}
+                  key={h.id}
                   href="/parent/homework-tests"
                   className="flex w-full min-w-0 flex-col items-start rounded-[10px] bg-pd-bg px-3 py-2.5 text-left text-sm font-medium hover:bg-pd-b50"
                 >
                   <span className="max-w-full truncate">{h.title}</span>
                   <small className="text-xs text-pd-ink3">
-                    {h.subject} · {dayDiff(h.due, now) < 0 ? "Overdue" : dayLabel(h.due, now)}
+                    {h.subject} ·{" "}
+                    {!h.due ? "No due date" : dayDiff(h.due, now) < 0 ? "Overdue" : dayLabel(h.due, now)}
                   </small>
                 </Link>
               ))}

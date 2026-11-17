@@ -31,30 +31,30 @@ export default function RecommendedCourses({
       }
     >
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,210px),1fr))] gap-3">
-        {recs.map(({ course, kid }) => (
+        {recs.map(({ rec, kid }) => (
           <article
-            key={course.id}
-            style={{ "--sc": SUBJECT_COLOR[course.subject] ?? "#5931a2" } as React.CSSProperties}
+            key={`${rec.courseId}-${kid.id}`}
+            style={{ "--sc": SUBJECT_COLOR[rec.subject] ?? "#5931a2" } as React.CSSProperties}
             className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-pd-line bg-white transition-colors hover:border-pd-line2"
           >
             <div className="relative flex h-[88px] items-start justify-between overflow-hidden bg-(--sc) p-3.5">
               <span className="absolute -bottom-[26px] right-3.5 text-[92px] font-bold leading-none text-white/20">
-                {course.subject[0]}
+                {rec.subject[0] ?? ""}
               </span>
               <Tag tone="violet" className="relative !bg-white/90 !text-(--sc)">
-                {course.subject}
+                {rec.subject}
               </Tag>
-              <RatingBadge rating={course.rating} />
+              <RatingBadge rating={rec.rating} />
             </div>
 
             <div className="flex flex-1 flex-col gap-3 px-[18px] pb-[18px] pt-4">
               <h3 className="line-clamp-2 font-heading text-[15px] font-semibold leading-[1.4]">
-                {course.title}
+                {rec.title}
               </h3>
 
               <div className="flex items-center gap-2 text-[13px] font-bold text-pd-ink2">
-                <NeutralAvatar name={course.teacherName} small />
-                <span className="truncate">{course.teacherName}</span>
+                <NeutralAvatar name={rec.teacherName} small />
+                <span className="truncate">{rec.teacherName}</span>
               </div>
 
               {!one && (
@@ -63,16 +63,16 @@ export default function RecommendedCourses({
                   className="flex items-center gap-1.5 text-xs font-semibold text-pd-ink2"
                 >
                   <i className="size-2 rounded-full bg-(--kc)" />
-                  For {kid.first} · Grade {kid.grade}
+                  For {kid.first}{kid.grade ? ` · Grade ${kid.grade}` : ""}
                 </p>
               )}
 
               <div className="mt-auto flex items-center justify-between gap-2">
                 <span className="text-lg font-semibold">
-                  {inr(course.price)}
+                  {inr(rec.price)}
                   <small className="text-xs font-bold text-pd-ink3">/session</small>
                 </span>
-                <Link href="/parent/courses" className={BTN_PRI}>
+                <Link href={rec.href} className={BTN_PRI}>
                   Enroll
                 </Link>
               </div>

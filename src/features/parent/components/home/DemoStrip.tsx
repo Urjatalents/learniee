@@ -16,7 +16,7 @@ interface Props {
 /** Compact line for the next demo when it isn't the hero. */
 export default function DemoStrip({ data, filter, now, heroSession }: Props) {
   const demos = data.sessions
-    .filter((s) => s.kind === "demo" && s.status === "confirmed" && inKid(filter, s.kidId) && isLive(s, now))
+    .filter((s) => s.kind === "demo" && inKid(filter, s.kidId) && isLive(s, now))
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 
   const next = demos[0];
@@ -48,7 +48,7 @@ export default function DemoStrip({ data, filter, now, heroSession }: Props) {
       </Link>
 
       {canJoin ? (
-        <Link href="/parent/my-classes?tab=demos" className={`${BTN_PRI} shrink-0`}>
+        <Link href={next.href} className={`${BTN_PRI} shrink-0`}>
           <Video size={16} />
           Join demo
         </Link>

@@ -7,7 +7,7 @@ import type { HomeData } from "./homeTypes";
 
 export default function WalletCard({ data }: { data: HomeData }) {
   const due = renewalsDue(data);
-  const total = due.reduce((n, c) => n + c.price * c.total, 0);
+  const total = due.reduce((n, c) => n + c.renewalAmount, 0);
   const gap = Math.max(0, total - data.walletBalance);
   const needsTopUp = gap > 0 || data.walletBalance < 1000;
 
@@ -41,9 +41,9 @@ export default function WalletCard({ data }: { data: HomeData }) {
                     <span>
                       <b className="font-semibold">{shortSubject(c.subject)}</b> · {kid?.first}
                     </span>
-                    <small className="text-xs text-pd-ink3">in {c.left} days</small>
+                    <small className="text-xs text-pd-ink3">{(c.left ?? 0) <= 0 ? "ends today" : `in ${c.left} day${c.left === 1 ? "" : "s"}`}</small>
                   </span>
-                  <em className="font-semibold not-italic">{inr(c.price * c.total)}</em>
+                  <em className="font-semibold not-italic">{inr(c.renewalAmount)}</em>
                 </li>
               );
             })}

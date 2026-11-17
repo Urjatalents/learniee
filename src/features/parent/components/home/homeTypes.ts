@@ -1,17 +1,17 @@
 /**
- * Shapes the Parent Home screen renders. Today they are filled from
- * `homeSample.ts` (frontend-only phase); the backend step swaps the source
- * for the real hooks/API without touching the components.
+ * Shapes the Parent Home screen renders. They are built from the real
+ * `GET /api/parent/dashboard` response by `homeAdapter.ts`.
  */
 export interface HomeKid {
   id: string;
   name: string;
   first: string;
-  grade: number;
-  board: string;
+  /** Numeric grade from the student's standard; null when unknown. */
+  grade: number | null;
 }
 
 export interface HomeClass {
+  /** Enrollment id. */
   id: string;
   title: string;
   subject: string;
@@ -20,45 +20,35 @@ export interface HomeClass {
   status: "enrolled" | "pending" | "completed";
   done: number;
   total: number;
-  /** Days left in the current cycle. */
-  left: number;
-  /** Price per session in rupees. */
-  price: number;
-  renewed?: boolean;
+  /** Days left in the current cycle; null when there is no open cycle. */
+  left: number | null;
+  /** What the next renewal costs, in rupees. */
+  renewalAmount: number;
 }
 
 export interface HomeSession {
   id: string;
   kind: "class" | "demo";
-  /** Class id for classes, demo id for demos. */
-  refId: string;
   title: string;
   subject: string;
   teacherName: string;
   kidId: string;
   start: Date;
+  /** When the session stops being "live" on the home screen. */
+  end: Date;
+  /** A video room can be opened (Google Meet is enabled). */
   hasLink: boolean;
-  status: "confirmed" | "done";
+  /** Where the Join / View button goes. */
+  href: string;
 }
 
 export interface HomeHomework {
+  id: string;
   kidId: string;
   classId: string;
   title: string;
   subject: string;
-  due: Date;
-}
-
-export interface HomeCourse {
-  id: string;
-  title: string;
-  subject: string;
-  teacherId: string;
-  teacherName: string;
-  rating: number | null;
-  price: number;
-  /** Inclusive grade range the course fits. */
-  grades: [number, number];
+  due: Date | null;
 }
 
 export interface HomeChat {
@@ -67,15 +57,38 @@ export interface HomeChat {
   teacherName: string;
   subject: string;
   kidId: string;
+  /** Short date of the last message ("23 Oct"), empty if none yet. */
   last: string;
 }
 
-export interface HomeRescheduleAsk {
-  id: string;
-  classId: string;
-  kidId: string;
-  teacherName: string;
+export interface HomeAttention {
+  key: string;
+  /** null = applies to every learner. */
+  kidId: string | null;
+  priority: number;
+  days: number | null;
+  title: string;
+  sub: string;
+  button: string;
+  href: string;
+}
+
+export interface HomeRecommendation {
+  courseId: string;
+  title: string;
   subject: string;
+  teacherName: string;
+  rating: number | null;
+  price: number;
+  kidId: string;
+  href: string;
+}
+
+export interface HomeSetup {
+  done: number;
+  total: number;
+  nextLabel: string;
+  href: string;
 }
 
 export interface HomeData {
@@ -84,13 +97,10 @@ export interface HomeData {
   classes: HomeClass[];
   sessions: HomeSession[];
   homework: HomeHomework[];
-  courses: HomeCourse[];
   chats: HomeChat[];
-  rescheduleAsks: HomeRescheduleAsk[];
+  attention: HomeAttention[];
+  recommendations: HomeRecommendation[];
+  setup: HomeSetup | null;
   walletBalance: number;
   freeDemos: number;
-  /** Titles of courses that already have a booked demo, per kid id. */
-  bookedDemoTitles: Record<string, string[]>;
-  /** Teacher id for each class id (used by recommendations). */
-  classTeacherId: Record<string, string>;
 }

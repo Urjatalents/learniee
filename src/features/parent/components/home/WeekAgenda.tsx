@@ -38,7 +38,7 @@ export default function WeekAgenda({
       <div className="overflow-hidden rounded-[14px] border border-pd-line bg-white">
         {days.map((d, i) => {
           const sessions = data.sessions
-            .filter((s) => inKid(filter, s.kidId) && s.status !== "done" && dayKey(s.start) === dayKey(d))
+            .filter((s) => inKid(filter, s.kidId) && dayKey(s.start) === dayKey(d))
             .sort((a, b) => a.start.getTime() - b.start.getTime());
           const today = i === 0;
           const free = sessions.length === 0;

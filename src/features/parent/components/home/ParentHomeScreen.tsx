@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { useDashboard } from "@/features/parent/hooks/useDashboard";
 
 import AttentionList from "./AttentionList";
 import DemoStrip from "./DemoStrip";
@@ -13,8 +15,7 @@ import UpNextHero from "./UpNextHero";
 import WalletCard from "./WalletCard";
 import WeekAgenda from "./WeekAgenda";
 import { attentionItems, countdown, upcomingSessions, type LearnerFilter } from "./homeLogic";
-import { buildHomeSample } from "./homeSample";
-import type { HomeData } from "./homeTypes";
+import { toHomeData } from "./homeAdapter";
 
 function HomeSkeleton() {
   const bar = (h: number, w = "100%") => (
@@ -32,21 +33,45 @@ function HomeSkeleton() {
 }
 
 export default function ParentHomeScreen() {
+  const { data: raw, loading, error, skewMs, reload } = useDashboard();
+  const data = useMemo(() => (raw ? toHomeData(raw) : null), [raw]);
+
   // Time-dependent UI renders only after mount (avoids server/client mismatch);
-  // it ticks every second for the live countdown.
+  // it ticks every second for the live countdown and follows the server clock.
   const [now, setNow] = useState<Date | null>(null);
-  const [data, setData] = useState<HomeData | null>(null);
-  const [filter, setFilter] = useState<LearnerFilter>("all");
+  const [selected, setSelected] = useState<LearnerFilter>("all");
 
   useEffect(() => {
-    const start = new Date();
-    setNow(start);
-    // Frontend-only phase: sample data, built once. The backend step replaces this
-    // with the real hooks (students, enrollments, calendar, wallet, chats, courses).
-    setData(buildHomeSample(start));
-    const id = setInterval(() => setNow(new Date()), 1000);
+    const tick = () => setNow(new Date(Date.now() + skewMs));
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [skewMs]);
+
+  if (error && !data) {
+    return (
+      <div className="mx-auto max-w-[1160px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8">
+        <div className="rounded-2xl border border-pd-line bg-white p-6 text-sm text-pd-ink2">
+          <p className="font-semibold text-pd-ink">{error}</p>
+          <button
+            type="button"
+            onClick={() => reload()}
+            className="mt-3 rounded-full bg-pd-brand px-4 py-2 font-semibold text-white hover:bg-pd-brand-d"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading && !data) {
+    return (
+      <div className="mx-auto max-w-[1160px] px-4 pb-12 pt-6 sm:px-6 sm:pt-8">
+        <HomeSkeleton />
+      </div>
+    );
+  }
 
   if (!now || !data) {
     return (
@@ -55,6 +80,11 @@ export default function ParentHomeScreen() {
       </div>
     );
   }
+
+  // A learner removed elsewhere falls back to "All".
+  const filter: LearnerFilter =
+    selected === "all" || data.kids.some((k) => k.id === selected) ? selected : "all";
+  const setFilter = setSelected;
 
   const upcoming = upcomingSessions(data, filter, now);
   const hero = upcoming[0];
@@ -77,7 +107,12 @@ export default function ParentHomeScreen() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-heading text-[26px] font-semibold leading-[1.15] text-pd-ink outline-none sm:text-[32px]">
-            {greeting}, <span className="text-pd-brand">{data.firstName}</span>
+            {greeting}
+            {data.firstName ? (
+              <>
+                , <span className="text-pd-brand">{data.firstName}</span>
+              </>
+            ) : null}
           </h1>
           <p className="text-sm text-pd-ink3">
             {now.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}

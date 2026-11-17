@@ -3,10 +3,7 @@ import {
   parseGradeRange,
 } from "@/features/courses/utils/coursePricing";
 import { getDemoCouponBalance } from "@/features/parent/server/demoCoupon/shared";
-import {
-  buildEnrollHref,
-  listPendingDemoSurveys,
-} from "@/features/parent/server/demoFeedback.service";
+import { listPendingDemoSurveys } from "@/features/parent/server/demoFeedback.service";
 import { isRenewalWindowOpen } from "@/features/parent/server/renewal/plan";
 import { getTeacherRatingsByIds } from "@/features/shared/server/review.service";
 import { getDemoJoinWindow } from "@/features/shared/utils/demoWindow";
@@ -564,7 +561,7 @@ async function buildRecommendations(
           studentName: student ? kidName(student) : kid.name,
           grade: kid.grade,
           reasons: reasons.slice(0, 3),
-          href: buildEnrollHref(c.id, kid.id),
+          href: `/parent/courses/${c.id}?mode=enroll&studentId=${encodeURIComponent(kid.id)}`,
           score,
         };
 
