@@ -7,6 +7,24 @@ import { isBackgroundRefresh } from "@/lib/refreshBus";
 
 export type { CalendarOccurrence };
 
+/** One month of occurrences (GET /api/parent/calendar). `month` is "YYYY-MM". */
+export async function fetchParentCalendarMonth(
+  month: string,
+  studentId?: string,
+): Promise<CalendarOccurrence[]> {
+  const params = new URLSearchParams({ month });
+  if (studentId) params.set("studentId", studentId);
+
+  const res = await fetch(`/api/parent/calendar?${params.toString()}`);
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to fetch calendar");
+  }
+
+  return data.occurrences;
+}
+
 /** `month` is "YYYY-MM"; `studentId` optionally scopes to one child. */
 export function useParentCalendar(month: string, studentId?: string) {
   const [occurrences, setOccurrences] = useState<CalendarOccurrence[]>([]);
@@ -25,17 +43,7 @@ export function useParentCalendar(month: string, studentId?: string) {
       if (!isBackgroundRefresh()) setLoading(true);
       setError("");
 
-      const params = new URLSearchParams({ month });
-      if (studentId) params.set("studentId", studentId);
-
-      const res = await fetch(`/api/parent/calendar?${params.toString()}`);
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to fetch calendar");
-      }
-
-      setOccurrences(data.occurrences);
+      setOccurrences(await fetchParentCalendarMonth(month, studentId));
     } catch (err) {
       console.error(err);
       setError("Unable to load the calendar.");

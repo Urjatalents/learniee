@@ -32,11 +32,7 @@ export default function RescheduleView() {
   const others = requests.filter((r) => !isPendingOnViewer(r, "PARENT"));
 
   return (
-    <div className="max-w-2xl mx-auto p-5 sm:p-8">
-      <h1 className="font-heading text-xl font-bold text-gray-800 mb-1">Reschedule</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Move a class to a new date/time — from either side, with the other party's approval.
-      </p>
+    <div className="max-w-2xl pt-6">
 
       <section className="mb-8">
         <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-2">
